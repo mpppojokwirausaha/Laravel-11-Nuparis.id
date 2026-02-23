@@ -1,0 +1,87 @@
+<?php
+
+use App\Filament\Pages\EditProfile;
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\LandingpageController;
+use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\TicketController;
+use Illuminate\Support\Facades\Route;
+
+
+
+Route::controller(LandingpageController::class)->group(function () {
+    Route::get('/', 'index')->name('landingpage');
+    Route::get('/news', 'news')->name('news-more');
+    Route::get('/news/data', 'newsData')->name('news-data');
+    Route::get('/review', 'review')->name('review-more');
+    Route::get('/toss/{slug}', 'toss')->name('toss');
+});
+
+Route::controller(ArticleController::class)->group(function () {
+    Route::get('/article', 'article')->name('article-more');
+    Route::get('/article/data', 'articleData')->name('article-data');
+    Route::get('/article/{article_slug}', 'articleDetail')->name('article-detail');
+    Route::post('/article/{article_slug}/share', 'incrementShare')->name('article.increment-share');
+});
+
+Route::controller(ActivityController::class)->group(function () {
+    Route::get('/activity', 'activity')->name('activity-more');
+    Route::get('/activity/data', 'activityData')->name('activity-data');
+    Route::get('/activity/{activity_slug}', 'activityDetail')->name('activity-detail');
+    Route::post('/activity/{activity_slug}/share', 'incrementShare')->name('activity.increment-share');
+});
+
+Route::controller(EventController::class)->group(function () {
+    Route::get('/event', 'event')->name('event-more');
+    Route::get('/event/data', 'eventData')->name('event-data');
+    Route::get('/event/{event_slug}', 'eventDetail')->name('event-detail');
+});
+
+Route::controller(PropertyController::class)->group(function () {
+    Route::get('/property', 'property')->name('property-more');
+    Route::get('/property/data', 'propertyData')->name('property-data');
+    Route::get('/property/{property_slug}', 'propertyDetail')->name('property-detail');
+});
+
+
+//ticket
+Route::controller(TicketController::class)->group(function () {
+    Route::get('ticket', 'index')->name('ticket.get');
+    Route::get('ticket/getbidangticket', 'getbidang')->name('ticket.bidang');
+    Route::post('ticket/search', 'search')->name('ticket.search');
+    Route::get('ticket/{ticket_code}', 'detail')->name('ticket.detail');
+    Route::post('ticket', 'store')->name('ticket.post');
+});
+
+Route::middleware(['guest'])->group(function () {
+    Route::controller(AuthController::class)->group(function () {
+        // login
+        Route::get('login', 'login')->name('login');
+        Route::post('login', 'postLogin')->name('login.post');
+
+        // // register
+        Route::get('register', 'register')->name('register');
+        Route::post('register', 'postRegister')->name('register.post');
+    });
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [LandingpageController::class, 'index'])->name('dashboard');
+    Route::get('/edit-profile', EditProfile::class)->name('filament.pages.edit-profile');
+    Route::post('/dashboard/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::resource('dashboard/event', EventController::class);
+});
+
+// additional
+Route::get('clear', function () {
+    \Artisan::call('cache:clear');
+    \Artisan::call('route:clear');
+    \Artisan::call('view:clear');
+});
+
+Route::get('/linkstorage', function () {
+    \Artisan::call('storage:link');
+});

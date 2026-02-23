@@ -1,0 +1,7 @@
+[16-Nov-2025 20:51:50 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::savePosition() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 591
+[16-Nov-2025 20:52:06 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::savePosition() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 591
+[16-Nov-2025 20:52:29 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::savePosition() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 591
+[16-Nov-2025 20:52:31 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::savePosition() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 591
+[21-Nov-2025 13:42:29 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::generatePreview() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 537
+[21-Nov-2025 13:42:31 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::generatePreview() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 537
+[21-Nov-2025 13:46:06 Asia/Jakarta] PHP Fatal error:  Cannot redeclare App\Filament\Pages\Signature::generatePreview() in /home/nuparisi/public_html/nuparis.id/app/Filament/Pages/Signature.php on line 537

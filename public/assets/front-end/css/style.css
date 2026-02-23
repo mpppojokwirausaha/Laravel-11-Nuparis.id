@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab&display=swap');
+/* Custom small circle for Pro badge */
+.pro-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+    line-height: 24px;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.star-yellow {
+    color: #f59e0b;
+}
+
+/* Customize pagination bullets */
+.swiper-pagination-bullet {
+    background-color: #E0302A;
+    opacity: 0.5;
+}
+
+.swiper-pagination-bullet-active {
+    opacity: 1;
+}
+
+.swiper-wrapper {
+    height: 20rem;
+    /* Set height to 0 */
+}
