@@ -60,18 +60,35 @@
 
                 <div class="flex items-center space-x-8">
                     <a href="{{ route('landingpage') }}" id="nav-home"
-                        class="nav-link text-white font-semibold border-b-2 border-white px-1 py-1 transition-all duration-300">Beranda</a>
+                        class="nav-link {{ request()->routeIs('landingpage') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Beranda
+                    </a>
+
                     <a href="{{ route('news-more') }}"
-                        class="nav-link text-white/90 hover:text-white font-medium transition-all duration-300">Berita</a>
+                        class="nav-link {{ request()->routeIs('news-more') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Berita
+                    </a>
+
                     <a href="{{ route('article-more') }}"
-                        class="nav-link text-white/90 hover:text-white font-medium transition-all duration-300">Perizinan
-                        & Non Perizinan</a>
+                        class="nav-link {{ request()->routeIs('article-more') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Perizinan & Non Perizinan
+                    </a>
+
                     <a href="{{ route('activity-more') }}"
-                        class="nav-link text-white/90 hover:text-white font-medium transition-all duration-300">Aktivitas</a>
+                        class="nav-link {{ request()->routeIs('activity-more') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Aktivitas
+                    </a>
+
                     <a href="{{ route('event-more') }}"
-                        class="nav-link text-white/90 hover:text-white font-medium transition-all duration-300">Event</a>
+                        class="nav-link {{ request()->routeIs('event-more') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Event
+                    </a>
+
                     <a href="{{ route('property-more') }}"
-                        class="nav-link text-white/90 hover:text-white font-medium transition-all duration-300">Properti</a>
+                        class="nav-link {{ request()->routeIs('property-more') ? 'text-white font-semibold border-b-2 border-white' : 'text-white/90 hover:text-white font-medium' }} transition-all duration-300">
+                        Properti
+                    </a>
+
                     @if (auth()->check())
                         <a href="https://www.nuptaris.id/management" id="login-button"
                             class="inline-flex items-center justify-center bg-white text-primary px-5 py-2 rounded-full font-medium hover:bg-white/90 transition-all duration-200 shadow-lg">
