@@ -262,6 +262,10 @@
         </div>
     </div>
 
+    @include('front-end.layouts.components.chat')
+    @include('front-end.layouts.components.footer')
+    @include('front-end.layouts.components.bottom-bar')
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const shareData = {

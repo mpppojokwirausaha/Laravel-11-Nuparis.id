@@ -1,3 +1,4 @@
+<!-- Desktop Navbar -->
 <nav class="hidden lg:block fixed top-0 w-full z-50 bg-white shadow-md">
     <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
@@ -54,3 +55,25 @@
         </div>
     </div>
 </nav>
+
+<!-- Mobile Header -->
+<header class="lg:hidden sticky top-0 z-40 bg-white border-b border-slate-200 pt-0">
+    <div class="px-4 py-3">
+        <div class="flex items-center justify-between">
+            <button onclick="window.history.back()"
+                class="flex items-center space-x-2 text-slate-600 lg:hover:text-primary transition-colors">
+                <i class="fas fa-arrow-left text-lg"></i>
+                <span class="font-medium hidden sm:inline">Kembali</span>
+            </button>
+
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-white rounded shadow-sm flex items-center justify-center">
+                    <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo" class="w-6 h-6">
+                </div>
+                <span class="font-bold text-slate-900 text-lg">NUPARIS</span>
+            </div>
+
+            <div class="w-10"></div>
+        </div>
+    </div>
+</header>
