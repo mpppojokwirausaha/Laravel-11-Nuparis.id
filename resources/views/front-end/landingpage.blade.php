@@ -470,6 +470,103 @@
                 </div>
             </section>
 
+            <section>
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
+                        <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Property</h2>
+                    </div>
+                    <a href="{{ route('property-more') }}"
+                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                </div>
+
+                <!-- Property Container -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Property 1 -->
+
+                    @foreach ($properties as $item)
+                        <div
+                            class="bg-white rounded-xl overflow-hidden shadow-lg cursor-pointer animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
+                            <!-- Image with overlay -->
+                            <div class="relative h-56 overflow-hidden">
+                                <img src="{{ asset('storage/' . $item->property_image[1]) }}" alt="Villa Modern"
+                                    class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
+                                    onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
+
+                                <!-- Logo Overlay -->
+                                <div class="absolute top-3 left-3 z-10 opacity-50">
+                                    <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                                        <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo"
+                                            class="w-6 h-6">
+                                    </div>
+                                </div>
+
+                                <!-- Price Tag -->
+                                <div
+                                    class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg shadow-sm">
+                                    <div class="text-sm font-bold text-red-600">Rp 2,5 M</div>
+                                </div>
+                            </div>
+
+                            <!-- Content -->
+                            <div class="p-5">
+                                <!-- Title -->
+                                <h3
+                                    class="text-lg font-bold text-slate-800 mb-2 lg:group-hover:text-red-600 transition-colors">
+                                    {{ $item->property_name }}
+                                </h3>
+                                <p class="text-slate-600 text-sm mb-4 line-clamp-2">
+                                    {{ strip_tags($item->property_description) }}
+                                </p>
+
+                                <!-- Property Details -->
+                                <div class="grid grid-cols-2 gap-2 mb-4">
+                                    <!-- Luas Tanah -->
+                                    <div class="text-center bg-slate-50 py-2 rounded-lg border border-slate-100">
+                                        <div class="text-red-600 text-sm font-bold">{{ $item->property_land_area }}
+                                        </div>
+                                        <div class="text-slate-500 text-[10px]">Luas Tanah</div>
+                                    </div>
+
+                                    <!-- Luas Bangunan -->
+                                    <div class="text-center bg-slate-50 py-2 rounded-lg border border-slate-100">
+                                        <div class="text-red-600 text-sm font-bold">
+                                            {{ $item->property_building_area }}</div>
+                                        <div class="text-slate-500 text-[10px]">Luas Bangunan</div>
+                                    </div>
+                                </div>
+
+                                <!-- Address -->
+                                <div class="flex items-start gap-3 mb-5 p-3 bg-slate-50 rounded-lg">
+                                    <i class="fas fa-map-marker-alt text-red-600 mt-1"></i>
+                                    <div>
+                                        <p class="text-slate-700 text-sm font-medium mb-1">Lokasi</p>
+                                        <p class="text-slate-500 text-xs line-clamp-2">{{ $item->property_address }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- CTA Buttons -->
+                                <div class="flex gap-3">
+                                    <!-- Tombol Lihat Detail -->
+                                    <a href="{{ route('property-detail', $item->property_slug) }}"
+                                        class="w-[85%] bg-red-600 lg:hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
+                                        Lihat Detail
+                                    </a>
+
+                                    <!-- Tombol WhatsApp -->
+                                    <a href="https://wa.me/{{ str_replace(' ', '', $item->property_no_whatsapp ?: env('NO_WHATSAPP')) }}?text=Halo, saya tertarik dengan properti &quot;{{ urlencode($item->property_name) }}&quot; di NUPARIS.ID.%0A%0ALink detail: {{ url()->current() }}%0A%0AMohon info lebih lanjut. Terima kasih."
+                                        target="_blank"
+                                        class="w-[15%] bg-white border-2 border-red-600 text-red-600 lg:hover:bg-red-600 lg:hover:text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
+                                        <i class="fab fa-whatsapp text-sm"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
             <!-- Ulasan Section -->
             <section>
                 <div class="flex items-center mb-6">

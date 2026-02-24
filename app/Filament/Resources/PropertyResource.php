@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PropertyResource\Pages;
 use App\Models\Property;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -44,7 +45,18 @@ class PropertyResource extends Resource
                     ->required(),
                 TextInput::make('property_price')
                     ->required()
-                    ->numeric(),
+                    ->prefix('Rp ')
+                    ->afterStateHydrated(function (TextInput $component, $state) {
+                        if ($state !== null) {
+                            $component->state(number_format($state, 0, ',', '.'));
+                        }
+                    })
+                    ->dehydrateStateUsing(function ($state) {
+                        return $state ? str_replace('.', '', $state) : null;
+                    })
+                    ->rule('integer'),
+                DateTimePicker::make('property_date_end')
+                    ->required(),
                 Textarea::make('property_address')
                     ->columnSpanFull()
                     ->required(),
@@ -91,7 +103,7 @@ class PropertyResource extends Resource
             ->columns([
                 ImageColumn::make('property_image')
                     ->label('Image')
-                    ->getStateUsing(fn ($record) => is_array($record->property_image) ? $record->property_image[0] : null)
+                    ->getStateUsing(fn($record) => is_array($record->property_image) ? $record->property_image[0] : null)
                     ->size(60),
                 TextColumn::make('property_name')
                     ->searchable(),

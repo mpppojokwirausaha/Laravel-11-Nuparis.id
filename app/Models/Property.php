@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -22,13 +23,16 @@ class Property extends Model
         'property_name',
         'property_slug',
         'property_type',
+        'property_status',
+        'property_date_start',
+        'property_date_end',
         'property_transaction_type',
         'property_price',
         'property_address',
         'property_latitude',
         'property_longitude',
         'property_description',
-        'property_image',   
+        'property_image',
         'property_building_area',
         'property_land_area',
         'property_no_whatsapp',
@@ -52,7 +56,12 @@ class Property extends Model
 
     public function getProperties()
     {
-        return $this->latest()->get();
+        return Property::where('property_status', 'Active')
+            ->where(function ($query) {
+                $query->whereDate('property_date_end', '>=', today())
+                    ->orWhereNull('property_date_end');
+            })
+            ->latest()->get();
     }
 
     public function getPropertiryMore()
