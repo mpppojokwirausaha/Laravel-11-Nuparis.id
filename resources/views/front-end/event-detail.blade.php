@@ -46,6 +46,7 @@
 
 <body class="font-sans text-gray-800 bg-gray-50 min-h-screen">
 
+    <!-- Desktop Navbar -->
     @include('front-end.layouts.components.header')
 
     <!-- Main Content -->
@@ -152,7 +153,8 @@
                                 <div class="min-w-0">
                                     <div class="text-xs sm:text-sm text-gray-500 truncate">Platform</div>
                                     <div class="font-medium text-sm sm:text-base truncate">
-                                        {{ $event->event_location }}</div>
+                                        {{ $event->event_location }}
+                                    </div>
                                 </div>
                             </div>
 
@@ -517,11 +519,9 @@
             </div>
         </div>
     </main>
+
     @include('front-end.layouts.components.chat')
-
-    <!-- Mobile Bottom Navigation Bar -->
     @include('front-end.layouts.components.bottom-bar')
-
     @include('front-end.layouts.components.footer')
 
     <!-- Toast Notification (Hidden by default) -->
@@ -577,19 +577,32 @@
 
         // Add to calendar function
         function addToCalendar() {
+            @php
+                $safeTitle = addslashes($event->event_title);
+                $safeDesc = addslashes(strip_tags($event->event_description));
+                $safeDesc = substr($safeDesc, 0, 100);
+            @endphp
+
             const eventData = {
-                title: '{{ $event->event_title }} - NUPARIS.ID',
-                description: '{{ \Illuminate\Support\Str::limit(strip_tags($event->event_description), 100) }}',
-                location: '{{ $event->event_location }}',
-                startDate: '{{ \Carbon\Carbon::parse($event->event_date_start)->format('Ymd\\THis') }}',
-                endDate: '{{ \Carbon\Carbon::parse($event->event_date_end)->format('Ymd\\THis') }}'
+                title: '{{ $safeTitle }} - NUPARIS.ID',
+                description: '{{ $safeDesc }}',
+                startDate: '{{ \Carbon\Carbon::parse($event->event_date_start)->format('Ymd') }}T{{ \Carbon\Carbon::parse($event->event_date_start)->format('His') }}',
+                endDate: '{{ \Carbon\Carbon::parse($event->event_date_end)->format('Ymd') }}T{{ \Carbon\Carbon::parse($event->event_date_end)->format('His') }}'
             };
 
-            const calendarUrl =
-                `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventData.title)}&details=${encodeURIComponent(eventData.description)}&location=${encodeURIComponent(eventData.location)}&dates=${eventData.startDate}/${eventData.endDate}`;
+            // Buat URL tanpa location dulu
+            let calendarUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+            calendarUrl += '&text=' + encodeURIComponent(eventData.title);
+            calendarUrl += '&details=' + encodeURIComponent(eventData.description);
+            calendarUrl += '&dates=' + eventData.startDate + '/' + eventData.endDate;
 
             window.open(calendarUrl, '_blank');
-            showToast('Event telah ditambahkan ke Google Calendar');
+
+            if (typeof showToast === 'function') {
+                showToast('Event ditambahkan ke kalender');
+            } else {
+                alert('Event ditambahkan ke kalender (showToast tidak ditemukan)');
+            }
         }
 
         // Share event function
@@ -765,77 +778,77 @@
                                 </div>
 
                                 <div class="space-y-3 sm:space-y-4">
-                                    ${isFreeEvent ? `
-                                                                                                                                                                        <!-- Free Event Display -->
-                                                                                                                                                                        <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket Gratis</div>
-                                                                                                                                                                                <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <div class="font-medium text-gray-900 text-sm sm:text-base">Rp 0</div>
-                                                                                                                                                                        </div>
-                                                                                                                                                                    ` : `
-                                                                                                                                                                        <!-- Paid Event Display -->
-                                                                                                                                                                        <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket</div>
-                                                                                                                                                                                <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <div class="font-medium text-gray-900 text-sm sm:text-base">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
-                                                                                                                                                                        </div>
-                                                                                                                                                                        `}
+                            ${isFreeEvent ? `
+                                <!-- Free Event Display -->
+                                <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
+                                    <div>
+                                        <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket Gratis</div>
+                                        <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
+                                    </div>
+                                    <div class="font-medium text-gray-900 text-sm sm:text-base">Rp 0</div>
+                                </div>
+                            ` : `
+                                <!-- Paid Event Display -->
+                                <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
+                                    <div>
+                                        <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket</div>
+                                        <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
+                                    </div>
+                                    <div class="font-medium text-gray-900 text-sm sm:text-base">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
+                                </div>
+                                `}
 
-                                    <!-- Benefits Included -->
-                                    <div class="mb-4 sm:mb-6">
-                                        <h5 class="font-bold text-gray-900 mb-1.5 sm:mb-2 text-sm sm:text-base">Yang Anda dapatkan:</h5>
-                                        <div class="space-y-1.5 sm:space-y-2">
-                                            <div class="flex items-center gap-1.5 sm:gap-2">
-                                                <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
-                                                <span class="text-xs sm:text-sm">Sertifikat digital</span>
-                                            </div>
-                                            <div class="flex items-center gap-1.5 sm:gap-2">
-                                                <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
-                                                <span class="text-xs sm:text-sm">Materi workshop lengkap (PDF)</span>
-                                            </div>
-                                            <div class="flex items-center gap-1.5 sm:gap-2">
-                                                <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
-                                                <span class="text-xs sm:text-sm">Akses recording sesi</span>
-                                            </div>
-                                            <div class="flex items-center gap-1.5 sm:gap-2">
-                                                <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
-                                                <span class="text-xs sm:text-sm">Template digital marketing</span>
-                                            </div>
+                            <!-- Benefits Included -->
+                            <div class="mb-4 sm:mb-6">
+                                <h5 class="font-bold text-gray-900 mb-1.5 sm:mb-2 text-sm sm:text-base">Yang Anda dapatkan:</h5>
+                                <div class="space-y-1.5 sm:space-y-2">
+                                    <div class="flex items-center gap-1.5 sm:gap-2">
+                                        <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
+                                        <span class="text-xs sm:text-sm">Sertifikat digital</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 sm:gap-2">
+                                        <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
+                                        <span class="text-xs sm:text-sm">Materi workshop lengkap (PDF)</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 sm:gap-2">
+                                        <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
+                                        <span class="text-xs sm:text-sm">Akses recording sesi</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 sm:gap-2">
+                                        <i class="fas fa-check text-green-600 text-xs sm:text-sm"></i>
+                                        <span class="text-xs sm:text-sm">Template digital marketing</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${isFreeEvent ? `
+                                <!-- Free Price Display -->
+                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                            <div class="text-xs sm:text-sm text-gray-600">Workshop ini gratis sepenuhnya</div>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
+                                            <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
                                         </div>
                                     </div>
-
-                                    ${isFreeEvent ? `
-                                                                                                                                                                    <!-- Free Price Display -->
-                                                                                                                                                                    <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                                                                                                                        <div class="flex justify-between items-center">
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                                                                                                                                <div class="text-xs sm:text-sm text-gray-600">Workshop ini gratis sepenuhnya</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
-                                                                                                                                                                                <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                        </div>
-                                                                                                                                                                    </div>
-                                                                                                                                                                ` : `
-                                                                                                                                                                    <!-- Total for Paid Event -->
-                                                                                                                                                                    <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                                                                                                                        <div class="flex justify-between items-center">
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                                                                                                                                <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <div>
-                                                                                                                                                                                <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                        </div>
-                                                                                                                                                                    </div>
-                                                                                                                                                                `}
+                                </div>
+                            ` : `
+                                <!-- Total for Paid Event -->
+                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                            <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
                                 </div>
                             </div>
 
@@ -968,7 +981,7 @@
             const name = document.getElementById('participantName').value;
             const email = document.getElementById('participantEmail').value;
             const whatsapp = document.getElementById('participantWhatsApp').value;
-            a
+
             if (!name || !email || !whatsapp) {
                 showToast('Harap lengkapi semua data yang diperlukan (bertanda *)');
                 return;
