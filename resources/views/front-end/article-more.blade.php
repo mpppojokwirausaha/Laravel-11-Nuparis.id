@@ -228,7 +228,7 @@
     <!-- Main Custom Script dengan jQuery -->
     <script>
         $(document).ready(function() {
-            console.log('DOM loaded with jQuery, initializing article page...');
+            // console.log('DOM loaded with jQuery, initializing article page...');
 
             // State variables untuk client-side pagination
             let currentPage = 1;
@@ -247,7 +247,7 @@
             loadArticlesFromController();
 
             async function loadArticlesFromController() {
-                console.log('Loading articles from controller...');
+                // console.log('Loading articles from controller...');
                 showLoading();
 
                 try {
@@ -263,12 +263,18 @@
                     }
 
                     const result = await response.json();
-                    console.log('Response dari controller:', result);
+                    // console.log('Response dari controller:', result);
 
-                    // PERBAIKAN: Gunakan articlesData bukan articles
                     if (result.success && result.articlesData && Array.isArray(result.articlesData)) {
                         allArticles = result.articlesData;
-                        console.log(`Loaded ${allArticles.length} articles from controller`);
+                        // console.log(`Loaded ${allArticles.length} articles from controller`);
+
+                        // Log struktur artikel pertama untuk debugging
+                        if (allArticles.length > 0) {
+                            // console.log('Contoh struktur artikel:', allArticles[0]);
+                            // console.log('Artikel kategori:', allArticles[0].article_category);
+                            // console.log('Nama kategori:', allArticles[0].article_category?.article_category_name);
+                        }
 
                         updateArticlesCounts(allArticles);
                         renderCategories();
@@ -303,16 +309,73 @@
                 return `{{ url('storage') }}/${imagePath}`;
             }
 
+            // Fungsi untuk mendapatkan kategori dari artikel
+            function getArticleCategory(article) {
+                // PRIORITAS UTAMA: Cek dari article_category (berdasarkan struktur response)
+                if (article.article_category && typeof article.article_category === 'object') {
+                    if (article.article_category.article_category_name) {
+                        return article.article_category.article_category_name;
+                    } else if (article.article_category.category_name) {
+                        return article.article_category.category_name;
+                    } else if (article.article_category.name) {
+                        return article.article_category.name;
+                    }
+                }
+
+                // Cek dari badge
+                if (article.badge) {
+                    if (typeof article.badge === 'object' && article.badge.label) {
+                        return article.badge.label;
+                    } else if (typeof article.badge === 'string') {
+                        return article.badge;
+                    }
+                }
+
+                // Cek dari article.article.badge
+                if (article.article && article.article.badge) {
+                    if (typeof article.article.badge === 'object' && article.article.badge.label) {
+                        return article.article.badge.label;
+                    } else {
+                        return article.article.badge;
+                    }
+                }
+
+                // Cek dari relasi category
+                if (article.category) {
+                    if (typeof article.category === 'object') {
+                        return article.category.category_name || article.category.name || 'Perizinan';
+                    } else {
+                        return article.category;
+                    }
+                }
+
+                // Cek dari article_category_name langsung
+                if (article.article_category_name) {
+                    return article.article_category_name;
+                }
+
+                // Default
+                return 'Perizinan';
+            }
+
+            // Fungsi escape HTML untuk keamanan
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
             function updateArticlesCounts(articles) {
                 const total = articles.length;
-                console.log(`Total articles: ${total}`);
+                // console.log(`Total articles: ${total}`);
 
                 $('#totalArticlesCount').text(total);
                 $('#articlesCount').text(`${total} Artikel`);
             }
 
             function setupEventListeners() {
-                console.log('Setting up event listeners with jQuery...');
+                // console.log('Setting up event listeners with jQuery...');
 
                 // Search functionality dengan debounce
                 let searchTimeout;
@@ -329,7 +392,7 @@
                     searchTimeout = setTimeout(() => {
                         currentFilters.searchQuery = value;
                         currentPage = 1;
-                        console.log('Search triggered:', currentFilters.searchQuery);
+                        // console.log('Search triggered:', currentFilters.searchQuery);
                         filterAndPaginate();
                     }, 500);
                 });
@@ -338,7 +401,7 @@
                     if (e.key === 'Enter') {
                         currentFilters.searchQuery = $(this).val().trim();
                         currentPage = 1;
-                        console.log('Search (Enter):', currentFilters.searchQuery);
+                        // console.log('Search (Enter):', currentFilters.searchQuery);
                         filterAndPaginate();
                     }
                 });
@@ -348,14 +411,14 @@
                     currentFilters.searchQuery = '';
                     currentPage = 1;
                     $(this).addClass('hidden');
-                    console.log('Clear search clicked');
+                    // console.log('Clear search clicked');
                     filterAndPaginate();
                 });
 
                 // Filter panel toggle
                 $('#filterButton').on('click', function() {
                     $('#filterPanel').toggleClass('hidden');
-                    console.log('Filter panel toggled');
+                    // console.log('Filter panel toggled');
                 });
 
                 // Apply filter button
@@ -364,7 +427,7 @@
                 // Cancel filter button
                 $('#cancelFilter').on('click', function() {
                     $('#filterPanel').addClass('hidden');
-                    console.log('Filter panel closed');
+                    // console.log('Filter panel closed');
                 });
 
                 // Reset search button
@@ -373,7 +436,7 @@
                     $('#searchInput').val('');
                     currentFilters.searchQuery = '';
                     $('#clearSearch').addClass('hidden');
-                    console.log('Reset all filters');
+                    // console.log('Reset all filters');
                     filterAndPaginate();
                 });
 
@@ -392,41 +455,60 @@
                 // Ekstrak kategori unik dari articles
                 const categories = new Set();
                 allArticles.forEach(article => {
-                    const category = article.category?.category_name || 'Perizinan';
-                    if (category) {
-                        categories.add(category);
+                    // PRIORITAS: Akses article_category.article_category_name
+                    if (article.article_category && article.article_category.article_category_name) {
+                        categories.add(article.article_category.article_category_name);
+                    }
+                    // Fallback ke method getArticleCategory
+                    else {
+                        const category = getArticleCategory(article);
+                        if (category) {
+                            categories.add(category);
+                        }
                     }
                 });
 
-                console.log(`Found ${categories.size} unique categories`);
+                // console.log(`Found ${categories.size} unique categories:`, Array.from(categories));
 
                 // Render checkbox untuk setiap kategori
                 $categoriesContainer.empty();
-                categories.forEach(category => {
+
+                if (categories.size === 0) {
+                    // Jika tidak ada kategori, tampilkan kategori default
                     const label = $('<label>').addClass('flex items-center cursor-pointer');
                     label.html(`
-                        <input type="checkbox" name="category" value="${category}"
-                            class="mr-2 rounded text-primary focus:ring-primary h-4 w-4">
-                        <span class="text-gray-700 text-sm">${category}</span>
-                    `);
+                    <input type="checkbox" name="category" value="Perizinan"
+                        class="mr-2 rounded text-primary focus:ring-primary h-4 w-4">
+                    <span class="text-gray-700 text-sm">Perizinan</span>
+                `);
                     $categoriesContainer.append(label);
-                });
+                } else {
+                    Array.from(categories).sort().forEach(category => {
+                        const label = $('<label>').addClass('flex items-center cursor-pointer');
+                        label.html(`
+                        <input type="checkbox" name="category" value="${escapeHtml(category)}"
+                            class="mr-2 rounded text-primary focus:ring-primary h-4 w-4">
+                        <span class="text-gray-700 text-sm">${escapeHtml(category)}</span>
+                    `);
+                        $categoriesContainer.append(label);
+                    });
+                }
             }
 
             function applyFilters() {
-                console.log('Applying filters...');
+                // console.log('Applying filters...');
 
                 // Get category filters
                 currentFilters.category = $('input[name="category"]:checked').map(function() {
                     return $(this).val();
                 }).get();
-                console.log('Selected categories:', currentFilters.category);
+                // console.log('Selected categories:', currentFilters.category);
 
                 // Get time range
                 const timeRangeRadio = $('input[name="timeRange"]:checked');
                 if (timeRangeRadio.length) {
                     currentFilters.timeRange = timeRangeRadio.val();
-                    console.log('Time range:', currentFilters.timeRange);
+                    // console.log('Time range:', currentFilters.timeRange);
                 }
 
                 // Close filter panel
@@ -440,30 +522,30 @@
             }
 
             function filterAndPaginate() {
-                console.log('Filtering and paginating...');
+                // console.log('Filtering and paginating...');
                 showLoading();
 
                 setTimeout(() => {
                     // 1. Filter artikel
                     filteredArticles = filterArticles();
-                    console.log(`Filtered articles: ${filteredArticles.length} of ${allArticles.length}`);
+                    // console.log(`Filtered articles: ${filteredArticles.length} of ${allArticles.length}`);
 
                     // 2. Update count
                     updateFilteredCount(filteredArticles.length);
 
                     // 3. Hitung total pages
                     totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
-                    console.log(`Total pages: ${totalPages}`);
+                    // console.log(`Total pages: ${totalPages}`);
 
                     // 4. Validasi current page
                     if (currentPage > totalPages && totalPages > 0) {
                         currentPage = totalPages;
-                        console.log(`Adjusted current page to: ${currentPage}`);
+                        // console.log(`Adjusted current page to: ${currentPage}`);
                     }
 
                     // 5. Dapatkan artikel untuk halaman saat ini
                     const paginatedArticles = getCurrentPageArticles(filteredArticles);
-                    console.log(`Current page articles: ${paginatedArticles.length}`);
+                    // console.log(`Current page articles: ${paginatedArticles.length}`);
 
                     // 6. Render artikel
                     renderArticles(paginatedArticles);
@@ -474,47 +556,49 @@
                     // 8. Hide loading
                     hideLoading();
 
-                    console.log('Filter and paginate completed');
+                    // console.log('Filter and paginate completed');
                 }, 300);
             }
 
             function filterArticles() {
                 let filtered = [...allArticles];
 
+                // Normalisasi data untuk memudahkan filtering
+                filtered = filtered.map(article => {
+                    return {
+                        ...article,
+                        _normalizedCategory: getArticleCategory(article)
+                    };
+                });
+
                 // Apply search filter
                 if (currentFilters.searchQuery) {
                     const query = currentFilters.searchQuery.toLowerCase();
-                    console.log(`Searching for: "${query}"`);
-
                     filtered = filtered.filter(article => {
-                        const title = (article.article_title || article.title || '')
-                            .toLowerCase();
-                        const content = (article.article_content || article.content || '')
-                            .toLowerCase();
-                        const category = (article.category || '')
-                            .toLowerCase();
+                        const title = (article.article_title || '').toLowerCase();
+                        const content = (article.article_description || '').toLowerCase();
+                        const category = (article._normalizedCategory || '').toLowerCase();
 
                         return title.includes(query) ||
                             content.includes(query) ||
                             category.includes(query);
                     });
-                    console.log(`After search: ${filtered.length} articles`);
+                    // console.log(`After search: ${filtered.length} articles`);
                 }
 
                 // Apply category filter
                 if (currentFilters.category.length > 0) {
                     filtered = filtered.filter(article => {
-                        const category = article.category || 'Perizinan';
-                        return currentFilters.category.includes(category);
+                        return currentFilters.category.includes(article._normalizedCategory);
                     });
-                    console.log(`After category filter: ${filtered.length} articles`);
+                    // console.log(`After category filter: ${filtered.length} articles`);
                 }
 
                 // Apply time filter
                 if (currentFilters.timeRange !== 'all') {
                     const now = new Date();
                     filtered = filtered.filter(article => {
-                        const dateString = article.created_at || article.published_at;
+                        const dateString = article.created_at;
                         if (!dateString) return true;
 
                         const articleDate = new Date(dateString);
@@ -532,7 +616,7 @@
                                 return true;
                         }
                     });
-                    console.log(`After time filter: ${filtered.length} articles`);
+                    // console.log(`After time filter: ${filtered.length} articles`);
                 }
 
                 // Sort by date (newest first)
@@ -552,12 +636,12 @@
             }
 
             function updateFilteredCount(count) {
-                console.log(`Filtered count: ${count}`);
+                // console.log(`Filtered count: ${count}`);
                 $('#articlesCount').text(`${count} Artikel`);
             }
 
             function renderArticles(articles) {
-                console.log(`Rendering ${articles.length} articles...`);
+                // console.log(`Rendering ${articles.length} articles...`);
 
                 if (articles.length === 0) {
                     showNoResults();
@@ -569,16 +653,101 @@
                 const $container = $('#articlesContainer');
                 $container.empty();
 
-                articles.forEach((article, index) => {
+                articles.forEach((article) => {
                     const articleCard = createArticleCard(article);
                     $container.append(articleCard);
                 });
 
-                console.log('Articles rendered');
+                // console.log('Articles rendered');
+            }
+
+            function createArticleCard(article) {
+                const title = article.article_title || 'Judul tidak tersedia';
+                const content = article.article_description || '';
+                const image = article.article_image || '';
+                const slug = article.article_slug || '#';
+                const date = article.created_at || null;
+
+                // Dapatkan kategori menggunakan fungsi yang sudah dibuat
+                const category = getArticleCategory(article);
+
+                let formattedDate = 'Tanggal tidak tersedia';
+                try {
+                    if (date) {
+                        const articleDate = new Date(date);
+                        if (!isNaN(articleDate.getTime())) {
+                            formattedDate = articleDate.toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing date:', e);
+                }
+
+                const stripHtml = (html) => {
+                    if (!html) return '';
+                    const div = $('<div>').html(html);
+                    return div.text() || '';
+                };
+
+                const excerpt = stripHtml(content).substring(0, 150) + (stripHtml(content).length > 150 ? '...' :
+                    '');
+
+                const defaultImage =
+                    'https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';
+                const imageSrc = fixImageUrl(image);
+
+                const card = $('<a>')
+                    .attr('href', `/article/${slug}`)
+                    .addClass('block h-full');
+
+                card.html(`
+                <article class="group bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl">
+                    <div class="relative h-48 overflow-hidden">
+                        <img src="${imageSrc}"
+                            alt="${escapeHtml(title)}"
+                            class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
+                            onerror="this.src='${defaultImage}'">
+                        
+                        <div class="absolute top-2 left-2 z-10 opacity-50">
+                            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                                <img src="${fixImageUrl('{{ $infos->meta_image }}')}"
+                                    alt="NUPARIS Logo" class="w-6 h-6" onerror="this.style.display='none'">
+                            </div>
+                        </div>
+
+                        <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-slate-700">
+                            <i class="far fa-calendar-alt mr-1"></i>
+                            ${formattedDate}
+                        </div>
+                    </div>
+
+                    <div class="p-4 flex flex-col flex-grow">
+                        <span class="text-xs font-bold text-primary uppercase tracking-wider">
+                            ${escapeHtml(category)}
+                        </span>
+
+                        <h3 class="font-bold text-slate-800 mt-2 mb-2 text-sm line-clamp-2 lg:group-hover:text-primary transition">
+                            ${escapeHtml(title)}
+                        </h3>
+
+                        <p class="text-slate-500 text-xs line-clamp-3">
+                            ${escapeHtml(excerpt) || 'Deskripsi tidak tersedia'}
+                        </p>
+
+                        <div class="mt-auto pt-4"></div>
+                    </div>
+                </article>
+            `);
+
+                return card;
             }
 
             function renderPagination() {
-                console.log(`Rendering pagination for ${totalPages} pages, current page: ${currentPage}`);
+                // console.log(`Rendering pagination for ${totalPages} pages, current page: ${currentPage}`);
 
                 const $container = $('#paginationContainer');
                 if (!$container.length) {
@@ -588,7 +757,7 @@
 
                 if (totalPages <= 1 || filteredArticles.length <= itemsPerPage) {
                     $container.empty();
-                    console.log('No pagination needed (only 1 page)');
+                    // console.log('No pagination needed (only 1 page)');
                     return;
                 }
 
@@ -612,7 +781,7 @@
                     .on('click', function() {
                         if (currentPage > 1) {
                             currentPage--;
-                            console.log(`Previous page: ${currentPage}`);
+                            // console.log(`Previous page: ${currentPage}`);
                             filterAndPaginate();
                         }
                     });
@@ -627,7 +796,7 @@
                     startPage = Math.max(1, endPage - maxVisiblePages + 1);
                 }
 
-                console.log(`Page range: ${startPage} to ${endPage}`);
+                // console.log(`Page range: ${startPage} to ${endPage}`);
 
                 // First page button if needed
                 if (startPage > 1) {
@@ -667,7 +836,7 @@
                     .on('click', function() {
                         if (currentPage < totalPages) {
                             currentPage++;
-                            console.log(`Next page: ${currentPage}`);
+                            // console.log(`Next page: ${currentPage}`);
                             filterAndPaginate();
                         }
                     });
@@ -688,107 +857,27 @@
                 // Add wrapper to container
                 $container.append(paginationWrapper);
 
-                console.log('Pagination rendered successfully');
+                // console.log('Pagination rendered successfully');
             }
 
             function createPageButton(pageNumber) {
                 const button = $('<button>')
                     .addClass(
-                        `px-3 py-2 rounded-lg transition-colors ${currentPage === pageNumber ? 'page-active bg-primary text-white border-primary' : 'border border-gray-300 text-gray-600 lg:hover:bg-gray-50'}`
+                        `px-3 py-2 rounded-lg transition-colors ${currentPage === pageNumber ? 'bg-primary text-white border-primary' : 'border border-gray-300 text-gray-600 lg:hover:bg-gray-50'}`
                     )
                     .text(pageNumber)
                     .on('click', function() {
                         if (currentPage !== pageNumber) {
                             currentPage = pageNumber;
-                            console.log(`Page ${pageNumber} clicked`);
+                            // console.log(`Page ${pageNumber} clicked`);
                             filterAndPaginate();
                         }
                     });
                 return button;
             }
 
-            function createArticleCard(article) {
-                const title = article.article_title
-                const content = article.article_description
-                const image = article.article_image
-                const category = article.category
-                const slug = article.article_slug
-                const date = article.created_at
-
-                let formattedDate = 'Tanggal tidak tersedia';
-                try {
-                    const articleDate = new Date(date);
-                    formattedDate = articleDate.toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                    });
-                } catch (e) {
-                    console.error('Error parsing date:', e);
-                }
-
-                const stripHtml = (html) => {
-                    if (!html) return '';
-                    const div = $('<div>').html(html);
-                    return div.text() || '';
-                };
-
-                const excerpt = stripHtml(content).substring(0, 150) + (stripHtml(content).length > 150 ? '...' :
-                    '');
-
-                // PERBAIKAN: Gunakan fungsi fixImageUrl untuk gambar artikel
-                const defaultImage =
-                    'https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80';
-                const imageSrc = fixImageUrl(image);
-
-                const card = $('<a>')
-                    .attr('href', `/article/${slug}`)
-                    .addClass('block h-full');
-
-                card.html(`
-                    <article class="group bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl">
-                        <div class="relative h-48 overflow-hidden">
-                            <img src="${imageSrc}"
-                                alt="${title}"
-                                class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
-                                onerror="this.src='${defaultImage}'">
-                            
-                            <div class="absolute top-2 left-2 z-10 opacity-50">
-                                <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                                    <img src="${fixImageUrl('{{ $infos->meta_image }}')}"
-                                        alt="NUPARIS Logo" class="w-6 h-6">
-                                </div>
-                            </div>
-
-                            <div class="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-slate-700">
-                                <i class="far fa-calendar-alt mr-1"></i>
-                                ${formattedDate}
-                            </div>
-                        </div>
-
-                        <div class="p-4 flex flex-col flex-grow">
-                            <span class="text-xs font-bold text-primary uppercase tracking-wider">
-                                ${category}
-                            </span>
-
-                            <h3 class="font-bold text-slate-800 mt-2 mb-2 text-sm line-clamp-2 lg:group-hover:text-primary transition">
-                                ${title}
-                            </h3>
-
-                            <p class="text-slate-500 text-xs line-clamp-3">
-                                ${excerpt || 'Deskripsi tidak tersedia'}
-                            </p>
-
-                            <div class="mt-auto pt-4"></div>
-                        </div>
-                    </article>
-                `);
-
-                return card;
-            }
-
             function showLoading() {
-                console.log('Showing loading indicator');
+                // console.log('Showing loading indicator');
                 $('#loadingIndicator').removeClass('hidden');
                 $('#noResults').addClass('hidden');
                 $('#articlesContainer').empty();
@@ -796,12 +885,12 @@
             }
 
             function hideLoading() {
-                console.log('Hiding loading indicator');
+                // console.log('Hiding loading indicator');
                 $('#loadingIndicator').addClass('hidden');
             }
 
             function showNoResults() {
-                console.log('Showing no results message');
+                // console.log('Showing no results message');
                 $('#noResults').removeClass('hidden');
                 $('#articlesContainer').empty();
                 $('#paginationContainer').empty();
@@ -813,7 +902,7 @@
             }
 
             function clearAllFilters() {
-                console.log('Clearing all filters');
+                // console.log('Clearing all filters');
 
                 $('input[name="category"]').prop('checked', false);
                 $('input[name="timeRange"][value="all"]').prop('checked', true);

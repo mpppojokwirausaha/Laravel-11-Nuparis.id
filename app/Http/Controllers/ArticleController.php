@@ -23,7 +23,7 @@ class ArticleController extends Controller
     public function articleData()
     {
         try {
-            $articles = Article::all();
+            $articles = Article::with('ArticleCategory')->latest()->get();
             return response()->json([
                 'success' => true,
                 'articlesData' => $articles->toArray(),
