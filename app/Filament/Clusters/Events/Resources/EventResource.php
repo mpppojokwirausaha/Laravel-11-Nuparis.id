@@ -51,8 +51,11 @@ class EventResource extends Resource
                                 TextInput::make('event_slug')
                                     ->required()
                                     ->placeholder('Auto Generated'),
+                                TextInput::make('event_quota')
+                                    ->required()
+                                    ->placeholder('200'),
                             ])
-                            ->columns(2),
+                            ->columns(3),
                         Group::make()
                             ->schema([
                                 RichEditor::make('event_description')
