@@ -52,8 +52,6 @@ class EventController extends Controller
         // Data dari withCount akan tersedia di $event->participants_count
         $registeredCount = $event->participants_count ?? 0;
 
-        dd($registeredCount);
-
         // Hitung sisa kuota
         $remainingQuota = $event->event_quota ? max($event->event_quota - $registeredCount, 0) : null;
 
