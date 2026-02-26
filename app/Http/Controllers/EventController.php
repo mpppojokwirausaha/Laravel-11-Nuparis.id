@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use App\Models\Info;
-use Illuminate\Http\Request;
 
 class EventController extends Controller
 {
@@ -43,11 +42,25 @@ class EventController extends Controller
 
     public function eventDetail($slug)
     {
+        // Load event dengan count participants menggunakan withCount
+        $event = Event::withCount('participants')->where('event_slug', $slug)->first();
+
+        if (!$event) {
+            abort(404, 'Event tidak ditemukan');
+        }
+
+        // Data dari withCount akan tersedia di $event->participants_count
+        $registeredCount = $event->participants_count ?? 0;
+
+        // Hitung sisa kuota
+        $remainingQuota = $event->event_quota ? max($event->event_quota - $registeredCount, 0) : null;
+
         return view('front-end.event-detail', [
             'title' => 'Event | ' . config('app.name'),
-            'infos' => ((new Info)->getInfo()),
-            'event' => (new Event())->getEventDetail($slug),
+            'infos' => (new Info)->getInfo(),
+            'event' => $event,
+            'registeredCount' => $registeredCount,
+            'remainingQuota' => $remainingQuota,
         ]);
     }
-
 }

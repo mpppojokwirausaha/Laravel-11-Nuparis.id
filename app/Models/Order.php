@@ -27,4 +27,15 @@ class Order extends Model
             }
         });
     }
+
+    // relasi tabel
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_uuid', 'uuid');
+    }
+
+    public function participants()
+    {
+        return $this->hasMany(EventParticipant::class, 'order_uuid', 'uuid');
+    }
 }

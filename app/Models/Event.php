@@ -26,6 +26,7 @@ class Event extends Model
         'event_date_end',
         'event_location',
         'event_price',
+        'event_quota',
         'event_category_uuid',
     ];
 
@@ -163,5 +164,15 @@ class Event extends Model
     public function eventCategory()
     {
         return $this->belongsTo(EventCategory::class, 'event_category_uuid', 'uuid');
+    }
+
+    public function participants()
+    {
+        return $this->hasMany(EventParticipant::class, 'event_uuid', 'uuid');
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'event_uuid', 'uuid');
     }
 }
