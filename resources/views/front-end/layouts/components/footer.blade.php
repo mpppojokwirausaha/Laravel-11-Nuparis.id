@@ -101,43 +101,287 @@
     </div>
 </footer>
 
-<!-- Privacy Policy Modal -->
+<!-- STYLE BODY KONTEN - TANPA BIRU -->
+<style>
+    /* Style body konten - tanpa border biru */
+    .modal-body-content {
+        color: #374151;
+        line-height: 1.7;
+        font-size: 0.95rem;
+        padding: 1.5rem 2rem;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    /* Judul utama - Kebijakan Privasi */
+    .modal-body-content h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 0.25rem 0;
+        letter-spacing: -0.02em;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0.75rem;
+    }
+
+    /* Subtitle - NUPARIS.ID | Support Your Company Goals */
+    .modal-body-content .company-subtitle {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0 0 1.5rem 0;
+        font-weight: 400;
+    }
+
+    /* Meta info - mengikuti style meta di modal */
+    .modal-body-content .meta-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        background-color: #f9fafb;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0 2rem 0;
+        border: 1px solid #e5e7eb;
+        font-size: 0.85rem;
+    }
+
+    .modal-body-content .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #4b5563;
+    }
+
+    .modal-body-content .meta-item i {
+        color: #3b82f6;
+        width: 1rem;
+    }
+
+    .modal-body-content .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background-color: #dcfce7;
+        color: #166534;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Heading 2 - Pendahuluan, Informasi yang Dikumpulkan - TANPA BIRU */
+    .modal-body-content h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 2rem 0 1rem 0;
+        /* BIRU DIHAPUS */
+        padding-left: 0;
+    }
+
+    /* Heading 3 */
+    .modal-body-content h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 1.5rem 0 0.75rem 0;
+    }
+
+    /* Heading 4 */
+    .modal-body-content h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 1.25rem 0 0.5rem 0;
+    }
+
+    /* Paragraph */
+    .modal-body-content p {
+        margin: 1rem 0;
+        color: #374151;
+    }
+
+    /* List - TANPA BIRU */
+    .modal-body-content ul {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+        list-style-type: disc;
+    }
+
+    .modal-body-content ol {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+        list-style-type: decimal;
+    }
+
+    .modal-body-content li {
+        margin: 0.5rem 0;
+        color: #374151;
+    }
+
+    .modal-body-content li strong {
+        color: #111827;
+        font-weight: 600;
+    }
+
+    /* Nested lists */
+    .modal-body-content ul ul {
+        list-style-type: circle;
+        margin: 0.5rem 0 0.5rem 1rem;
+    }
+
+    .modal-body-content ul ul ul {
+        list-style-type: square;
+    }
+
+    /* Link */
+    .modal-body-content a {
+        color: #dc2626;
+        text-decoration: none;
+        border-bottom: 1px dotted #dc2626;
+    }
+
+    .modal-body-content a:hover {
+        color: #dc2626;
+        border-bottom: 1px solid #dc2626;
+    }
+
+    /* Blockquote */
+    .modal-body-content blockquote {
+        margin: 1.5rem 0;
+        padding: 1rem 1.5rem;
+        background-color: #f9fafb;
+        border-left: 4px solid #9ca3af;
+        /* Diubah jadi abu-abu */
+        border-radius: 0 0.5rem 0.5rem 0;
+        font-style: italic;
+        color: #4b5563;
+    }
+
+    /* Table */
+    .modal-body-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .modal-body-content th {
+        background-color: #f9fafb;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+    }
+
+    .modal-body-content td {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        color: #374151;
+    }
+
+    .modal-body-content tr:nth-child(even) {
+        background-color: #f9fafb;
+    }
+
+    /* Image */
+    .modal-body-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+
+    /* Code */
+    .modal-body-content code {
+        background-color: #f3f4f6;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-family: monospace;
+        font-size: 0.9em;
+        color: #dc2626;
+    }
+
+    .modal-body-content pre {
+        background-color: #1f2937;
+        color: #e5e7eb;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        font-family: monospace;
+        margin: 1.5rem 0;
+    }
+
+    .modal-body-content pre code {
+        background-color: transparent;
+        color: #e5e7eb;
+        padding: 0;
+    }
+
+    /* Horizontal rule */
+    .modal-body-content hr {
+        border: none;
+        border-top: 1px solid #e5e7eb;
+        margin: 2rem 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .modal-body-content {
+            padding: 1rem 1.25rem;
+        }
+
+        .modal-body-content h1 {
+            font-size: 1.5rem;
+        }
+
+        .modal-body-content h2 {
+            font-size: 1.3rem;
+        }
+
+        .modal-body-content .meta-info {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+
+<!-- Privacy Policy Modal - TETAP SEPERTI ASLINYA -->
 <div id="privacyModal" class="fixed inset-0 z-[100] hidden">
-    <!-- Backdrop - TERPISAH, klik di sini saja yang menutup modal -->
+    <!-- Backdrop -->
     <div id="privacyBackdrop" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"></div>
 
-    <!-- Modal Container -->
-    <div class="fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6">
-        <!-- Modal Content - KLIK DI SINI TIDAK MENUTUP MODAL -->
-        <div
-            class="relative w-full max-w-7xl min-h-[95vh] md:min-h-[90vh] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all flex flex-col">
+    <!-- Modal Container dengan scroll -->
+    <div class="fixed inset-0 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6">
+            <!-- Modal Content -->
+            <div
+                class="relative w-full max-w-7xl max-h-[90vh] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all flex flex-col">
 
-            <!-- Header -->
-            <div class="border-b border-gray-200 bg-white px-4 sm:px-6 py-4 flex-shrink-0">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-primary to-red-500">
-                            <i class="fas fa-shield-alt text-white text-lg"></i>
+                <!-- Header -->
+                <div class="sticky top-0 z-10 border-b border-gray-200 bg-white px-4 sm:px-6 py-4 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-primary to-red-500">
+                                <i class="fas fa-shield-alt text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Kebijakan Privasi</h3>
+                                <p class="text-sm text-gray-500">NUPARIS.ID | Support Your Company Goals</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Kebijakan Privasi</h3>
-                            <p class="text-sm text-gray-500">
-                                NUPARIS.ID | Support Your Company Goals
-                            </p>
-                        </div>
+                        <button onclick="closePrivacyModal()" type="button"
+                            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
                     </div>
-                    <button onclick="closePrivacyModal()" type="button"
-                        class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
                 </div>
-            </div>
 
-            <!-- Content Container -->
-            <div class="bg-white flex-1 flex flex-col min-h-0">
-                <!-- Meta Info - Dengan null handling -->
-                <div class="border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
+                <!-- Meta Info -->
+                <div class="sticky top-[73px] z-10 border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
                     <div class="flex flex-wrap items-center gap-4 text-sm">
                         <span class="flex items-center text-gray-600">
                             <i class="fas fa-calendar-alt text-primary mr-2"></i>
@@ -171,19 +415,20 @@
                     </div>
                 </div>
 
-                <!-- Body - Scrollable dengan null handling -->
-                <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+                <!-- Body - Scrollable dengan style yang TANPA BIRU -->
+                <div class="flex-1 overflow-y-auto">
                     @php
                         $hasPrivacyPolicy = isset($infos) && $infos && !empty($infos->privacy_policy);
                     @endphp
 
                     @if ($hasPrivacyPolicy)
-                        <div class="text-gray-700">
+                        <!-- BODY KONTEN TANPA BIRU -->
+                        <div class="modal-body-content">
                             {!! html_entity_decode($infos->privacy_policy) !!}
                         </div>
                     @else
-                        <!-- Empty State dengan null handling -->
-                        <div class="flex flex-col items-center justify-center py-12 h-full min-h-[50vh]">
+                        <!-- Empty State - TETAP SEPERTI ASLINYA -->
+                        <div class="flex flex-col items-center justify-center py-12">
                             <div class="relative">
                                 <div
                                     class="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-gray-50 to-gray-100 shadow-lg">
@@ -244,8 +489,8 @@
                                             <h5 class="text-sm font-semibold text-red-800">Error: Data Tidak Ditemukan
                                             </h5>
                                             <p class="text-xs text-red-600 mt-1">
-                                                Variabel $infos tidak tersedia atau bernilai null.
-                                                Pastikan data dikirim dari controller.
+                                                Variabel $infos tidak tersedia atau bernilai null. Pastikan data dikirim
+                                                dari controller.
                                             </p>
                                         </div>
                                     </div>
@@ -254,69 +499,68 @@
                         </div>
                     @endif
                 </div>
-            </div>
 
-            <!-- Footer -->
-            <div
-                class="flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
-                <div class="flex items-center text-sm text-gray-500">
-                    <i class="fas fa-info-circle mr-2 text-primary"></i>
-                    <span>
-                        @if ($hasPrivacyPolicy)
-                            Kebijakan privasi NUPARIS
-                        @else
-                            Kebijakan privasi sedang dalam pengembangan
-                        @endif
-                    </span>
-                </div>
-                <div class="flex space-x-3">
-                    <button onclick="closePrivacyModal()"
-                        class="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition shadow-sm hover:shadow-md">
-                        Tutup
-                    </button>
+                <!-- Footer -->
+                <div class="sticky bottom-0 z-10 border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-2 text-primary"></i>
+                            <span>
+                                @if ($hasPrivacyPolicy)
+                                    Kebijakan privasi NUPARIS
+                                @else
+                                    Kebijakan privasi sedang dalam pengembangan
+                                @endif
+                            </span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="closePrivacyModal()"
+                                class="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition shadow-sm hover:shadow-md">
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Terms & Conditions Modal -->
+<!-- Terms & Conditions Modal - TETAP SEPERTI ASLINYA -->
 <div id="termsModal" class="fixed inset-0 z-[100] hidden">
-    <!-- Backdrop - TERPISAH, klik di sini saja yang menutup modal -->
+    <!-- Backdrop -->
     <div id="termsBackdrop" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"></div>
 
-    <!-- Modal Container -->
-    <div class="fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6">
-        <!-- Modal Content - KLIK DI SINI TIDAK MENUTUP MODAL -->
-        <div
-            class="relative w-full max-w-7xl min-h-[95vh] md:min-h-[90vh] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all flex flex-col">
+    <!-- Modal Container dengan scroll -->
+    <div class="fixed inset-0 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-2 sm:p-4 md:p-6">
+            <!-- Modal Content -->
+            <div
+                class="relative w-full max-w-7xl max-h-[90vh] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all flex flex-col">
 
-            <!-- Header -->
-            <div class="border-b border-gray-200 bg-white px-4 sm:px-6 py-4 flex-shrink-0">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-primary to-red-500">
-                            <i class="fas fa-file-contract text-white text-lg"></i>
+                <!-- Header -->
+                <div class="sticky top-0 z-10 border-b border-gray-200 bg-white px-4 sm:px-6 py-4 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-primary to-red-500">
+                                <i class="fas fa-file-contract text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Syarat & Ketentuan</h3>
+                                <p class="text-sm text-gray-500">NUPARIS.ID | Support Your Company Goals</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Syarat & Ketentuan</h3>
-                            <p class="text-sm text-gray-500">
-                                NUPARIS.ID | Support Your Company Goals
-                            </p>
-                        </div>
+                        <button onclick="closeTermsModal()" type="button"
+                            class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
                     </div>
-                    <button onclick="closeTermsModal()" type="button"
-                        class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
                 </div>
-            </div>
 
-            <!-- Content Container -->
-            <div class="bg-white flex-1 flex flex-col min-h-0">
-                <!-- Meta Info - Dengan null handling -->
-                <div class="border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
+                <!-- Meta Info -->
+                <div
+                    class="sticky top-[73px] z-10 border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
                     <div class="flex flex-wrap items-center gap-4 text-sm">
                         <span class="flex items-center text-gray-600">
                             <i class="fas fa-calendar-alt text-primary mr-2"></i>
@@ -359,19 +603,20 @@
                     </div>
                 </div>
 
-                <!-- Body - Scrollable dengan null handling -->
-                <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+                <!-- Body - Scrollable dengan style yang TANPA BIRU -->
+                <div class="flex-1 overflow-y-auto">
                     @php
                         $hasTermsConditions = isset($infos) && $infos && !empty($infos->terms_conditions);
                     @endphp
 
                     @if ($hasTermsConditions)
-                        <div class="text-gray-700">
-                            {!! html_entity_decode($infos->terms_conditions) !!}
+                        <!-- BODY KONTEN TANPA BIRU -->
+                        <div class="modal-body-content">
+                            {!! $infos->terms_conditions !!}
                         </div>
                     @else
-                        <!-- Empty State dengan null handling -->
-                        <div class="flex flex-col items-center justify-center py-12 h-full min-h-[50vh]">
+                        <!-- Empty State - TETAP SEPERTI ASLINYA -->
+                        <div class="flex flex-col items-center justify-center py-12">
                             <div class="relative">
                                 <div
                                     class="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-gray-50 to-gray-100 shadow-lg">
@@ -468,41 +713,42 @@
                         </div>
                     @endif
                 </div>
-            </div>
 
-            <!-- Footer -->
-            <div
-                class="flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
-                <div class="flex items-center text-sm text-gray-500">
-                    <i class="fas fa-gavel mr-2 text-primary"></i>
-                    <span>
-                        @if ($hasTermsConditions)
-                            Syarat & ketentuan berlaku untuk semua layanan NUPARIS
-                        @else
-                            Dokumen legal sedang dalam proses review
-                        @endif
-                    </span>
-                </div>
-                <div class="flex space-x-3">
-                    <button onclick="closeTermsModal()"
-                        class="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition shadow-sm hover:shadow-md">
-                        Tutup
-                    </button>
+                <!-- Footer -->
+                <div class="sticky bottom-0 z-10 border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-4 flex-shrink-0">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center text-sm text-gray-500">
+                            <i class="fas fa-gavel mr-2 text-primary"></i>
+                            <span>
+                                @if ($hasTermsConditions)
+                                    Syarat & ketentuan berlaku untuk semua layanan NUPARIS
+                                @else
+                                    Dokumen legal sedang dalam proses review
+                                @endif
+                            </span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="closeTermsModal()"
+                                class="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition shadow-sm hover:shadow-md">
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 <script>
-    // Modal Functions dengan validasi
     function openPrivacyModal() {
         const modal = document.getElementById('privacyModal');
         if (modal) {
             modal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
-        } else {
-            console.error('Privacy modal element not found');
         }
     }
 
@@ -519,8 +765,6 @@
         if (modal) {
             modal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');
-        } else {
-            console.error('Terms modal element not found');
         }
     }
 
@@ -532,37 +776,22 @@
         }
     }
 
-    // Event Listeners dengan null checking - HANYA BACKDROP YANG MENUTUP MODAL
     document.addEventListener('DOMContentLoaded', function() {
-        // Privacy Modal Backdrop
         const privacyBackdrop = document.getElementById('privacyBackdrop');
         if (privacyBackdrop) {
-            privacyBackdrop.addEventListener('click', function() {
-                closePrivacyModal();
-            });
+            privacyBackdrop.addEventListener('click', closePrivacyModal);
         }
 
-        // Terms Modal Backdrop
         const termsBackdrop = document.getElementById('termsBackdrop');
         if (termsBackdrop) {
-            termsBackdrop.addEventListener('click', function() {
-                closeTermsModal();
-            });
+            termsBackdrop.addEventListener('click', closeTermsModal);
         }
     });
 
-    // ESC key dengan validasi
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
-            const privacyModal = document.getElementById('privacyModal');
-            const termsModal = document.getElementById('termsModal');
-
-            if (privacyModal && !privacyModal.classList.contains('hidden')) {
-                closePrivacyModal();
-            }
-            if (termsModal && !termsModal.classList.contains('hidden')) {
-                closeTermsModal();
-            }
+            closePrivacyModal();
+            closeTermsModal();
         }
     });
 </script>
