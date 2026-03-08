@@ -230,13 +230,15 @@
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
                         <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Berita Terkini</h2>
                     </div>
-                    <a href="{{ route('news-more') }}"
-                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
-                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @if ($news->count() > 8)
+                        <a href="{{ route('news-more') }}"
+                            class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                            Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    @foreach ($news as $item)
+                    @foreach ($news->take(8) as $item)
                         <a href="{{ $item->news_url }}" class="block h-full">
                             <article
                                 class="group bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl">
@@ -289,9 +291,11 @@
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
                         <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Perizinan & Non Perizinan</h2>
                     </div>
-                    <a href="{{ route('article-more') }}"
-                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
-                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @if ($articles->count() > 8)
+                        <a href="{{ route('article-more') }}"
+                            class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                            Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -348,9 +352,11 @@
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
                         <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Aktivitas</h2>
                     </div>
-                    <a href="{{ route('activity-more') }}"
-                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
-                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @if ($activities->count() > 8)
+                        <a href="{{ route('activity-more') }}"
+                            class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                            Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-fr">
@@ -404,9 +410,11 @@
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
                         <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Event</h2>
                     </div>
-                    <a href="{{ route('event-more') }}"
-                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
-                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @if ($events->count() > 3)
+                        <a href="{{ route('event-more') }}"
+                            class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                            Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -492,9 +500,11 @@
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
                         <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Property</h2>
                     </div>
-                    <a href="{{ route('property-more') }}"
-                        class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
-                        Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @if ($properties->count() > 4)
+                        <a href="{{ route('property-more') }}"
+                            class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat
+                            Semua <i class="fas fa-arrow-right ml-1"></i></a>
+                    @endif
                 </div>
 
                 <!-- Property Container -->
@@ -506,7 +516,8 @@
                             class="bg-white rounded-xl overflow-hidden shadow-lg cursor-pointer animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
                             <!-- Image with overlay -->
                             <div class="relative h-56 overflow-hidden">
-                                <img src="{{ asset('storage/' . $item->property_image[1]) }}" alt="Villa Modern"
+                                <img src="{{ asset('storage/' . $item->property_image[0]) }}"
+                                    alt="{{ $item->property_title }}"
                                     class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
 
@@ -521,7 +532,8 @@
                                 <!-- Price Tag -->
                                 <div
                                     class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg shadow-sm">
-                                    <div class="text-sm font-bold text-red-600">Rp 2,5 M</div>
+                                    <div class="text-sm font-bold text-red-600"
+                                        data-price="{{ $item->property_price }}"></div>
                                 </div>
                             </div>
 
@@ -1287,6 +1299,28 @@
                 clearErrors();
                 currentFormData = null;
             }
+        });
+
+        function formatShortRupiah(amount) {
+            const units = [
+                [1e9, ' M'],
+                [1e6, ' Jt']
+            ];
+            for (let [divisor, unit] of units) {
+                if (amount >= divisor) {
+                    let val = amount / divisor;
+                    let decimals = Number.isInteger(val) ? 0 : 1;
+                    return 'Rp ' + val.toFixed(decimals).replace('.', ',') + unit;
+                }
+            }
+            return 'Rp ' + amount.toLocaleString('id-ID');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-price]').forEach(el => {
+                const price = parseInt(el.dataset.price, 10);
+                el.innerText = formatShortRupiah(price);
+            });
         });
     </script>
 </body>

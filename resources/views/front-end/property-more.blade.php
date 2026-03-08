@@ -825,17 +825,19 @@
 
                 // Format harga
                 const formatPrice = function(price) {
-                    if (price <= 0) return null;
-
-                    if (price >= 1000000000) {
-                        return `Rp ${(price / 1000000000).toFixed(1)} M`;
-                    } else if (price >= 1000000) {
-                        return `Rp ${(price / 1000000).toFixed(1)} jt`;
-                    } else if (price >= 1000) {
-                        return `Rp ${(price / 1000).toFixed(1)} rb`;
+                    const units = [
+                        [1e9, ' M'],
+                        [1e6, ' Jt']
+                    ];
+                    for (let [divisor, unit] of units) {
+                        if (price >= divisor) {
+                            let val = price / divisor;
+                            let decimals = Number.isInteger(val) ? 0 : 1;
+                            return 'Rp ' + val.toFixed(decimals).replace('.', ',') + unit;
+                        }
                     }
-                    return `Rp ${price}`;
-                };
+                    return 'Rp ' + price.toLocaleString('id-ID');
+                }
 
                 const formattedPrice = formatPrice(price);
                 const showPriceTag = formattedPrice !== null;
@@ -953,8 +955,8 @@ Mohon info lebih lanjut. Terima kasih.`;
                                 <!-- Tombol WhatsApp -->
                                 ${whatsapp ? `
                                                                         <a href="${whatsappUrl}"
-                                                                           target="_blank"
-                                                                           class="w-[15%] bg-white border-2 border-red-600 text-red-600 lg:hover:bg-red-600 lg:hover:text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
+                                                                            target="_blank"
+                                                                            class="w-[15%] bg-white border-2 border-red-600 text-red-600 lg:hover:bg-red-600 lg:hover:text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
                                                                             <i class="fab fa-whatsapp text-sm"></i>
                                                                         </a>
                                                                     ` : `
