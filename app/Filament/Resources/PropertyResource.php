@@ -78,7 +78,7 @@ class PropertyResource extends Resource
                     ->label('Gambar/Video Properti')
                     ->acceptedFileTypes(['image/*', 'video/*'])
                     ->disk('public')
-                    ->directory('property_image')
+                    ->directory('img_properties')
                     ->required()
                     ->multiple()
                     ->maxFiles(10)
