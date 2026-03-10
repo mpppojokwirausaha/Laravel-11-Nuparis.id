@@ -35,17 +35,21 @@ class NewsResource extends Resource
             ->schema([
                 Card::make()
                     ->schema([
+                        TextInput::make('news_title')
+                            ->required()
+                            ->maxLength(255),
                         TextInput::make('news_source')
                             ->required()
                             ->maxLength(255)
-                            ->columnSpanFull(),
+                            ->placeholder('example: community whatsapp pojok wirausaha, jabar.tribunnews.com, etc'),
+                        TextInput::make('news_url')
+                            ->live(onBlur: true)
+                            ->prefix('https://')
+                            ->afterStateUpdated(fn(Set $set, ?string $state) => $set('news_slug', Str::slug($state)))
+                            ->required(),
                         TextInput::make('news_slug')
                             ->required()
                             ->placeholder('Auto Generated'),
-                        TextInput::make('news_url')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, ?string $state) => $set('news_slug', Str::slug($state)))
-                            ->required(),
                         RichEditor::make('news_content')
                             ->toolbarButtons([
                                 'bold',

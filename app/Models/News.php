@@ -17,12 +17,13 @@ class News extends Model
     protected $keyType = 'string';
     protected $fillable = [
         'uuid',
-        'news_fullname',
+        'news_source',
+        'news_title',
         'news_slug',
         'news_url',
         'news_image',
-        'news_content',
         'news_avatar',
+        'news_content',
     ];
 
     protected static function booted()
