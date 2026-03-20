@@ -17,7 +17,6 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 
-
 class ConsultantSpecializationResource extends Resource
 {
     protected static ?string $model = ConsultantSpecialization::class;
@@ -25,6 +24,12 @@ class ConsultantSpecializationResource extends Resource
     protected static ?string $navigationLabel = 'Specialist Consultant';
     protected static ?int $navigationSort = 2;
     protected static ?string $cluster = Ticket::class;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -51,6 +56,7 @@ class ConsultantSpecializationResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

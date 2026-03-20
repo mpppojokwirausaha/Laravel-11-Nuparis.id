@@ -25,6 +25,11 @@ class ActivityCategoryResource extends Resource
     protected static ?int $navigationSort = 2;
     protected static ?string $cluster = Activities::class;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -46,6 +51,7 @@ class ActivityCategoryResource extends Resource
                 TextColumn::make('activity_category_name')
                     ->label('NAME')
                     ->searchable()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('LOG')
@@ -53,6 +59,7 @@ class ActivityCategoryResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

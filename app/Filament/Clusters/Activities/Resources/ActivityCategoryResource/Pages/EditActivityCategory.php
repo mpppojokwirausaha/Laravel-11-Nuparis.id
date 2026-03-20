@@ -16,4 +16,9 @@ class EditActivityCategory extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return ActivityCategoryResource::getUrl('index', ['activeTab' => 'categories']);
+    }
 }

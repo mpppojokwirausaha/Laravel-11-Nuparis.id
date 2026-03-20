@@ -16,4 +16,9 @@ class EditEventCategory extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return EventCategoryResource::getUrl('index', ['activeTab' => 'categories']);
+    }
 }

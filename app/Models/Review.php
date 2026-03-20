@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Review extends Model
@@ -24,13 +25,30 @@ class Review extends Model
         'review_rating',
         'review_content',
         'review_avatar',
-        'review_image',
     ];
     protected static function booted()
     {
+        // Sebelum create: generate UUID
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        // Sebelum update: hapus image lama kalau diganti
+        static::updating(function ($model) {
+            if ($model->isDirty('review_avatar')) {
+                $oldImage = $model->getOriginal('review_avatar');
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
+        });
+
+        // Sebelum delete: hapus image image
+        static::deleting(function ($model) {
+            if ($model->review_avatar && Storage::disk('public')->exists($model->review_avatar)) {
+                Storage::disk('public')->delete($model->review_avatar);
             }
         });
     }

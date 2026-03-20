@@ -3,15 +3,16 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\HeroResource\Pages;
-use App\Filament\Resources\HeroResource\RelationManagers;
 use App\Models\Hero;
-use Filament\Forms;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use SimpleSoftwareIO\QrCode\Image;
 
 class HeroResource extends Resource
 {
@@ -23,15 +24,15 @@ class HeroResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('hero_name')
+                TextInput::make('hero_name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Toggle::make('hero_status')
+                Toggle::make('hero_status')
                     ->required(),
-                Forms\Components\TextInput::make('hero_slug')
+                TextInput::make('hero_slug')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('hero_assets')
+                TextInput::make('hero_assets')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -41,19 +42,19 @@ class HeroResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('hero_name')
+                TextColumn::make('hero_name')
                     ->searchable(),
-                Tables\Columns\IconColumn::make('hero_status')
+                IconColumn::make('hero_status')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('hero_slug')
+                TextColumn::make('hero_slug')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('hero_assets')
+                TextColumn::make('hero_assets')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

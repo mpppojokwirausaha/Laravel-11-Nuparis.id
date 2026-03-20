@@ -4,24 +4,25 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReviewResource\Pages;
 use App\Models\Review;
+use Filament\Forms\Components\Card;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Card;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ReviewResource extends Resource
 {
@@ -39,19 +40,21 @@ class ReviewResource extends Resource
                             ->schema([
                                 TextInput::make('review_fullname')
                                     ->required(),
-                                TextInput::make('review_slug')
-                                    ->required()
-                                    ->placeholder('Auto Generated'),
+                                TextInput::make('review_link')
+                                    ->live(onBlur: true)
+                                    ->url()
+                                    ->prefix('https://')
+                                    ->afterStateUpdated(fn(Set $set, ?string $state) => $set('review_slug', Str::slug($state)))
+                                    ->required(),
                             ])->columns(2),
                         Group::make()
                             ->schema([
-                                TextInput::make('review_link')
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn(Set $set, ?string $state) => $set('review_slug', Str::slug($state)))
-                                    ->required(),
                                 TextInput::make('review_rating')
                                     ->required()
                                     ->maxLength(255),
+                                TextInput::make('review_slug')
+                                    ->required()
+                                    ->placeholder('Auto Generated'),
                             ])->columns(2),
                         RichEditor::make('review_content')
                             ->required()
@@ -64,32 +67,28 @@ class ReviewResource extends Resource
                                 'undo',
                             ])
                             ->columnSpanFull(),
-                        Group::make()
-                            ->schema([
-                                FileUpload::make('review_avatar')
-                                    ->image()
-                                    ->disk('public')->directory('img_review')
-                                    ->required()
-                                    ->downloadable()
-                                    ->image()
-                                    ->imageEditor()
-                                    ->imageEditorAspectRatios([
-                                        '16:9',
-                                        '4:3',
-                                        '1:1',
-                                    ]),
-                                FileUpload::make('review_image')
-                                    ->image()
-                                    ->disk('public')->directory('img_review')
-                                    ->downloadable()
-                                    ->image()
-                                    ->imageEditor()
-                                    ->imageEditorAspectRatios([
-                                        '16:9',
-                                        '4:3',
-                                        '1:1',
-                                    ]),
-                            ])->columns(2),
+                        FileUpload::make('review_avatar')
+                            ->image()
+                            ->disk('public')->directory('img_review')
+                            ->required()
+                            ->downloadable()
+                            ->image()
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '16:9',
+                                '4:3',
+                                '1:1',
+                            ])->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                $name = 'review_' . $get('review_fullname') ?: 'review';
+
+                                $slug = Str::of($name)
+                                    ->lower()
+                                    ->replace(' ', '_')
+                                    ->slug('_')
+                                    ->limit(50);
+
+                                return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                            }),
                     ]),
             ]);
     }
@@ -100,10 +99,12 @@ class ReviewResource extends Resource
             ->columns([
                 ImageColumn::make('review_avatar')
                     ->label('AVATAR')
+                    ->circular()
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('review_fullname')
                     ->label('FULLNAME')
+                    ->sortable()
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('review_rating')
@@ -112,6 +113,9 @@ class ReviewResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('review_link')
                     ->label('LINK')
+                    ->url(fn($record) => $record->review_link)
+                    ->openUrlInNewTab()
+                    ->limit('30')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('LOG')
@@ -119,6 +123,7 @@ class ReviewResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

@@ -3,13 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PartnerResource\Pages;
-use App\Models\Partner;
 use App\Models\Info;
+use App\Models\Partner;
+use Filament\Forms\Components\Card;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Components\Card;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
@@ -22,10 +23,10 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\Group;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class PartnerResource extends Resource
 {
@@ -89,10 +90,19 @@ class PartnerResource extends Resource
                                         '4:3',
                                         '1:1',
                                     ])
-                                    ->dehydrated()
-                                    ->getUploadedFileNameForStorageUsing(
-                                        fn ($file) => (string) str()->uuid() . '.' . $file->getClientOriginalExtension()
-                                    ),
+                                    ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                        // ambil title dari form input
+                                        $name = 'partner_' . $get('partner_name') ?: 'partner';
+
+                                        // buat slug + ganti spasi dengan _
+                                        $slug = Str::of($name)
+                                            ->lower()
+                                            ->replace(' ', '_')
+                                            ->slug('_');
+
+                                        // tambah timestamp supaya unik
+                                        return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                                    }),
                             ])->columns(2),
                         Group::make()
                             ->schema([
@@ -102,18 +112,38 @@ class PartnerResource extends Resource
                                     ->directory('NIB_partners')
                                     ->downloadable()
                                     ->dehydrated()
-                                    ->getUploadedFileNameForStorageUsing(
-                                        fn ($file) => (string) str()->uuid() . '.' . $file->getClientOriginalExtension()
-                                    ),
+                                    ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                        // ambil title dari form input
+                                        $name = 'partner_NIB_' . $get('partner_name') ?: 'partner_NIB';
+
+                                        // buat slug + ganti spasi dengan _
+                                        $slug = Str::of($name)
+                                            ->lower()
+                                            ->replace(' ', '_')
+                                            ->slug('_');
+
+                                        // tambah timestamp supaya unik
+                                        return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                                    }),
                                 FileUpload::make('partner_NPWP')
                                     ->label('partner NPWP')
                                     ->disk('public')
                                     ->directory('NPWP_partners')
                                     ->downloadable()
                                     ->dehydrated()
-                                    ->getUploadedFileNameForStorageUsing(
-                                        fn ($file) => (string) str()->uuid() . '.' . $file->getClientOriginalExtension()
-                                    ),
+                                    ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                        // ambil title dari form input
+                                        $name = 'partner_NPWP_' . $get('partner_name') ?: 'partner_NPWP';
+
+                                        // buat slug + ganti spasi dengan _
+                                        $slug = Str::of($name)
+                                            ->lower()
+                                            ->replace(' ', '_')
+                                            ->slug('_');
+
+                                        // tambah timestamp supaya unik
+                                        return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                                    }),
                             ])->columns(2),
                         Group::make()
                             ->schema([
@@ -160,7 +190,7 @@ class PartnerResource extends Resource
                     ->form(function () {
                         $info = Info::first();
                         $hasFile = $info && $info->partner_guide;
-                        
+
                         return [
                             FileUpload::make('partner_guide')
                                 ->label($hasFile ? 'File Panduan Baru (PDF)' : 'File Panduan Mitra (PDF)')
@@ -175,7 +205,7 @@ class PartnerResource extends Resource
                                 ->default($hasFile ? [$info->partner_guide] : [])
                                 ->dehydrated()
                                 ->getUploadedFileNameForStorageUsing(
-                                    fn ($file) => (string) str()->uuid() . '.' . $file->getClientOriginalExtension()
+                                    fn($file) => (string) str()->uuid() . '.' . $file->getClientOriginalExtension()
                                 )
                                 ->helperText('Format PDF. Maksimal 5MB')
                         ];
@@ -183,7 +213,7 @@ class PartnerResource extends Resource
                     ->action(function (array $data) {
                         try {
                             $info = Info::first();
-                            
+
                             if (!$info) {
                                 $info = Info::create([
                                     'uuid' => Str::uuid(),
@@ -199,22 +229,21 @@ class PartnerResource extends Resource
                                     'meta_image' => 'default.png',
                                 ]);
                             }
-                            
+
                             // Hapus file lama jika ada
                             $oldFile = $info->partner_guide;
                             if ($oldFile && Storage::disk('public')->exists($oldFile)) {
                                 Storage::disk('public')->delete($oldFile);
                             }
-                            
+
                             // Update database
                             $info->update(['partner_guide' => $data['partner_guide']]);
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->title('✅ Berhasil!')
                                 ->body('Panduan mitra telah ' . ($oldFile ? 'diupdate' : 'diupload'))
                                 ->success()
                                 ->send();
-                                
                         } catch (\Exception $e) {
                             \Filament\Notifications\Notification::make()
                                 ->title('❌ Error!')
@@ -234,18 +263,17 @@ class PartnerResource extends Resource
                             ->action(function () {
                                 try {
                                     $info = Info::first();
-                                    
                                     if ($info && $info->partner_guide) {
                                         $filename = basename($info->partner_guide);
-                                        
+
                                         // Hapus dari storage
                                         if (Storage::disk('public')->exists($info->partner_guide)) {
                                             Storage::disk('public')->delete($info->partner_guide);
                                         }
-                                        
+
                                         // Hapus dari database
                                         $info->update(['partner_guide' => null]);
-                                        
+
                                         \Filament\Notifications\Notification::make()
                                             ->title('✅ Berhasil!')
                                             ->body('File ' . $filename . ' telah dihapus')
@@ -266,11 +294,13 @@ class PartnerResource extends Resource
             ->columns([
                 ImageColumn::make('partner_image')
                     ->label('IMAGE')
+                    ->circular()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('partner_name')
                     ->label('NAME')
                     ->searchable()
                     ->sortable()
+                    ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('partner_phone')
                     ->label('PHONE')
@@ -298,6 +328,7 @@ class PartnerResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

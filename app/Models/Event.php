@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Event extends Model
 {
@@ -32,9 +33,27 @@ class Event extends Model
 
     protected static function booted()
     {
+        // Sebelum create: generate UUID
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        // Sebelum update: hapus image lama kalau diganti
+        static::updating(function ($model) {
+            if ($model->isDirty('event_image')) {
+                $oldImage = $model->getOriginal('event_image');
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
+        });
+
+        // Sebelum delete: hapus image image
+        static::deleting(function ($model) {
+            if ($model->event_image && Storage::disk('public')->exists($model->event_image)) {
+                Storage::disk('public')->delete($model->event_image);
             }
         });
     }

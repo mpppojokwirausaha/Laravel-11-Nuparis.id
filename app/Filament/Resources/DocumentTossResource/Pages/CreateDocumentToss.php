@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateDocumentToss extends CreateRecord
 {
     protected static string $resource = DocumentTossResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

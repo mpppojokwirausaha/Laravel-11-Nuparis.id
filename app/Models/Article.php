@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Article extends Model
@@ -25,19 +26,37 @@ class Article extends Model
         'article_title',
         'article_slug',
         'article_description',
-        'excerpt',           // SUDAH ADA
+        'excerpt',
         'article_image',
-        'shares_count',      // SUDAH ADA
-        'views',             // SUDAH ADA
-        'comments_count',    // SUDAH ADA
+        'shares_count',
+        'views',
+        'comments_count',
         'article_category_uuid',
     ];
 
     protected static function booted()
     {
+        // Sebelum create: generate UUID
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        // Sebelum update: hapus image lama kalau diganti
+        static::updating(function ($model) {
+            if ($model->isDirty('article_image')) {
+                $oldImage = $model->getOriginal('article_image');
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
+        });
+
+        // Sebelum delete: hapus image image
+        static::deleting(function ($model) {
+            if ($model->article_image && Storage::disk('public')->exists($model->article_image)) {
+                Storage::disk('public')->delete($model->article_image);
             }
         });
     }

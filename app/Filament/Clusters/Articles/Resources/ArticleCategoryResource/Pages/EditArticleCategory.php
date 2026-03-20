@@ -16,4 +16,9 @@ class EditArticleCategory extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return ArticleCategoryResource::getUrl('index', ['activeTab' => 'categories']);
+    }
 }

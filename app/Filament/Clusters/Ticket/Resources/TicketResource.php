@@ -26,6 +26,11 @@ class TicketResource extends Resource
     protected static ?string $cluster = Ticket::class;
     protected static ?int $navigationSort = 1;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -78,42 +83,42 @@ class TicketResource extends Resource
                 View::make('front-end.layouts.components.progress-note')
                     ->label('Riwayat Progress')
                     ->columnSpanFull()
-                    ->hidden(fn (callable $get) =>
-                        optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
+                    ->hidden(fn(callable $get) =>
+                    optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
 
                 Group::make([
                     RichEditor::make('progress')
-                            ->toolbarButtons([
-                                'attachFiles',
-                                'blockquote',
-                                'bold',
-                                'bulletList',
-                                'codeBlock',
-                                'h2',
-                                'h3',
-                                'italic',
-                                'link',
-                                'orderedList',
-                                'redo',
-                                'strike',
-                                'underline',
-                                'undo',
-                            ]),
+                        ->toolbarButtons([
+                            'attachFiles',
+                            'blockquote',
+                            'bold',
+                            'bulletList',
+                            'codeBlock',
+                            'h2',
+                            'h3',
+                            'italic',
+                            'link',
+                            'orderedList',
+                            'redo',
+                            'strike',
+                            'underline',
+                            'undo',
+                        ]),
                     FileUpload::make('progress_files')
                         ->label('Upload File (Opsional)')
                         ->disk('public')
-                        ->directory(fn ($get) => 'tickets/' . $get('ticket_code'))
+                        ->directory(fn($get) => 'tickets/' . $get('ticket_code'))
                         ->multiple()
                         ->nullable()
                         ->downloadable()
                         ->openable()
                         ->preserveFilenames(),
-                    ])
+                ])
                     ->columnSpanFull()
                     ->columns(1)
-                    ->hidden(fn (callable $get) =>
-                        optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
-                ]);
+                    ->hidden(fn(callable $get) =>
+                    optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -126,17 +131,24 @@ class TicketResource extends Resource
 
                 TextColumn::make('ticket_title')
                     ->label('Title')
+                    ->sortable()
+                    ->limit(50)
                     ->searchable(),
 
                 TextColumn::make('consultantSpecialization.consultant_specialization_name')
                     ->label('Spesialisasi')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->limit(50),
 
                 TextColumn::make('ticketStatus.ticket_status_name')
                     ->label('Status')
                     ->sortable()
                     ->searchable(),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->filters([
+                //
             ])
             ->actions([
                 EditAction::make(),

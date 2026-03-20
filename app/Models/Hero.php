@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Hero extends Model
@@ -20,6 +21,33 @@ class Hero extends Model
         'hero_slug',
         'hero_assets',
     ];
+
+    protected static function booted()
+    {
+        // Sebelum create: generate UUID
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        // Sebelum update: hapus image lama kalau diganti
+        static::updating(function ($model) {
+            if ($model->isDirty('news_assets')) {
+                $oldAssets = $model->getOriginal('news_asset');
+                if ($oldAssets && Storage::disk('public')->exists($oldAssets)) {
+                    Storage::disk('public')->delete($oldAssets);
+                }
+            }
+        });
+
+        // Sebelum delete: hapus image image
+        static::deleting(function ($model) {
+            if ($model->news_assets && Storage::disk('public')->exists($model->news_assets)) {
+                Storage::disk('public')->delete($model->news_assets);
+            }
+        });
+    }
 
     // Accessor untuk ambil URL video jika file-nya .mp4
     public static function getAssets()

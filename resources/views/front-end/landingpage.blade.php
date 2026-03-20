@@ -387,8 +387,8 @@
 
                                 <div class="p-4 flex flex-col flex-1">
                                     <div class="flex flex-col flex-1">
-                                        <span
-                                            class="text-xs font-bold text-orange-600 uppercase tracking-wider">Kunjungan</span>
+                                        {{-- <span
+                                            class="text-xs font-bold text-orange-600 uppercase tracking-wider">Kunjungan</span> --}}
                                         <h3
                                             class="font-bold text-slate-800 mt-2 mb-2 text-sm line-clamp-2 lg:group-hover:text-primary transition">
                                             {{ $item->activity_title }}
@@ -511,7 +511,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     <!-- Property 1 -->
 
-                    @foreach ($properties as $item)
+                    @foreach ($properties->take(4) as $item)
                         <div
                             class="bg-white rounded-xl overflow-hidden shadow-lg cursor-pointer animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
                             <!-- Image with overlay -->
