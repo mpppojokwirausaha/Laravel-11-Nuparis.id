@@ -64,7 +64,6 @@ Route::middleware(['guest'])->group(function () {
         // login
         Route::get('login', 'login')->name('login');
         Route::post('login', 'postLogin')->name('login.post');
-
         // // register
         Route::get('register', 'register')->name('register');
         Route::post('register', 'postRegister')->name('register.post');
@@ -83,6 +82,19 @@ Route::get('clear', function () {
     \Artisan::call('cache:clear');
     \Artisan::call('route:clear');
     \Artisan::call('view:clear');
+});
+
+Route::get('down/{secret?}', function ($secret) {
+    if ($secret === config('app.secret_maintenance')) {
+        \Artisan::call('down', ['--secret' => $secret]);
+        return redirect('/');
+    }
+    return redirect()->route('landingpage');
+});
+
+Route::get('up', function () {
+    \Artisan::call('up');
+    return redirect('/');
 });
 
 Route::get('/linkstorage', function () {

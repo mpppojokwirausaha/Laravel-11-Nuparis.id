@@ -123,4 +123,5 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'secret_maintenance' => env('SECRET_MAINTENANCE')
 ];
