@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Property extends Model
@@ -43,10 +44,83 @@ class Property extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
+            // UUID
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
             }
+
+            // Slug
+            if (empty($model->property_slug) && $model->property_name) {
+                $model->property_slug = Str::slug($model->property_name);
+            }
         });
+
+        static::updating(function ($model) {
+            // Update slug jika nama berubah
+            if ($model->isDirty('property_name')) {
+                $model->property_slug = Str::slug($model->property_name);
+            }
+
+            // ===== HANDLE ARRAY FILE: IMAGE =====
+            if ($model->isDirty('property_image')) {
+                $oldFiles = (array) $model->getOriginal('property_image');
+                $newFiles = (array) $model->property_image;
+
+                $deletedFiles = array_diff($oldFiles, $newFiles);
+
+                foreach ($deletedFiles as $file) {
+                    if ($file && Storage::disk('public')->exists($file)) {
+                        Storage::disk('public')->delete($file);
+                    }
+                }
+            }
+
+            // ===== HANDLE ARRAY FILE: CERTIFICATE =====
+            if ($model->isDirty('property_certificate')) {
+                $oldFiles = (array) $model->getOriginal('property_certificate');
+                $newFiles = (array) $model->property_certificate;
+
+                $deletedFiles = array_diff($oldFiles, $newFiles);
+
+                foreach ($deletedFiles as $file) {
+                    if ($file && Storage::disk('public')->exists($file)) {
+                        Storage::disk('public')->delete($file);
+                    }
+                }
+            }
+        });
+
+        static::deleting(function ($model) {
+            // Hapus semua image
+            foreach ((array) $model->property_image as $file) {
+                if ($file && Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
+            }
+
+            // Hapus semua certificate
+            foreach ((array) $model->property_certificate as $file) {
+                if ($file && Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
+            }
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MUTATORS (WAJIB untuk array stabil)
+    |--------------------------------------------------------------------------
+    */
+
+    public function setPropertyImageAttribute($value)
+    {
+        $this->attributes['property_image'] = json_encode(array_values((array) $value));
+    }
+
+    public function setPropertyCertificateAttribute($value)
+    {
+        $this->attributes['property_certificate'] = json_encode(array_values((array) $value));
     }
 
     public function getRouteKeyName()

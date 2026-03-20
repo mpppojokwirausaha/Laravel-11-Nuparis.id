@@ -25,6 +25,11 @@ class ArticleCategoryResource extends Resource
     protected static ?string $cluster = Articles::class;
     protected static ?int $navigationSort = 2;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -46,6 +51,7 @@ class ArticleCategoryResource extends Resource
                 TextColumn::make('article_category_name')
                     ->label('NAME')
                     ->searchable()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('LOG')

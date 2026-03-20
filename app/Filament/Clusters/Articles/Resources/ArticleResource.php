@@ -5,16 +5,16 @@ namespace App\Filament\Clusters\Articles\Resources;
 use App\Filament\Clusters\Articles;
 use App\Filament\Clusters\Articles\Resources\ArticleResource\Pages;
 use App\Models\Article;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables\Table;
+use Filament\Forms\Components\Card;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Card;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
 use Filament\Forms\Set;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -22,8 +22,9 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
+use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ArticleResource extends Resource
 {
@@ -31,6 +32,11 @@ class ArticleResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $cluster = Articles::class;
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
 
     public static function form(Form $form): Form
     {
@@ -93,7 +99,15 @@ class ArticleResource extends Resource
                                     '16:9',
                                     '4:3',
                                     '1:1',
-                                ]),
+                                ])->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                    $title = 'article_' . $get('article_title') ?: 'article';
+
+                                    $slug = Str::of($title)
+                                        ->lower()
+                                        ->replace(' ', '_')
+                                        ->slug('_');
+                                    return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                                }),
                         ])->columns(2),
                 ]),
             ]);
@@ -105,22 +119,26 @@ class ArticleResource extends Resource
             ->columns([
                 ImageColumn::make('article_image')
                     ->label('IMAGE')
+                    ->circular()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('article_title')
                     ->label('TITLE')
                     ->sortable()
                     ->searchable()
+                    ->limit(50)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('articleCategory.article_category_name')
                     ->searchable()
                     ->sortable()
-                    ->label('CATEGORY'),
+                    ->label('CATEGORY')
+                    ->limit(50),
                 TextColumn::make('created_at')
                     ->label('LOG')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

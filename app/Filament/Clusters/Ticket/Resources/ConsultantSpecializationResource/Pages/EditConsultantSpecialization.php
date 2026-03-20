@@ -16,4 +16,9 @@ class EditConsultantSpecialization extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return ConsultantSpecializationResource::getUrl('index', ['activeTab' => 'categories']);
+    }
 }

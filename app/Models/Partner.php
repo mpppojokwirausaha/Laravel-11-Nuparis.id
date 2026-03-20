@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Partner extends Model
@@ -33,9 +34,47 @@ class Partner extends Model
 
     protected static function booted()
     {
+        // Sebelum create: generate UUID otomatis
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        // Sebelum update: hapus file lama kalau diganti
+        static::updating(function ($model) {
+            // Hapus partner_image lama
+            if ($model->isDirty('partner_image')) {
+                $oldImage = $model->getOriginal('partner_image');
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
+
+            // Hapus partner_NPWP lama
+            if ($model->isDirty('partner_NPWP')) {
+                $oldNPWP = $model->getOriginal('partner_NPWP');
+                if ($oldNPWP && Storage::disk('public')->exists($oldNPWP)) {
+                    Storage::disk('public')->delete($oldNPWP);
+                }
+            }
+
+            // Hapus partner_NIB lama
+            if ($model->isDirty('partner_NIB')) {
+                $oldNIB = $model->getOriginal('partner_NIB');
+                if ($oldNIB && Storage::disk('public')->exists($oldNIB)) {
+                    Storage::disk('public')->delete($oldNIB);
+                }
+            }
+        });
+
+        // Sebelum delete: hapus semua file
+        static::deleting(function ($model) {
+            foreach (['partner_image', 'partner_NPWP', 'partner_NIB'] as $field) {
+                $file = $model->{$field};
+                if ($file && Storage::disk('public')->exists($file)) {
+                    Storage::disk('public')->delete($file);
+                }
             }
         });
     }

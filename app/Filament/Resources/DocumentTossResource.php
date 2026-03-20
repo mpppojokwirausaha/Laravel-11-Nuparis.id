@@ -43,31 +43,31 @@ class DocumentTossResource extends Resource
                 TextInput::make('document_toReceive')
                     ->maxLength(255),
                 Select::make('document_action')
-                            ->label('Tindakan Dokumen')
-                            ->placeholder('Pilih tindakan dokumen')
-                            ->options([
-                                'Tanda Tangan' => 'Tanda Tangan',
-                            ])
-                            ->required(),
+                    ->label('Tindakan Dokumen')
+                    ->placeholder('Pilih tindakan dokumen')
+                    ->options([
+                        'Tanda Tangan' => 'Tanda Tangan',
+                    ])
+                    ->required(),
                 TextInput::make('document_no')
                     ->maxLength(255),
                 RichEditor::make('document_notes')
-                            ->label('Catatan')
-                            ->placeholder('Catatan tambahan')
-                            ->toolbarButtons([
-                                'blockquote',
-                                'bold',
-                                'bulletList',
-                                'codeBlock',
-                                'h2',
-                                'h3',
-                                'italic',
-                                'link',
-                                'orderedList',
-                                'strike',
-                                'underline',
-                            ])->columnSpanFull()
-                            ->required(),
+                    ->label('Catatan')
+                    ->placeholder('Catatan tambahan')
+                    ->toolbarButtons([
+                        'blockquote',
+                        'bold',
+                        'bulletList',
+                        'codeBlock',
+                        'h2',
+                        'h3',
+                        'italic',
+                        'link',
+                        'orderedList',
+                        'strike',
+                        'underline',
+                    ])->columnSpanFull()
+                    ->required(),
                 TextInput::make('document_path')
                     ->maxLength(255),
                 TextInput::make('qr_path')
@@ -96,6 +96,7 @@ class DocumentTossResource extends Resource
                 TextColumn::make('document_no')
                     ->searchable(),
                 TextColumn::make('document_name')
+                    ->limit(50)
                     ->searchable(),
                 TextColumn::make('document_bySign')
                     ->searchable(),
@@ -110,6 +111,7 @@ class DocumentTossResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
 
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])
@@ -117,7 +119,7 @@ class DocumentTossResource extends Resource
                 Action::make('visit')
                     ->label('Visit')
                     ->icon('heroicon-o-link')
-                    ->url(fn ($record) => config('app.url') .'/toss/' . $record->document_slug)
+                    ->url(fn($record) => config('app.url') . '/toss/' . $record->document_slug)
                     ->openUrlInNewTab(),
                 EditAction::make(),
                 DeleteAction::make(),

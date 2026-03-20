@@ -7,4 +7,9 @@ use Filament\Clusters\Cluster;
 class Ticket extends Cluster
 {
     protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
+
+    public static function getNavigationUrl(): string
+    {
+        return '/management/ticket/tickets';
+    }
 }

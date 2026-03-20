@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateEventCategory extends CreateRecord
 {
     protected static string $resource = EventCategoryResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return EventCategoryResource::getUrl('index', ['activeTab' => 'categories']);
+    }
 }

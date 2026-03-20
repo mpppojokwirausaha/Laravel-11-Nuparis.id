@@ -4,11 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\NewsResource\Pages;
 use App\Models\News;
+use Filament\Forms\Components\Card;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Card;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
@@ -22,6 +22,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class NewsResource extends Resource
 {
@@ -62,30 +63,30 @@ class NewsResource extends Resource
                             ->columnSpanFull(),
                         FileUpload::make('news_image')
                             ->image()
-                            ->disk('public')->directory('img_news')
+                            ->disk('public')
+                            ->directory('img_news')
                             ->required()
                             ->downloadable()
-                            ->image()
                             ->imageEditor()
                             ->imageEditorAspectRatios([
                                 '16:9',
                                 '4:3',
                                 '1:1',
-                            ]),
-                        FileUpload::make('news_avatar')
-                            ->image()
-                            ->disk('public')->directory('img_news')
-                            ->required()
-                            ->downloadable()
-                            ->image()
-                            ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                '16:9',
-                                '4:3',
-                                '1:1',
-                            ]),
-                    ])->columns(2),
+                            ])
+                            ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                // ambil title dari form input
+                                $title = 'news_' . $get('news_title') ?? 'news';
 
+                                // buat slug + ganti spasi dengan _
+                                $slug = Str::of($title)
+                                    ->lower()
+                                    ->replace(' ', '_')
+                                    ->slug('_');
+
+                                // tambah timestamp supaya unik
+                                return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                            }),
+                    ])->columns(2),
             ]);
     }
 
@@ -94,20 +95,30 @@ class NewsResource extends Resource
         return $table
             ->columns([
                 ImageColumn::make('news_image')
-                    ->label('IMAGE'),
+                    ->label('IMAGE')
+                    ->circular(),
+                TextColumn::make('news_title')
+                    ->label('TITLE')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
                 TextColumn::make('news_source')
                     ->label('SOURCE')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('news_url')
                     ->searchable()
-                    ->label('URL'),
+                    ->label('URL')
+                    ->limit(50)
+                    ->url(fn($record) => $record->news_url)
+                    ->openUrlInNewTab(),
                 TextColumn::make('created_at')
                     ->label('LOG')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

@@ -6,6 +6,7 @@ use App\Filament\Resources\PropertyResource\Pages;
 use App\Models\Property;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -41,22 +42,26 @@ class PropertyResource extends Resource
                 TextInput::make('property_slug')
                     ->required()
                     ->placeholder('Auto Generated'),
-                TextInput::make('property_type')
-                    ->required(),
-                TextInput::make('property_price')
-                    ->required()
-                    ->prefix('Rp ')
-                    ->afterStateHydrated(function (TextInput $component, $state) {
-                        if ($state !== null) {
-                            $component->state(number_format($state, 0, ',', '.'));
-                        }
-                    })
-                    ->dehydrateStateUsing(function ($state) {
-                        return $state ? str_replace('.', '', $state) : null;
-                    })
-                    ->rule('integer'),
-                DateTimePicker::make('property_date_end')
-                    ->required(),
+
+                Group::make([
+                    TextInput::make('property_type')
+                        ->required(),
+                    TextInput::make('property_price')
+                        ->required()
+                        ->prefix('Rp ')
+                        ->afterStateHydrated(function (TextInput $component, $state) {
+                            if ($state !== null) {
+                                $component->state(number_format($state, 0, ',', '.'));
+                            }
+                        })
+                        ->dehydrateStateUsing(function ($state) {
+                            return $state ? str_replace('.', '', $state) : null;
+                        })
+                        ->rule('integer'),
+                    DateTimePicker::make('property_date_end')
+                        ->required(),
+
+                ])->columns(3)->columnSpanFull(),
                 Textarea::make('property_address')
                     ->columnSpanFull()
                     ->required(),
@@ -87,7 +92,17 @@ class PropertyResource extends Resource
                     // ->panelAspectRatio('16:9')
                     // ->reorderable()
                     ->appendFiles()
-                    ->helperText('Maksimal 10 file (gambar/video), 100MB per file'),
+                    ->helperText('Maksimal 10 file (gambar/video), 100MB per file')
+                    ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                        $name = 'property_' . $get('property_name') ?: 'property';
+
+                        $slug = Str::of($name)
+                            ->lower()
+                            ->replace(' ', '_')
+                            ->slug('_');
+
+                        return $slug . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    }),
                 TextInput::make('property_land_area')
                     ->required(),
                 TextInput::make('property_building_area')
@@ -104,9 +119,12 @@ class PropertyResource extends Resource
                 ImageColumn::make('property_image')
                     ->label('Image')
                     ->getStateUsing(fn($record) => is_array($record->property_image) ? $record->property_image[0] : null)
-                    ->size(60),
+                    ->size(60)
+                    ->circular(),
                 TextColumn::make('property_name')
-                    ->searchable(),
+                    ->sortable()
+                    ->searchable()
+                    ->limit(30),
                 TextColumn::make('property_type')
                     ->searchable(),
                 TextColumn::make('property_price')
@@ -118,6 +136,7 @@ class PropertyResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])

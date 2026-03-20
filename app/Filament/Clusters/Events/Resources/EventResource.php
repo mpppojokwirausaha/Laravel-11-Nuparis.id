@@ -5,10 +5,13 @@ namespace App\Filament\Clusters\Events\Resources;
 use App\Filament\Clusters\Events;
 use App\Filament\Clusters\Events\Resources\EventResource\Pages;
 use App\Models\Event;
+use Filament\Forms\Components\Card;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
@@ -24,10 +27,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Card;
-use Filament\Forms\Components\Textarea;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class EventResource extends Resource
 {
@@ -35,6 +36,11 @@ class EventResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $cluster = Events::class;
     protected static ?int $navigationSort = 1;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false; // Cluster hilang dari sidebar
+    }
 
     public static function form(Form $form): Form
     {
@@ -90,7 +96,19 @@ class EventResource extends Resource
                                         '16:9',
                                         '4:3',
                                         '1:1',
-                                    ]),
+                                    ])->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
+                                        // ambil title dari form input
+                                        $title = $get('event_title') ?? 'news';
+
+                                        // buat slug + ganti spasi dengan _
+                                        $slug = Str::of($title)
+                                            ->lower()
+                                            ->replace(' ', '_')
+                                            ->slug('_');
+
+                                        // tambah timestamp supaya unik
+                                        return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
+                                    }),
                             ])->columns(2),
                         Group::make()
                             ->schema([
@@ -133,11 +151,13 @@ class EventResource extends Resource
             ->columns([
                 ImageColumn::make('event_image')
                     ->label('IMAGE')
+                    ->circular()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('event_title')
                     ->label('TITLE')
                     ->searchable()
                     ->sortable()
+                    ->limit(50)
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('event_price')
                     ->label('PRICE')
@@ -146,7 +166,8 @@ class EventResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('category.event_category_name')
                     ->label('CATEGORY')
-                    ->sortable(),
+                    ->sortable()
+                    ->limit(50),
                 IconColumn::make('event_status')
                     ->label('STATUS')
                     ->icon(fn(string $state): string => match ($state) {
@@ -179,6 +200,7 @@ class EventResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 //
             ])
