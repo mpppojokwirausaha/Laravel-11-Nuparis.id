@@ -419,10 +419,59 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach ($events->take(3) as $item)
-                        <article onclick="window.location='{{ route('event-detail', $item->event_slug) }}'"
-                            class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex flex-row h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
+                        @php
+                            $start = \Carbon\Carbon::parse($item->event_date_start ?? $item->event_start_date);
+                            $end = \Carbon\Carbon::parse($item->event_date_end ?? $item->event_end_date);
+                            $now = now();
 
-                            <div class="relative w-1/3 min-w-[140px] h-full overflow-hidden">
+                            if ($now->between($start, $end)) {
+                                $statusClass = 'bg-green-500 text-white';
+                                $statusText = 'Ongoing';
+                                $canRegister = true;
+                            } elseif ($now->lt($start)) {
+                                $statusClass = 'bg-blue-500 text-white';
+                                $statusText = 'Upcoming';
+                                $canRegister = true;
+                            } else {
+                                $statusClass = 'bg-red-500 text-white';
+                                $statusText = 'End';
+                                $canRegister = false;
+                            }
+
+                            $isFree = (int) ($item->event_price ?? 0) === 0;
+                            $priceText = $isFree
+                                ? 'GRATIS'
+                                : 'Rp ' . number_format((int) $item->event_price, 0, ',', '.');
+
+                            $rawQuota = (int) ($item->event_quota ?? 0);
+                            $rawRegistered =
+                                (int) ($item->registeredCount ??
+                                    ($item->event_registered ?? ($item->participants_count ?? 0)));
+                            $hasQuota = $rawQuota > 0;
+                            $quota = $hasQuota ? $rawQuota : max($rawRegistered, 20);
+                            $registered = max(0, $rawRegistered);
+                            if ($registered > $quota) {
+                                $registered = $quota;
+                            }
+                            $quotaPercentage = $quota > 0 ? min(100, round(($registered / $quota) * 100)) : 0;
+                            $remainingQuota = max(0, $quota - $registered);
+                            $quotaText = $remainingQuota > 0 ? 'Tersisa ' . $remainingQuota : 'Habis';
+                            $quotaClass =
+                                $remainingQuota > 0
+                                    ? 'bg-blue-50 text-blue-700 border-blue-100'
+                                    : 'bg-gray-100 text-gray-400 border-gray-200';
+                            $progressBarColor =
+                                $quotaPercentage >= 90
+                                    ? 'bg-red-500'
+                                    : ($quotaPercentage >= 70
+                                        ? 'bg-yellow-500'
+                                        : 'bg-green-500');
+                        @endphp
+
+                        <article onclick="window.location='{{ route('event-detail', $item->event_slug) }}'"
+                            class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-row h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
+
+                            <div class="relative w-1/3 min-w-[140px] h-auto overflow-hidden">
                                 <img src="{{ asset('storage/' . $item->event_image) }}"
                                     alt="{{ $item->event_title }}"
                                     class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500">
@@ -436,8 +485,8 @@
                                 </div>
 
                                 <div
-                                    class="absolute bottom-2 left-2 z-10 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
-                                    End
+                                    class="absolute bottom-2 left-2 z-10 {{ $statusClass }} text-xs font-semibold px-2 py-1 rounded shadow-sm">
+                                    {{ $statusText }}
                                 </div>
                             </div>
 
@@ -447,47 +496,65 @@
                                         UMKM
                                     </span>
                                     <h3
-                                        class="font-bold text-slate-800 text-lg mb-1 lg:group-hover:text-primary transition">
+                                        class="font-bold text-gray-800 text-lg mb-1 lg:group-hover:text-primary transition">
                                         {{ $item->short_title }}
                                     </h3>
-                                    <div class="flex items-center gap-2 text-slate-500 text-xs mb-2">
+                                    <div class="flex items-center gap-2 text-gray-500 text-xs mb-2">
                                         <i class="far fa-calendar-check"></i>
-                                        <span>{{ $item->event_start_date }}</span>
+                                        <span>{{ $start->translatedFormat('d M Y') }}</span>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <span
+                                            class="inline-block {{ $isFree ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }} text-xs font-bold px-2 py-1 rounded">
+                                            {{ $priceText }}
+                                        </span>
                                     </div>
 
                                     <div class="mb-3">
                                         <div class="flex justify-between items-center mb-1">
-                                            <span class="text-xs font-medium text-slate-700">Kuota Terisi:</span>
-                                            <span class="text-xs font-bold text-red-600">100%</span>
+                                            <span class="text-xs font-medium text-gray-700">Kuota Terisi:</span>
+                                            <span
+                                                class="text-xs font-bold {{ $quotaPercentage >= 90 ? 'text-red-600' : ($quotaPercentage >= 70 ? 'text-yellow-600' : 'text-green-600') }}">
+                                                {{ $quotaPercentage }}%
+                                            </span>
                                         </div>
-                                        <div class="w-full bg-slate-200 rounded-full h-2 mb-2">
-                                            <div class="bg-red-500 h-2 rounded-full w-full"></div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                            <div class="{{ $progressBarColor }} h-2 rounded-full"
+                                                style="width: {{ $quotaPercentage }}%"></div>
                                         </div>
                                         <div class="flex justify-between items-center">
-                                            <div class="text-xs text-slate-600">
+                                            <div class="text-xs text-gray-600">
                                                 <i class="fas fa-users mr-1"></i>
-                                                50/50 peserta
+                                                {{ $registered }}/{{ $quota }} peserta
                                             </div>
                                             <div
-                                                class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded border border-blue-100">
-                                                Tersisa 0
+                                                class="{{ $quotaClass }} text-[10px] font-bold px-2 py-1 rounded border">
+                                                {{ $quotaText }}
                                             </div>
                                         </div>
                                     </div>
-                                    <p class="text-slate-500 text-sm line-clamp-2">
+                                    <p class="text-gray-500 text-sm line-clamp-2">
                                         {{ strip_tags($item->event_description) }}
                                     </p>
                                 </div>
 
                                 <div class="flex gap-3 mt-4">
                                     <a href="{{ route('event-detail', $item->event_slug) }}"
-                                        class="flex-1 flex items-center justify-center bg-primary text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700 lg:hover:-translate-y-0.5 lg:hover:shadow-md">
+                                        class="flex-1 flex items-center justify-center bg-red-500 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700">
                                         Lihat Detail
                                     </a>
-                                    <a href="#"
-                                        class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white lg:hover:-translate-y-0.5 lg:hover:shadow-md">
-                                        <i class="fas fa-shopping-cart text-sm"></i>
-                                    </a>
+                                    @if ($canRegister)
+                                        <a href="#"
+                                            class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">
+                                            <i class="fas fa-shopping-cart text-sm"></i>
+                                        </a>
+                                    @else
+                                        <button disabled
+                                            class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
+                                            <i class="fas fa-shopping-cart text-sm"></i>
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </article>

@@ -1,3 +1,5 @@
+event-more
+
 <!DOCTYPE html>
 <html lang="id">
 
@@ -816,7 +818,7 @@
                 }
 
                 // Determine if event is free or paid
-                const isFree = event.event_price === '0' || event.event_price === 0;
+                const isFnree = event.event_price === '0' || event.event_price === 0;
                 const priceText = isFree ? 'GRATIS' : `Rp ${parseInt(event.event_price).toLocaleString('id-ID')}`;
 
                 // Get category
@@ -828,10 +830,15 @@
                 const shortDescription = description.length > 100 ? description.substring(0, 100) + '...' :
                     description;
 
-                // Generate random quota data (for demo)
-                const quota = 20; // 50-150
-                const registered = 20;
-                const quotaPercentage = 100;
+                // Quota and progress (dynamic from event data)
+                const rawQuota = parseInt(event.event_quota ?? event.quota, 10);
+                const rawRegistered = parseInt(event.participants_count ?? event.registeredCount ?? event
+                    .event_registered ?? event.registered ?? 0, 10);
+                const hasQuota = Number.isFinite(rawQuota) && rawQuota > 0;
+                const safeRegistered = Number.isFinite(rawRegistered) && rawRegistered >= 0 ? rawRegistered : 0;
+                const quota = hasQuota ? rawQuota : Math.max(safeRegistered, 20);
+                const registered = Math.min(safeRegistered, quota);
+                const quotaPercentage = Math.round((registered / quota) * 100);
                 const remainingQuota = quota - registered;
                 const quotaText = remainingQuota > 0 ? `Tersisa ${remainingQuota}` : 'Habis';
                 const quotaClass = remainingQuota > 0 ? 'bg-blue-50 text-blue-700 border-blue-100' :
@@ -925,12 +932,12 @@
                                 </a>
                                 ${canRegister ? 
                                     `<a href="#" class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">
-                                                                    <i class="fas fa-shopping-cart text-sm"></i>
-                                                                </a>` 
+                                                                            <i class="fas fa-shopping-cart text-sm"></i>
+                                                                        </a>` 
                                     : `<button disabled
-                                                                    class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
-                                                                    <i class="fas fa-shopping-cart text-sm"></i>
-                                                                </button>`
+                                                                            class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
+                                                                            <i class="fas fa-shopping-cart text-sm"></i>
+                                                                        </button>`
                                 }
                             </div>
                         </div>
