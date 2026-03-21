@@ -11,18 +11,41 @@ use \App\Models\Review;
 use App\Models\Event;
 use App\Models\Hero;
 use App\Models\Info;
+use App\Models\Order;
 use App\Models\Property;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class LandingpageController extends Controller
 {
     public function index()
     {
+        $events = Event::query()->withCount('participants')->latest()->get();
+        $paidStatuses = ['paid', 'success'];
+
+        $orderCounts = Order::query()
+            ->selectRaw('order_reference_uuid, COUNT(*) as total')
+            ->where('order_reference_type', 'event')
+            ->whereIn('order_transaction_status', $paidStatuses)
+            ->groupBy('order_reference_uuid')
+            ->pluck('total', 'order_reference_uuid');
+
+        $events = $events->map(function ($event) use ($orderCounts) {
+            $orderRegistered = (int) ($orderCounts[$event->uuid] ?? 0);
+            $participantRegistered = (int) ($event->participants_count ?? 0);
+            $registeredCount = max($orderRegistered, $participantRegistered);
+
+            $event->registeredCount = $registeredCount;
+            $event->event_registered = $registeredCount;
+
+            return $event;
+        });
+
         return view('front-end.landingpage', [
             'title' => env('APP_NAME') . ' | Support Your Company Goal',
-            'events' => (new Event())->getEvent(),
+            'events' => $events,
             'activities' => (new Activity())->getActivity(),
             'partnerLayers' => (new Partner())->getPartner(),
             'articles' => (new Article())->getArticle(),
@@ -56,7 +79,7 @@ class LandingpageController extends Controller
                 ->header('Pragma', 'no-cache')
                 ->header('Expires', '0');
         } catch (\Exception $e) {
-            \Log::error('news API error: ' . $e->getMessage(), [
+            Log::error('news API error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -72,38 +95,38 @@ class LandingpageController extends Controller
     {
         // Ambil data dokumen berdasarkan slug
         $toss = DocumentToss::where('document_slug', $slug)->first();
-        
+
         // Jika data tidak ditemukan, tampilkan halaman 404
         if (!$toss) {
             abort(404);
         }
-    
+
         $start = $toss->document_start;
         $end = $toss->document_end;
-        
+
         // Nilai default jika kedua tanggal null
         $expired = '-';
         $statusDoc = 'Valid';
-    
+
         // CEK KONDISI TANGGAL:
         // 1. Kondisi: kedua tanggal terisi
         if ($start && $end) {
             $startCarbon = Carbon::parse($start);
             $endCarbon = Carbon::parse($end);
-            
+
             // Format tanggal berdasarkan kesamaan bulan & tahun
             $expired = $startCarbon->month === $endCarbon->month && $startCarbon->year === $endCarbon->year
                 ? $startCarbon->format('j') . ' - ' . $endCarbon->format('j F Y')  // "25 - 31 Juli 2025"
                 : $startCarbon->format('j M Y') . ' - ' . $endCarbon->format('j M Y'); // "25 Jul 2025 - 31 Agu 2025"
-            
+
             // Tentukan status: Berlaku / Tidak Berlaku
             $statusDoc = now()->gt($endCarbon) ? 'Tidak Berlaku' : 'Berlaku';
-        } 
+        }
         // 2. Kondisi: start terisi, end null
         elseif ($start && !$end) {
             $expired = 'Mulai ' . Carbon::parse($start)->format('j F Y'); // "Mulai 25 Juli 2025"
             // Status tetap Valid (default)
-        } 
+        }
         // 3. Kondisi: start null, end terisi
         elseif (!$start && $end) {
             $endCarbon = Carbon::parse($end);
@@ -112,10 +135,10 @@ class LandingpageController extends Controller
             $statusDoc = now()->gt($endCarbon) ? 'Tidak Berlaku' : 'Berlaku';
         }
         // 4. Kondisi: kedua null - menggunakan nilai default
-    
+
         // Ambil file dokumen
         $urlDocument = $toss->document_final_path;
-        
+
         // Kirim data ke view
         return view('front-end.toss', [
             'title' => 'Toss | ' . config('app.name'),
