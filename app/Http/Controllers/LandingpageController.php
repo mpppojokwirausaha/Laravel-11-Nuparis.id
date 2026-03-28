@@ -56,6 +56,7 @@ class LandingpageController extends Controller
             'consultants' => (new User())->getconsultants(),
             'heroes' => (new Hero())->getAssets(),
             'properties' => (new Property())->getProperties(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -64,6 +65,7 @@ class LandingpageController extends Controller
         return view('front-end.news-more', [
             'title' => 'News | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -159,6 +161,7 @@ class LandingpageController extends Controller
             'qr_code' => $toss->qr_path,
             'statusDoc' => $statusDoc,
             'infos' => ((new Info)->getInfo()),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 }

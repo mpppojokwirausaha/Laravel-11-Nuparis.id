@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Article;
 use App\Models\Info;
+use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -17,6 +18,7 @@ class ArticleController extends Controller
         return view('front-end.article-more', [
             'title' => 'Event | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -64,6 +66,7 @@ class ArticleController extends Controller
         return view('front-end.article-detail', [
             'title' => $article->article_title . ' | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
             'article' => $article,
         ]);
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\Info;
 use App\Models\Order;
+use App\Models\Partner;
 use Illuminate\Support\Facades\Log;
 
 class EventController extends Controller
@@ -14,6 +15,7 @@ class EventController extends Controller
         return view('front-end.event-more', [
             'title' => 'Event | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -80,6 +82,7 @@ class EventController extends Controller
         return view('front-end.event-detail', [
             'title' => 'Event | ' . config('app.name'),
             'infos' => (new Info)->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
             'event' => $event,
             'registeredCount' => $registeredCount,
             'remainingQuota' => $remainingQuota,

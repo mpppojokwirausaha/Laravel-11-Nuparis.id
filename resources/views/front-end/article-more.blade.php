@@ -20,18 +20,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Meta Tags for Articles Page -->
-    <meta name="title" content="Artikel & Panduan Perizinan Bisnis - NUPARIS.ID" />
+    <meta name="title" content="Perizinan & Non Perizinan & Panduan Perizinan Bisnis - NUPARIS.ID" />
     <meta name="description"
-        content="Temukan artikel informatif, panduan lengkap, dan tips praktis seputar perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan usaha Anda." />
+        content="Temukan Perizinan & Non Perizinan informatif, panduan lengkap, dan tips praktis seputar perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan usaha Anda." />
     <meta name="keywords"
-        content="perizinan bisnis, izin usaha, regulasi, panduan UMKM, artikel bisnis, legalitas usaha" />
+        content="perizinan bisnis, izin usaha, regulasi, panduan UMKM, Perizinan & Non Perizinan bisnis, legalitas usaha" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ url()->current() }}" />
-    <meta property="og:title" content="Artikel & Panduan Perizinan Bisnis - NUPARIS.ID" />
+    <meta property="og:title" content="Perizinan & Non Perizinan & Panduan Perizinan Bisnis - NUPARIS.ID" />
     <meta property="og:description"
-        content="Kumpulan artikel informatif dan panduan lengkap seputar perizinan bisnis, regulasi terbaru, dan tips praktis untuk pengembangan usaha Anda." />
+        content="Kumpulan Perizinan & Non Perizinan informatif dan panduan lengkap seputar perizinan bisnis, regulasi terbaru, dan tips praktis untuk pengembangan usaha Anda." />
     <meta property="og:image" content="{{ asset('storage/' . $infos->meta_image) }}" />
-    <meta property="og:image:alt" content="Artikel Perizinan NUPARIS" />
+    <meta property="og:image:alt" content="Perizinan & Non Perizinan Perizinan NUPARIS" />
     <meta property="og:site_name" content="NUPARIS.ID" />
     <meta property="og:locale" content="id_ID" />
     <meta property="article:publisher" content="NUPARIS.ID" />
@@ -40,22 +40,22 @@
     <!-- Twitter Meta Tags -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="{{ url()->current() }}" />
-    <meta property="twitter:title" content="Artikel & Panduan Perizinan Bisnis - NUPARIS.ID" />
+    <meta property="twitter:title" content="Perizinan & Non Perizinan & Panduan Perizinan Bisnis - NUPARIS.ID" />
     <meta property="twitter:description"
-        content="Temukan artikel informatif, panduan lengkap, dan tips praktis seputar perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan usaha Anda." />
+        content="Temukan Perizinan & Non Perizinan informatif, panduan lengkap, dan tips praktis seputar perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan usaha Anda." />
     <meta property="twitter:image" content="{{ asset('storage/' . $infos->meta_image) }}" />
-    <meta property="twitter:image:alt" content="Artikel Perizinan NUPARIS" />
+    <meta property="twitter:image:alt" content="Perizinan & Non Perizinan Perizinan NUPARIS" />
     <meta property="twitter:site" content="@nuparis_id" />
     <meta property="twitter:creator" content="@nuparis_id" />
 
     <!-- LinkedIn Meta Tags -->
     <meta property="linkedin:card" content="summary_large_image" />
     <meta property="linkedin:url" content="{{ url()->current() }}" />
-    <meta property="linkedin:title" content="Artikel & Panduan Perizinan Bisnis - NUPARIS.ID" />
+    <meta property="linkedin:title" content="Perizinan & Non Perizinan & Panduan Perizinan Bisnis - NUPARIS.ID" />
     <meta property="linkedin:description"
-        content="Kumpulan artikel informatif dan panduan lengkap seputar perizinan bisnis, regulasi terbaru, dan tips praktis untuk pengembangan usaha Anda." />
+        content="Kumpulan Perizinan & Non Perizinan informatif dan panduan lengkap seputar perizinan bisnis, regulasi terbaru, dan tips praktis untuk pengembangan usaha Anda." />
     <meta property="linkedin:image" content="{{ asset('storage/' . $infos->meta_image) }}" />
-    <meta property="linkedin:image:alt" content="Artikel Perizinan NUPARIS" />
+    <meta property="linkedin:image:alt" content="Perizinan & Non Perizinan Perizinan NUPARIS" />
 
     <!-- Tailwind Configuration -->
     <script src="{{ asset('assets/front-end/js/configtailwind.js') }}"></script>
@@ -79,13 +79,14 @@
                             <span>Perizinan & Non Perizinan</span>
                         </nav>
                         <h1 class="text-3xl lg:text-4xl font-bold mb-3">Perizinan & Non Perizinan</h1>
-                        <p class="text-red-100 max-w-2xl">Temukan artikel informatif dan panduan lengkap seputar
-                            perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan usaha Anda.</p>
+                        <p class="text-red-100 max-w-2xl">Temukan Perizinan & Non Perizinan informatif dan panduan
+                            lengkap seputar perizinan bisnis, regulasi terbaru, dan informasi penting untuk pengembangan
+                            usaha Anda.</p>
                     </div>
                     <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl p-4 mt-4 lg:mt-0">
                         <div class="text-center">
                             <div id="totalArticlesCount" class="text-3xl font-bold">0</div>
-                            <div class="text-sm text-red-100">Total Artikel</div>
+                            <div class="text-sm text-red-100">Total Perizinan & Non Perizinan</div>
                         </div>
                     </div>
                 </div>
@@ -107,7 +108,7 @@
                                 </div>
                                 <input type="text" id="searchInput"
                                     class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition text-sm"
-                                    placeholder="Cari artikel atau informasi perizinan...">
+                                    placeholder="Cari Perizinan & Non Perizinan atau informasi perizinan...">
                                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                                     <button id="clearSearch"
                                         class="text-gray-400 lg:hover:text-gray-600 hidden transition-colors">
@@ -180,24 +181,24 @@
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
-                        <h2 class="text-xl lg:text-2xl font-bold text-gray-800">Semua Artikel</h2>
+                        <h2 class="text-xl lg:text-2xl font-bold text-gray-800">Semua Perizinan & Non Perizinan</h2>
                         <span id="articlesCount"
                             class="bg-red-100 text-red-800 text-sm font-bold px-3 py-1 rounded-full">
-                            0 Artikel
+                            0 Perizinan & Non Perizinan
                         </span>
                     </div>
                 </div>
 
                 <!-- Articles Container -->
                 <div id="articlesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <!-- Artikel akan dimuat via AJAX -->
+                    <!-- Perizinan & Non Perizinan akan dimuat via AJAX -->
                 </div>
 
                 <!-- Loading Indicator -->
                 <div id="loadingIndicator" class="text-center py-12">
                     <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary">
                     </div>
-                    <p class="mt-4 text-gray-600">Memuat artikel...</p>
+                    <p class="mt-4 text-gray-600">Memuat Perizinan & Non Perizinan...</p>
                 </div>
 
                 <!-- No Results Message -->
@@ -205,7 +206,8 @@
                     <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i class="fas fa-file-alt text-4xl text-gray-400"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-700 mb-2">Tidak ada artikel yang ditemukan</h3>
+                    <h3 class="text-xl font-bold text-gray-700 mb-2">Tidak ada Perizinan & Non Perizinan yang ditemukan
+                    </h3>
                     <p class="text-gray-500 max-w-md mx-auto mb-6">Coba ubah kata kunci pencarian atau filter yang Anda
                         gunakan.</p>
                     <button id="resetSearch"
@@ -269,10 +271,10 @@
                         allArticles = result.articlesData;
                         // console.log(`Loaded ${allArticles.length} articles from controller`);
 
-                        // Log struktur artikel pertama untuk debugging
+                        // Log struktur Perizinan & Non Perizinan pertama untuk debugging
                         if (allArticles.length > 0) {
-                            // console.log('Contoh struktur artikel:', allArticles[0]);
-                            // console.log('Artikel kategori:', allArticles[0].article_category);
+                            // console.log('Contoh struktur Perizinan & Non Perizinan:', allArticles[0]);
+                            // console.log('Perizinan & Non Perizinan kategori:', allArticles[0].article_category);
                             // console.log('Nama kategori:', allArticles[0].article_category?.article_category_name);
                         }
 
@@ -309,7 +311,7 @@
                 return `{{ url('storage') }}/${imagePath}`;
             }
 
-            // Fungsi untuk mendapatkan kategori dari artikel
+            // Fungsi untuk mendapatkan kategori dari Perizinan & Non Perizinan
             function getArticleCategory(article) {
                 // PRIORITAS UTAMA: Cek dari article_category (berdasarkan struktur response)
                 if (article.article_category && typeof article.article_category === 'object') {
@@ -371,7 +373,7 @@
                 // console.log(`Total articles: ${total}`);
 
                 $('#totalArticlesCount').text(total);
-                $('#articlesCount').text(`${total} Artikel`);
+                $('#articlesCount').text(`${total} Perizinan & Non Perizinan`);
             }
 
             function setupEventListeners() {
@@ -526,7 +528,7 @@
                 showLoading();
 
                 setTimeout(() => {
-                    // 1. Filter artikel
+                    // 1. Filter Perizinan & Non Perizinan
                     filteredArticles = filterArticles();
                     // console.log(`Filtered articles: ${filteredArticles.length} of ${allArticles.length}`);
 
@@ -543,11 +545,11 @@
                         // console.log(`Adjusted current page to: ${currentPage}`);
                     }
 
-                    // 5. Dapatkan artikel untuk halaman saat ini
+                    // 5. Dapatkan Perizinan & Non Perizinan untuk halaman saat ini
                     const paginatedArticles = getCurrentPageArticles(filteredArticles);
                     // console.log(`Current page articles: ${paginatedArticles.length}`);
 
-                    // 6. Render artikel
+                    // 6. Render Perizinan & Non Perizinan
                     renderArticles(paginatedArticles);
 
                     // 7. Render pagination
@@ -637,7 +639,7 @@
 
             function updateFilteredCount(count) {
                 // console.log(`Filtered count: ${count}`);
-                $('#articlesCount').text(`${count} Artikel`);
+                $('#articlesCount').text(`${count} Perizinan & Non Perizinan`);
             }
 
             function renderArticles(articles) {
@@ -847,7 +849,7 @@
                 const start = (currentPage - 1) * itemsPerPage + 1;
                 const end = Math.min(currentPage * itemsPerPage, filteredArticles.length);
                 infoDiv.html(
-                    `Menampilkan <span class="font-semibold">${start}-${end}</span> dari <span class="font-semibold">${filteredArticles.length}</span> artikel`
+                    `Menampilkan <span class="font-semibold">${start}-${end}</span> dari <span class="font-semibold">${filteredArticles.length}</span> Perizinan & Non Perizinan`
                 );
 
                 // Add to wrapper

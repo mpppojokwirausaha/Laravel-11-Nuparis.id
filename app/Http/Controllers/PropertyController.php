@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Info;
+use App\Models\Partner;
 use App\Models\Property;
 
 class PropertyController extends Controller
@@ -12,6 +13,7 @@ class PropertyController extends Controller
         return view('front-end.property-more', [
             'title' => 'Property | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -116,6 +118,7 @@ class PropertyController extends Controller
             'certificate' => $certificate,
             'propertyImages' => $propertyImages,
             'relatedProperties' => $relatedProperties,
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 

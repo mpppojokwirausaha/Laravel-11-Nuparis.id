@@ -64,25 +64,32 @@
                 <ul class="space-y-4 text-sm">
                     <li class="flex items-start gap-3">
                         <i class="fas fa-map-marker-alt mt-1 text-primary"></i>
-                        <span>Jl. Jendral Sudirman No.Kel, Nagri Kaler, Kec. Purwakarta, Kabupaten Purwakarta,
-                            Jawa Barat 41115</span>
+                        <span>{{ $infos->address }}</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <i class="fas fa-envelope text-primary"></i>
-                        <span>markom@nuparis.id</span>
+                        <a href="mailto:{{ $infos->email }}">
+                            <span>{{ $infos->email }}</span>
+                        </a>
                     </li>
                 </ul>
             </div>
 
-            <div class="animate-slide-in-right">
-                <h4 class="text-white font-bold text-lg mb-6">Mitra & Institusi</h4>
-                <div class="grid grid-cols-1 gap-4">
-                    <a href="https://mpp.purwakartakab.go.id/instances/pojok-wirausaha/konsultasi-pra-perizinan-dan-non-perizinan"
-                        class="bg-slate-800 p-2 rounded-lg flex items-center justify-center hover:bg-slate-700 transition cursor-pointer hover:-translate-y-0.5">
-                        <span class="text-xs font-bold text-center text-slate-400">Madukara</span>
-                    </a>
+            @if ($agencies_footer->count() > 0)
+                <div class="animate-slide-in-right">
+                    <h4 class="text-white font-bold text-lg mb-6">Mitra & Institusi</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        @foreach ($agencies_footer as $index => $item)
+                            <a href="{{ $item->partner_url }}"
+                                class="bg-slate-800 p-2 rounded-lg flex items-center justify-center hover:bg-slate-700 transition cursor-pointer hover:-translate-y-0.5 {{ $loop->last && $loop->count % 2 != 0 ? 'col-span-2' : '' }}">
+                                <span class="text-xs font-bold text-center text-slate-400">
+                                    {{ \Illuminate\Support\Str::limit($item->partner_name, 18) }}
+                                </span>
+                            </a>
+                        @endforeach
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
 
         <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
