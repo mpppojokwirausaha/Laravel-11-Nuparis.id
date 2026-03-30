@@ -19,6 +19,7 @@ class Settings extends Page
     protected static ?string $navigationLabel = 'Pengaturan Website';
     protected static ?int $navigationSort = 60;
     protected static string $view = 'filament.pages.settings';
+    protected static ?string $navigationGroup = 'Settings';
 
     public Info $info;
 

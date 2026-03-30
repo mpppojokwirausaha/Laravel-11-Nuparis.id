@@ -33,6 +33,7 @@ class Signature extends Page implements HasForms
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static string $view = 'filament.pages.signature';
     protected static ?string $title = 'Signature';
+    protected static ?string $navigationGroup = 'TOSS';
 
     public ?string $ticketId = null; // UUID
     public ?string $selectedFile = null;
@@ -78,6 +79,7 @@ class Signature extends Page implements HasForms
                             ->label('Pilih Tiket')
                             ->placeholder('Pilih salah satu opsi')
                             ->options($this->getTicketOptions())
+                            ->getOptionLabelFromRecordUsing(fn($record) => $record->ticket_code . ' - ' . $record->ticket_title)
                             ->searchable() // Add searchable for better UX
                             ->live()
                             ->preload() // Add preload to ensure options are loaded
@@ -86,13 +88,13 @@ class Signature extends Page implements HasForms
                                     'oldTicket' => $this->ticketId,
                                     'newTicket' => $state
                                 ]);
-                                
+
                                 // Reset file selection when ticket changes
                                 $this->ticketId = $state;
                                 $this->selectedFile = null;
                                 $this->currentDocument = null;
                                 $this->clearPreview();
-                                
+
                                 // Update form state to reset file dropdown and document fields
                                 $this->form->fill([
                                     'ticketId' => $state,
@@ -105,7 +107,7 @@ class Signature extends Page implements HasForms
                                     'document_number' => '',
                                     'notes' => ''
                                 ]);
-                                
+
                                 $this->addDebugInfo('Ticket selected', [
                                     'ticketUuid' => $state,
                                     'availableFiles' => count($this->getFileOptions())
@@ -115,13 +117,13 @@ class Signature extends Page implements HasForms
                         Select::make('selectedFile')
                             ->label('Pilih File PDF')
                             ->placeholder(function () {
-                                return $this->ticketId 
-                                    ? 'Pilih salah satu opsi' 
+                                return $this->ticketId
+                                    ? 'Pilih salah satu opsi'
                                     : 'Pilih ticket terlebih dahulu';
                             })
-                            ->options(fn () => $this->getFileOptions())
-                            ->disabled(fn () => !$this->ticketId)
-                            ->visible(fn () => $this->ticketId !== null)
+                            ->options(fn() => $this->getFileOptions())
+                            ->disabled(fn() => !$this->ticketId)
+                            ->visible(fn() => $this->ticketId !== null)
                             ->searchable() // Add searchable for better UX
                             ->live()
                             ->afterStateUpdated(function (string $operation, $state) {
@@ -129,7 +131,7 @@ class Signature extends Page implements HasForms
                                 if (!$this->ticketId) {
                                     $this->selectedFile = null;
                                     $this->addDebugInfo('File selection blocked - no ticket', []);
-                                    
+
                                     Notification::make()
                                         ->title('Peringatan')
                                         ->body('Pilih ticket terlebih dahulu sebelum memilih file.')
@@ -160,18 +162,18 @@ class Signature extends Page implements HasForms
                                 ->label('🔄 Generate Preview')
                                 ->color('primary')
                                 ->action('generatePreview')
-                                ->visible(fn (): bool => !empty($this->selectedFile) && !empty($this->ticketId)),
+                                ->visible(fn(): bool => !empty($this->selectedFile) && !empty($this->ticketId)),
                             Action::make('clearPreview')
                                 ->label('🗑️ Clear Preview')
                                 ->color('gray')
                                 ->action('clearPreview')
-                                ->visible(fn (): bool => !empty($this->pdfUrl))
+                                ->visible(fn(): bool => !empty($this->pdfUrl))
                         ])
                     ]),
 
                 Section::make('Informasi Dokumen')
                     ->description('Isi informasi detail dokumen')
-                    ->visible(fn () => !empty($this->selectedFile))
+                    ->visible(fn() => !empty($this->selectedFile))
                     ->schema([
                         TextInput::make('document_name')
                             ->label('Nama Dokumen')
@@ -312,9 +314,9 @@ class Signature extends Page implements HasForms
     {
         try {
             Log::info('Getting ticket options...');
-            
+
             // More robust query with better error handling
-            $tickets = Ticket::select('uuid', 'ticket_code')
+            $tickets = Ticket::select('uuid', 'ticket_code', 'ticket_title')
                 ->whereNotNull('uuid')
                 ->whereNotNull('ticket_code')
                 ->where('uuid', '!=', '')
@@ -328,11 +330,11 @@ class Signature extends Page implements HasForms
             ]);
 
             $options = [];
-            
+
             foreach ($tickets as $ticket) {
                 // Ensure both uuid and ticket_code are valid
                 if (!empty($ticket->uuid) && !empty($ticket->ticket_code)) {
-                    $options[$ticket->uuid] = $ticket->ticket_code;
+                    $options[$ticket->uuid] = $ticket->ticket_code . ' - ' . $ticket->ticket_title;
                 }
             }
 
@@ -356,14 +358,13 @@ class Signature extends Page implements HasForms
                 ]);
 
                 // Try to get any tickets at all
-                $anyTickets = Ticket::select('uuid', 'ticket_code')->limit(5)->get();
+                $anyTickets = Ticket::select('uuid', 'ticket_code', 'ticket_title')->limit(5)->get();
                 Log::info('Sample of any tickets in database:', [
                     'tickets' => $anyTickets->toArray()
                 ]);
             }
 
             return $options;
-
         } catch (\Exception $e) {
             $this->addDebugInfo('Error loading tickets', [
                 'error' => $e->getMessage(),
@@ -425,7 +426,6 @@ class Signature extends Page implements HasForms
             ]);
 
             return $files;
-
         } catch (\Exception $e) {
             $this->addDebugInfo('Error loading files', [
                 'error' => $e->getMessage()
@@ -479,7 +479,7 @@ class Signature extends Page implements HasForms
 
             $fileName = pathinfo($this->selectedFile, PATHINFO_FILENAME);
             $progressIndex = $this->extractProgressIndex($fileName);
-            
+
             // Ganti spasi dengan underscore pada slug
             $cleanFileName = $this->sanitizeFileName($fileName);
             $slug = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
@@ -487,7 +487,7 @@ class Signature extends Page implements HasForms
 
             Storage::disk('public')->makeDirectory('qrcodes');
 
-            $qrContent = url('toss/'. $slug);
+            $qrContent = url('toss/' . $slug);
 
             $qrImage = QrCode::format('png')->size(300)->generate($qrContent);
             Storage::disk('public')->put($qrPath, $qrImage);
@@ -522,7 +522,6 @@ class Signature extends Page implements HasForms
                 ->body('Preview berhasil di-generate!')
                 ->success()
                 ->send();
-
         } catch (\Exception $e) {
             Log::error("Error generate preview", [
                 'error' => $e->getMessage()
@@ -546,7 +545,7 @@ class Signature extends Page implements HasForms
         $this->qrUrl = null;
 
         $this->addDebugInfo('Preview cleared', []);
-        
+
         // Only dispatch clear event, don't show notification automatically
         $this->dispatch('preview-cleared');
     }
@@ -558,7 +557,7 @@ class Signature extends Page implements HasForms
 
         $fileName = pathinfo($this->selectedFile, PATHINFO_FILENAME);
         $progressIndex = $this->extractProgressIndex($fileName);
-        
+
         // Ganti spasi dengan underscore pada slug
         $cleanFileName = $this->sanitizeFileName($fileName);
         $slug = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
@@ -605,18 +604,18 @@ class Signature extends Page implements HasForms
 
         // 4. Extract sisa halaman PDF (halaman 2 dst)
         $remainingPdf = "{$outputDir}/{$slug}_remaining.pdf";
-        
+
         // Gunakan escaped paths untuk command line
         $escapedPdfPath = escapeshellarg($pdfPath);
         $escapedRemainingPdf = escapeshellarg($remainingPdf);
-        
+
         $processExtract = Process::fromShellCommandline("gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER -dFirstPage=2 -sOutputFile={$escapedRemainingPdf} {$escapedPdfPath}");
         $processExtract->run();
 
         // 5. Gabungkan hasil halaman 1 + sisa halaman
         $escapedMergedPdf = escapeshellarg($mergedPdf);
         $escapedFinalOutput = escapeshellarg($finalOutput);
-        
+
         $processMerge = Process::fromShellCommandline("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile={$escapedFinalOutput} {$escapedMergedPdf} {$escapedRemainingPdf}");
         $processMerge->run();
 
@@ -715,7 +714,6 @@ class Signature extends Page implements HasForms
                 'y' => $y,
                 'scale' => $scale
             ]);
-
         } catch (\Exception $e) {
             Log::error("Error save QR position", ['error' => $e->getMessage()]);
 
@@ -760,16 +758,16 @@ class Signature extends Page implements HasForms
     {
         // Ganti spasi dengan underscore
         $cleanName = str_replace(' ', '_', $fileName);
-        
+
         // Hapus karakter khusus lainnya (opsional)
         $cleanName = preg_replace('/[^\w\-\.]/', '_', $cleanName);
-        
+
         // Hapus multiple underscores
         $cleanName = preg_replace('/_+/', '_', $cleanName);
-        
+
         // Hapus underscore di awal dan akhir
         $cleanName = trim($cleanName, '_');
-        
+
         return $cleanName;
     }
 
@@ -834,12 +832,12 @@ class Signature extends Page implements HasForms
         $this->addDebugInfo('Manual tickets refresh', [
             'before_count' => count($this->getTicketOptions())
         ]);
-        
+
         // Clear any cached data
         $this->ticketId = null;
         $this->selectedFile = null;
         $this->currentDocument = null;
-        
+
         // Reset form
         $this->form->fill([
             'ticketId' => null,
@@ -852,10 +850,10 @@ class Signature extends Page implements HasForms
             'document_number' => '',
             'notes' => ''
         ]);
-        
+
         // This will trigger a re-render and refresh the select options
         $this->dispatch('$refresh');
-        
+
         Notification::make()
             ->title('Refreshed')
             ->body('Daftar tiket telah diperbarui. Count: ' . count($this->getTicketOptions()))
@@ -867,19 +865,19 @@ class Signature extends Page implements HasForms
         try {
             // Test 1: Basic ticket count
             $totalTickets = Ticket::count();
-            
+
             // Test 2: Get first 5 tickets with all fields
-            $sampleTickets = Ticket::select( 'uuid', 'ticket_code', 'created_at')
+            $sampleTickets = Ticket::select('uuid', 'ticket_code', 'created_at')
                 ->orderBy('ticket_code', 'desc')
                 ->limit(5)
                 ->get();
-            
+
             // Test 3: Count tickets with UUID
             $withUuid = Ticket::whereNotNull('uuid')->where('uuid', '!=', '')->count();
-            
+
             // Test 4: Count tickets with ticket_code
             $withCode = Ticket::whereNotNull('ticket_code')->where('ticket_code', '!=', '')->count();
-            
+
             // Test 5: Get valid tickets
             $validTickets = Ticket::select('uuid', 'ticket_code')
                 ->whereNotNull('uuid')
@@ -887,7 +885,7 @@ class Signature extends Page implements HasForms
                 ->where('uuid', '!=', '')
                 ->where('ticket_code', '!=', '')
                 ->get();
-            
+
             $debugData = [
                 'total_tickets' => $totalTickets,
                 'sample_tickets' => $sampleTickets->toArray(),
@@ -897,21 +895,20 @@ class Signature extends Page implements HasForms
                 'valid_tickets' => $validTickets->toArray(),
                 'options_generated' => $this->getTicketOptions()
             ];
-            
+
             Log::info('Ticket Data Debug:', $debugData);
-            
+
             Notification::make()
                 ->title('Debug Info')
                 ->body('Check Laravel log for detailed ticket data. Total: ' . $totalTickets . ', Valid: ' . $validTickets->count())
                 ->info()
                 ->send();
-                
         } catch (\Exception $e) {
             Log::error('Error in testTicketData:', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             Notification::make()
                 ->title('Error')
                 ->body('Error testing ticket data: ' . $e->getMessage())

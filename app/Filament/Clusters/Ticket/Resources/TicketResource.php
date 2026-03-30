@@ -24,7 +24,7 @@ class TicketResource extends Resource
     protected static ?string $model = TicketModel::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $cluster = Ticket::class;
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 99;
 
     public static function shouldRegisterNavigation(): bool
     {
