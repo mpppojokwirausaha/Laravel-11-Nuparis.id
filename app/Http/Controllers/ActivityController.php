@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\Info;
+use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -17,6 +18,7 @@ class ActivityController extends Controller
         return view('front-end.activity-more', [
             'title' => 'Event | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 
@@ -65,6 +67,7 @@ class ActivityController extends Controller
             'title' => $activity->activity_title . ' | ' . config('app.name'),
             'infos' => (new Info())->getInfo(),
             'activity' => $activity,
+            'agencies_footer' => (new Partner())->getAgencies(),
         ]);
     }
 

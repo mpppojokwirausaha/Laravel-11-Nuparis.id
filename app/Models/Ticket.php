@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ConsultantSpecialization;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class Ticket extends Model
@@ -22,6 +23,7 @@ class Ticket extends Model
         'uuid',
         'ticket_code',
         'ticket_title',
+        'ticket_name_client',
         'ticket_whatsapp',
         'ticket_email',
         'ticket_content',
@@ -48,33 +50,27 @@ class Ticket extends Model
                 'ticket_code' => $validated['ticket_code'],
                 'ticket_title' => $validated['ticket_title'],
                 'ticket_content' => $validated['ticket_content'],
+                'ticket_name_client' => $validated['ticket_name_client'],
                 'ticket_whatsapp' => $validated['ticket_whatsapp'],
                 'ticket_email' => $validated['ticket_email'],
                 'ticket_status_uuid' => '631266aa-dcd9-46ca-857b-43128d46edbd', // pending
                 'consultant_specialization_uuid' => $validated['consultant_specialization_uuid'],
                 'ticket_document_support' => $validated['ticket_document_support']
             ];
-            
+
             $ticket = self::create($data);
-            
-            \Log::info('Ticket created in database', [
-                'ticket_id' => $ticket->id,
-                'ticket_uuid' => $ticket->uuid
-            ]);
-            
             return [
                 'success' => true,
                 'message' => 'Ticket berhasil dibuat',
                 'data' => $ticket
             ];
-            
         } catch (\Throwable $th) {
-            \Log::error('Error in createTicket method', [
+            Log::error('Error in createTicket method', [
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString(),
                 'data' => $validated
             ]);
-            
+
             return [
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $th->getMessage()

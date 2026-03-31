@@ -22,10 +22,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\URL;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Spatie\Permission\Middlewares\RoleMiddleware;
 
 class ManagementPanelProvider extends PanelProvider
 {
@@ -42,6 +39,21 @@ class ManagementPanelProvider extends PanelProvider
             ])
             // cluster
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
+
+            ->navigationGroups([
+                'TOSS',
+                'Resources',
+                'Activities',
+                'Articles',
+                'Events',
+                'Letters',
+                'Hero',
+                'News',
+                'Laporan',
+                'Partner',
+                'Property',
+                'Review',
+            ])
 
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -71,14 +83,6 @@ class ManagementPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 // tidak perlu 'role:admin' di sini jika kamu sudah pakai middleware sendiri
-
-            ])->navigationItems([
-                NavigationItem::make('Kembali ke Website')
-                    ->url(fn() => route('landingpage')) // <-- pakai closure di sini!
-                    ->icon('heroicon-o-arrow-left')
-                    ->openUrlInNewTab() // Supaya buka di tab baru
-                    ->group('Additional') // bikin grup baru
-                    ->sort(9999), // Letakkan di paling bawah
             ]);
     }
 

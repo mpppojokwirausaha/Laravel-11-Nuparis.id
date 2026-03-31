@@ -32,6 +32,7 @@ class PartnerResource extends Resource
 {
     protected static ?string $model = Partner::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Resources';
 
     public static function form(Form $form): Form
     {
@@ -77,6 +78,46 @@ class PartnerResource extends Resource
                                         'Inactive' => 'danger',
                                     ])->grouped()
                                     ->required(),
+                                ToggleButtons::make('partner_footer_status')
+                                    ->label('Footer Status')
+                                    ->options([
+                                        'Active' => 'Active',
+                                        'Inactive' => 'Inactive',
+                                    ])
+                                    ->colors([
+                                        'Active' => 'success',
+                                        'Inactive' => 'danger',
+                                    ])
+                                    ->grouped()
+                                    ->required()
+                                    ->rule(function ($record) {
+                                        return function ($_, $value, $fail) use ($record) {
+
+                                            if ($value === 'Active') {
+
+                                                // 🔒 Rule 1: partner_status harus Active dulu
+                                                // ambil dari record (edit) atau dari request (create)
+                                                $partnerStatus = $record->partner_status ?? request('partner_status');
+
+                                                if ($partnerStatus !== 'Active') {
+                                                    $fail('Partner harus Active terlebih dahulu.');
+                                                    return;
+                                                }
+
+                                                // 🔒 Rule 2: maksimal 6 yang Active
+                                                $query = Partner::where('partner_footer_status', 'Active');
+
+                                                // exclude current record saat edit
+                                                if ($record) {
+                                                    $query->where('uuid', '!=', $record->uuid);
+                                                }
+
+                                                if ($query->count() >= 6) {
+                                                    $fail('Maksimal hanya 6 data yang boleh Active.');
+                                                }
+                                            }
+                                        };
+                                    }),
                                 FileUpload::make('partner_image')
                                     ->image()
                                     ->disk('public')
@@ -322,6 +363,18 @@ class PartnerResource extends Resource
                         'Inactive' => 'danger',
                     })->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('partner_footer_status')
+                    ->label('SHOW FOOTER')
+                    ->icon(fn(string $state): string => match ($state) {
+                        'Active' => 'heroicon-o-check-circle',
+                        'Inactive' => 'heroicon-o-x-circle',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'Active' => 'success',
+                        'Inactive' => 'danger',
+                    })->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('created_at')
                     ->label('LOG')
                     ->dateTime()
@@ -333,6 +386,11 @@ class PartnerResource extends Resource
                 //
             ])
             ->actions([
+                Action::make('visit')
+                    ->icon('heroicon-o-link')
+                    ->url(fn($record) => $record->partner_url)
+                    ->openUrlInNewTab()
+                    ->disabled(fn($record) => empty($record->partner_url)), // disables button if URL is null
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),

@@ -30,6 +30,7 @@ class Partner extends Model
         'partner_address',
         'partner_url',
         'partner_status',
+        'partner_footer_status',
     ];
 
     protected static function booted()
@@ -96,6 +97,11 @@ class Partner extends Model
         }
 
         return collect($partnerLayers);
+    }
+
+    public function getAgencies()
+    {
+        return Partner::where('partner_footer_status', 'Active')->get();
     }
 
     public static function getStat()

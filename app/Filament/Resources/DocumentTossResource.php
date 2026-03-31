@@ -23,6 +23,7 @@ class DocumentTossResource extends Resource
     protected static ?string $model = DocumentToss::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'TOSS';
 
     public static function form(Form $form): Form
     {

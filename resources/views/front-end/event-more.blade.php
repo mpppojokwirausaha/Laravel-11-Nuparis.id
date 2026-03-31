@@ -818,7 +818,7 @@ event-more
                 }
 
                 // Determine if event is free or paid
-                const isFnree = event.event_price === '0' || event.event_price === 0;
+                const isFree = event.event_price === '0' || event.event_price === 0;
                 const priceText = isFree ? 'GRATIS' : `Rp ${parseInt(event.event_price).toLocaleString('id-ID')}`;
 
                 // Get category
@@ -932,12 +932,12 @@ event-more
                                 </a>
                                 ${canRegister ? 
                                     `<a href="#" class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">
-                                                                            <i class="fas fa-shopping-cart text-sm"></i>
-                                                                        </a>` 
+                                                                                <i class="fas fa-shopping-cart text-sm"></i>
+                                                                            </a>` 
                                     : `<button disabled
-                                                                            class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
-                                                                            <i class="fas fa-shopping-cart text-sm"></i>
-                                                                        </button>`
+                                                                                class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
+                                                                                <i class="fas fa-shopping-cart text-sm"></i>
+                                                                            </button>`
                                 }
                             </div>
                         </div>
