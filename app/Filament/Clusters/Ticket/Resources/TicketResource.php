@@ -3,6 +3,8 @@
 namespace App\Filament\Clusters\Ticket\Resources;
 
 use \App\Models\TicketStatus;
+use \Illuminate\Support\Facades\Auth;
+use \Illuminate\Support\Facades\Hash;
 use App\Filament\Clusters\Ticket;
 use App\Filament\Clusters\Ticket\Resources\TicketResource\Pages;
 use App\Models\Ticket as TicketModel;
@@ -15,6 +17,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\View;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -35,22 +38,28 @@ class TicketResource extends Resource
     {
         return $form
             ->schema([
-                TextInput::make('ticket_code')
-                    ->disabled()
-                    ->required(),
-
-                TextInput::make('ticket_title')
-                    ->disabled()
-                    ->required(),
-
-                TextInput::make('ticket_whatsapp')
-                    ->disabled()
-                    ->required(),
-
-                TextInput::make('ticket_email')
-                    ->disabled()
-                    ->required(),
-
+                Group::make()
+                    ->schema([
+                        TextInput::make('ticket_code')
+                            ->disabled()
+                            ->required(),
+                        TextInput::make('ticket_whatsapp')
+                            ->disabled()
+                            ->required(),
+                        TextInput::make('ticket_email')
+                            ->disabled()
+                            ->required(),
+                    ])->columns(3)->columnSpanFull(),
+                Group::make()
+                    ->schema([
+                        TextInput::make('ticket_title')
+                            ->disabled()
+                            ->required(),
+                        TextInput::make('ticket_name_client')
+                            ->disabled()
+                            ->label('Nama Client/Perusahaan')
+                            ->required(),
+                    ])->columns(2)->columnSpanFull(),
                 Textarea::make('ticket_content')
                     ->disabled()
                     ->rows(18)
@@ -135,6 +144,12 @@ class TicketResource extends Resource
                     ->limit(50)
                     ->searchable(),
 
+                TextColumn::make('ticket_name_client')
+                    ->label('Client')
+                    ->sortable()
+                    ->limit(50)
+                    ->searchable(),
+
                 TextColumn::make('consultantSpecialization.consultant_specialization_name')
                     ->label('Spesialisasi')
                     ->sortable()
@@ -152,6 +167,29 @@ class TicketResource extends Resource
             ])
             ->actions([
                 EditAction::make(),
+                DeleteAction::make()
+                    ->requiresConfirmation()
+                    ->modalHeading('Hapus Data')
+                    ->modalDescription('Masukkan password Anda untuk mengkonfirmasi penghapusan data ini.')
+                    ->modalSubmitActionLabel('Ya, Hapus')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('password')
+                            ->label('Password')
+                            ->password()
+                            ->required()
+                            ->rules([
+                                function () {
+                                    return function (string $attribute, $value, \Closure $fail) {
+                                        if (!Hash::check($value, Auth::user()->password)) {
+                                            $fail('Password yang Anda masukkan salah.');
+                                        }
+                                    };
+                                },
+                            ]),
+                    ])
+                    ->action(function (array $data, $record) {
+                        $record->delete();
+                    }),
             ]);
     }
 
@@ -173,9 +211,8 @@ class TicketResource extends Resource
     {
         return false;
     }
-
     public static function canDelete($record): bool
     {
-        return false;
+        return true;
     }
 }

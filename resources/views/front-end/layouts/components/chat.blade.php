@@ -148,7 +148,7 @@
                             placeholder="Masukkan judul tiket Anda">
                     </div>
 
-                    <!-- Bidang Pendampingan (CUSTOM DROPDOWN) -->
+                    <!-- Bidang Pendampingan -->
                     <div class="relative">
                         <label class="block text-gray-700 mb-2 font-medium text-sm md:text-base">
                             <i class="fas fa-tag mr-2 text-red-600"></i>Pilih Bidang Pendampingan <span
@@ -204,6 +204,17 @@
                         </div>
                     </div>
 
+                    <!-- Nama Klien -->
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium text-sm md:text-base">
+                            <i class="fas fa-user mr-2 text-red-600"></i>Nama Klien <span
+                                class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="ticket_name_client"
+                            class="w-full px-4 py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-500 outline-none transition-all duration-200"
+                            placeholder="Masukkan nama Anda">
+                    </div>
+
                     <!-- Email -->
                     <div>
                         <label class="block text-gray-700 mb-2 font-medium text-sm md:text-base">
@@ -244,7 +255,7 @@
                         <div id="charCounter" class="text-xs text-gray-500 text-right mt-1">0/1000 karakter</div>
                     </div>
 
-                    <!-- Upload File (SINGLE FILE ONLY) -->
+                    <!-- Upload File -->
                     <div>
                         <label class="block text-gray-700 mb-2 font-medium text-sm md:text-base">
                             <i class="fas fa-paperclip mr-2 text-red-600"></i>Lampiran File (Opsional)
@@ -365,6 +376,7 @@
         const backToChat = document.getElementById('backToChat');
 
         // Form elements
+        const ticketNameClient = document.getElementById('ticket_name_client');
         const ticketTitle = document.getElementById('ticket_title');
         const ticketEmail = document.getElementById('ticket_email');
         const ticketWhatsapp = document.getElementById('ticket_whatsapp');
@@ -398,20 +410,20 @@
 
         // File type icons mapping
         const fileIcons = {
-            'pdf': 'fas fa-file-pdf',
-            'jpg': 'fas fa-file-image',
-            'jpeg': 'fas fa-file-image',
-            'png': 'fas fa-file-image',
-            'default': 'fas fa-file'
+            pdf: 'fas fa-file-pdf',
+            jpg: 'fas fa-file-image',
+            jpeg: 'fas fa-file-image',
+            png: 'fas fa-file-image',
+            default: 'fas fa-file'
         };
 
         // File type colors
         const fileColors = {
-            'pdf': 'bg-red-100 text-red-600',
-            'jpg': 'bg-yellow-100 text-yellow-600',
-            'jpeg': 'bg-yellow-100 text-yellow-600',
-            'png': 'bg-yellow-100 text-yellow-600',
-            'default': 'bg-gray-100 text-gray-600'
+            pdf: 'bg-red-100 text-red-600',
+            jpg: 'bg-yellow-100 text-yellow-600',
+            jpeg: 'bg-yellow-100 text-yellow-600',
+            png: 'bg-yellow-100 text-yellow-600',
+            default: 'bg-gray-100 text-gray-600'
         };
 
         // ==================== CUSTOM SELECT FUNCTIONS ====================
@@ -419,13 +431,7 @@
         // Toggle dropdown
         bidangTrigger.addEventListener('click', function(e) {
             e.stopPropagation();
-            const isOpen = bidangDropdown.classList.contains('hidden');
-
-            if (isOpen) {
-                openBidangDropdown();
-            } else {
-                closeBidangDropdown();
-            }
+            bidangDropdown.classList.contains('hidden') ? openBidangDropdown() : closeBidangDropdown();
         });
 
         // Close dropdown when clicking outside
@@ -436,57 +442,41 @@
         });
 
         // Search functionality
-        if (bidangSearch) {
-            bidangSearch.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                filterBidangOptions(searchTerm);
-            });
+        bidangSearch.addEventListener('input', function() {
+            filterBidangOptions(this.value.toLowerCase());
+        });
 
-            // Prevent click from closing dropdown
-            bidangSearch.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-        }
+        // Prevent click from closing dropdown
+        bidangSearch.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
 
         // Open dropdown
         function openBidangDropdown() {
             bidangDropdown.classList.remove('hidden');
             bidangTrigger.querySelector('i').style.transform = 'rotate(180deg)';
             bidangTrigger.classList.add('border-red-500', 'ring-2', 'ring-red-500');
-
             // Focus search
             setTimeout(() => {
-                if (bidangSearch) {
-                    bidangSearch.focus();
-                    bidangSearch.select();
-                }
+                bidangSearch.focus();
+                bidangSearch.select();
             }, 50);
         }
-
         // Close dropdown
         function closeBidangDropdown() {
             bidangDropdown.classList.add('hidden');
             const icon = bidangTrigger.querySelector('i');
             if (icon) icon.style.transform = 'rotate(0deg)';
             bidangTrigger.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
-
             // Clear search
-            if (bidangSearch) {
-                bidangSearch.value = '';
-                filterBidangOptions('');
-            }
+            bidangSearch.value = '';
+            filterBidangOptions('');
         }
 
-        // Filter options
         function filterBidangOptions(searchTerm = '') {
             if (!bidangList || bidangList.length === 0) return;
-
-            const filtered = bidangList.filter(bidang =>
-                bidang.name.toLowerCase().includes(searchTerm)
-            );
-
+            const filtered = bidangList.filter(b => b.name.toLowerCase().includes(searchTerm));
             renderBidangOptions(filtered);
-
             // Show/hide empty state
             if (filtered.length === 0) {
                 bidangEmpty.classList.remove('hidden');
@@ -502,46 +492,43 @@
             bidangOptions.innerHTML = '';
 
             bidangData.forEach(bidang => {
-                const optionDiv = document.createElement('div');
-                optionDiv.className =
+                const div = document.createElement('div');
+                div.className =
                     'px-4 py-2.5 hover:bg-red-50 cursor-pointer transition-colors duration-150 flex items-center group';
-                optionDiv.dataset.value = bidang.uuid;
-                optionDiv.dataset.name = bidang.name;
-
-                optionDiv.innerHTML = `
-                    <div class="w-5 h-5 rounded border border-gray-300 mr-3 flex items-center justify-center flex-shrink-0 group-hover:border-red-400">
-                        <div class="w-2.5 h-2.5 rounded-full bg-red-600 ${consultantSpecialization.value === bidang.uuid ? '' : 'hidden'}"></div>
-                    </div>
-                    <span class="text-sm text-gray-700 truncate">${bidang.name}</span>
-                `;
-
-                // Select option
-                optionDiv.addEventListener('click', function() {
+                div.innerHTML = `
+                <div class="w-5 h-5 rounded border border-gray-300 mr-3 flex items-center justify-center flex-shrink-0 group-hover:border-red-400">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-600 ${consultantSpecialization.value === bidang.uuid ? '' : 'hidden'}"></div>
+                </div>
+                <span class="text-sm text-gray-700 truncate">${bidang.name}</span>
+            `;
+                if (consultantSpecialization.value === bidang.uuid) {
+                    div.classList.add('bg-red-50', 'text-red-700');
+                }
+                div.addEventListener('click', function() {
                     selectBidangOption(bidang);
                 });
-
-                // Check if selected
-                if (consultantSpecialization.value === bidang.uuid) {
-                    optionDiv.classList.add('bg-red-50', 'text-red-700');
-                }
-
-                bidangOptions.appendChild(optionDiv);
+                bidangOptions.appendChild(div);
             });
         }
 
-        // Select option
         function selectBidangOption(bidang) {
             consultantSpecialization.value = bidang.uuid;
             bidangDisplay.textContent = bidang.name;
             bidangDisplay.classList.remove('text-gray-500');
             bidangDisplay.classList.add('text-gray-800', 'font-medium');
-            closeBidangDropdown();
             bidangTrigger.classList.remove('border-red-500');
+            closeBidangDropdown();
         }
 
-        // Load bidang pendampingan
+        // Select option
+        function showFallbackBidang() {
+            bidangLoading.classList.add('hidden');
+            bidangOptions.classList.remove('hidden');
+            bidangOptions.innerHTML =
+                '<p class="text-sm text-gray-500 text-center py-4">Gagal memuat data. Silakan coba lagi.</p>';
+        }
+
         function loadBidangPendampingan() {
-            // Reset display
             bidangDisplay.textContent = 'Pilih bidang pendampingan';
             bidangDisplay.classList.remove('text-gray-800', 'font-medium');
             bidangDisplay.classList.add('text-gray-500');
@@ -560,9 +547,9 @@
                 success: function(response) {
                     if (response && response.bidang && Array.isArray(response.bidang)) {
                         // Process data
-                        bidangList = response.bidang.map(bidang => ({
-                            uuid: bidang.uuid,
-                            name: bidang.consultant_specialization_name
+                        bidangList = response.bidang.map(b => ({
+                            uuid: b.uuid,
+                            name: b.consultant_specialization_name
                         }));
 
                         // Hide loading
@@ -602,9 +589,7 @@
         });
 
         document.addEventListener('click', function(e) {
-            if (currentState !== 0) {
-                return;
-            }
+            if (currentState !== 0) return;
 
             if (!chatWindow.contains(e.target) && !chatToggle.contains(e.target)) {
                 chatWindow.classList.add('hidden');
@@ -620,7 +605,6 @@
                 changeState(1);
             }, 500);
         });
-
         // Back to chat
         backToChat.addEventListener('click', function() {
             changeState(0);
@@ -657,20 +641,14 @@
         // Character counter
         ticketContent.addEventListener('input', function() {
             const length = ticketContent.value.length;
-            charCounter.textContent = length + '/1000 karakter';
-
-            if (length > 900) {
-                charCounter.className = 'text-xs text-red-600 text-right mt-1';
-            } else if (length > 800) {
-                charCounter.className = 'text-xs text-yellow-600 text-right mt-1';
-            } else {
-                charCounter.className = 'text-xs text-gray-500 text-right mt-1';
-            }
-
             if (length > 1000) {
                 ticketContent.value = ticketContent.value.substring(0, 1000);
-                charCounter.textContent = '1000/1000 karakter';
             }
+            const shown = Math.min(length, 1000);
+            charCounter.textContent = shown + '/1000 karakter';
+            charCounter.className = shown > 900 ? 'text-xs text-red-600 text-right mt-1' :
+                shown > 800 ? 'text-xs text-yellow-600 text-right mt-1' :
+                'text-xs text-gray-500 text-right mt-1';
         });
 
         // WhatsApp formatting
@@ -684,11 +662,28 @@
         });
 
         // Handle file input change (SINGLE FILE)
+        fileDropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileDropArea.classList.add('border-red-400', 'bg-red-50');
+        });
+
+        fileDropArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileDropArea.classList.remove('border-red-400', 'bg-red-50');
+        });
+
+        fileDropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileDropArea.classList.remove('border-red-400', 'bg-red-50');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
+
         fileInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
         });
 
         // Clear file
@@ -696,7 +691,8 @@
             clearSelectedFile();
         });
 
-        // Helper functions
+        // ==================== HELPER FUNCTIONS ====================
+
         function changeState(newState) {
             currentState = newState;
 
@@ -724,8 +720,8 @@
         }
 
         function addMessage(type, text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className =
+            const div = document.createElement('div');
+            div.className =
                 `flex items-start space-x-3 mb-4 animate-fade-in ${type === 'user' ? 'justify-end' : ''}`;
 
             const time = new Date().toLocaleTimeString('id-ID', {
@@ -734,32 +730,29 @@
             });
 
             if (type === 'user') {
-                messageDiv.innerHTML = `
-                    <div class="flex flex-col items-end max-w-[80%]">
-                        <div class="bg-red-600 text-white rounded-xl rounded-tr-none px-4 py-3 shadow-sm">
-                            <p class="text-sm">${text}</p>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">${time}</p>
+                div.innerHTML = `
+                <div class="flex flex-col items-end max-w-[80%]">
+                    <div class="bg-red-600 text-white rounded-xl rounded-tr-none px-4 py-3 shadow-sm">
+                        <p class="text-sm">${text}</p>
                     </div>
-                    <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-user text-white text-sm"></i>
-                    </div>
-                `;
+                    <p class="text-xs text-gray-500 mt-1">${time}</p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-user text-white text-sm"></i>
+                </div>`;
             } else {
-                messageDiv.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-robot text-red-600 text-sm"></i>
+                div.innerHTML = `
+                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-robot text-red-600 text-sm"></i>
+                </div>
+                <div class="flex flex-col max-w-[80%]">
+                    <div class="bg-white rounded-xl rounded-tl-none px-4 py-3 shadow-sm">
+                        <p class="text-gray-800 text-sm">${text}</p>
                     </div>
-                    <div class="flex flex-col max-w-[80%]">
-                        <div class="bg-white rounded-xl rounded-tl-none px-4 py-3 shadow-sm">
-                            <p class="text-gray-800 text-sm">${text}</p>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">${time}</p>
-                    </div>
-                `;
+                    <p class="text-xs text-gray-500 mt-1">${time}</p>
+                </div>`;
             }
-
-            chatBody.appendChild(messageDiv);
+            chatBody.appendChild(div);
             scrollChatToBottom();
         }
 
@@ -772,7 +765,7 @@
         function handleFile(file) {
             // Check file size (2MB limit)
             if (file.size > 2 * 1024 * 1024) {
-                showAlert('File Terlalu Besar', `${file.name} melebihi batas 2MB.`);
+                showAlert('File Terlalu Besar', file.name + ' melebihi batas 2MB.');
                 return;
             }
 
@@ -786,14 +779,15 @@
 
             if (!allowedTypes.includes(file.type)) {
                 showAlert('Format Tidak Didukung',
-                    `${file.name} memiliki format yang tidak didukung. Hanya PDF, JPG, JPEG, PNG yang diperbolehkan.`
+                    file.name +
+                    ' memiliki format yang tidak didukung. Hanya PDF, JPG, JPEG, PNG yang diperbolehkan.'
                 );
                 return;
             }
 
             // Clear previous files and add new one
             uploadedFiles = [{
-                file: file,
+                file,
                 id: Date.now(),
                 name: file.name,
                 size: formatFileSize(file.size),
@@ -814,41 +808,31 @@
                 fileUploadContent.classList.remove('hidden');
                 return;
             }
-
             fileUploadContent.classList.add('hidden');
             filePreview.classList.remove('hidden');
-
             fileList.innerHTML = '';
 
-            uploadedFiles.forEach((fileData) => {
-                const fileElement = document.createElement('div');
-                fileElement.className =
-                    'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 animate-fade-in';
-
-                const fileExt = fileData.type;
-                const iconClass = fileIcons[fileExt] || fileIcons.default;
-                const colorClass = fileColors[fileExt] || fileColors.default;
-
-                fileElement.innerHTML = `
-                    <div class="flex items-center space-x-3 flex-1 min-w-0">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center ${colorClass}">
-                            <i class="${iconClass} text-sm"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">${fileData.name}</p>
-                            <p class="text-xs text-gray-500">${fileData.size}</p>
-                        </div>
+            uploadedFiles.forEach(fileData => {
+                const el = document.createElement('div');
+                el.className =
+                    'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200';
+                const iconClass = fileIcons[fileData.type] || fileIcons.default;
+                const colorClass = fileColors[fileData.type] || fileColors.default;
+                el.innerHTML = `
+                <div class="flex items-center space-x-3 flex-1 min-w-0">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center ${colorClass}">
+                        <i class="${iconClass} text-sm"></i>
                     </div>
-                    <button type="button" class="text-gray-400 hover:text-red-500 ml-2 p-1 rounded-full hover:bg-red-50 transition-colors duration-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-
-                fileElement.querySelector('button').addEventListener('click', function() {
-                    clearSelectedFile();
-                });
-
-                fileList.appendChild(fileElement);
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${fileData.name}</p>
+                        <p class="text-xs text-gray-500">${fileData.size}</p>
+                    </div>
+                </div>
+                <button type="button" class="text-gray-400 hover:text-red-500 ml-2 p-1 rounded-full hover:bg-red-50 transition-colors duration-200">
+                    <i class="fas fa-times"></i>
+                </button>`;
+                el.querySelector('button').addEventListener('click', clearSelectedFile);
+                fileList.appendChild(el);
             });
         }
 
@@ -866,14 +850,24 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
+        // FIX: semua karakter â€¢ diganti • yang benar
         function validateForm() {
             let isValid = true;
             let errors = [];
 
             // Validasi Judul Tiket
+            if (!ticketNameClient.value.trim()) {
+                isValid = false;
+                errors.push('• Nama klien harus diisi');
+                ticketNameClient.classList.add('border-red-500');
+            } else {
+                ticketNameClient.classList.remove('border-red-500');
+            }
+
+            // Validasi Bidang Pendampingan
             if (!ticketTitle.value.trim()) {
                 isValid = false;
-                errors.push('â€¢ Judul tiket harus diisi');
+                errors.push('• Judul tiket harus diisi');
                 ticketTitle.classList.add('border-red-500');
             } else {
                 ticketTitle.classList.remove('border-red-500');
@@ -882,7 +876,7 @@
             // Validasi Bidang Pendampingan
             if (!consultantSpecialization.value) {
                 isValid = false;
-                errors.push('â€¢ Bidang pendampingan harus dipilih');
+                errors.push('• Bidang pendampingan harus dipilih');
                 bidangTrigger.classList.add('border-red-500');
             } else {
                 bidangTrigger.classList.remove('border-red-500');
@@ -892,11 +886,11 @@
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!ticketEmail.value.trim()) {
                 isValid = false;
-                errors.push('â€¢ Email harus diisi');
+                errors.push('• Email harus diisi');
                 ticketEmail.classList.add('border-red-500');
             } else if (!emailRegex.test(ticketEmail.value)) {
                 isValid = false;
-                errors.push('â€¢ Format email tidak valid');
+                errors.push('• Format email tidak valid');
                 ticketEmail.classList.add('border-red-500');
             } else {
                 ticketEmail.classList.remove('border-red-500');
@@ -905,24 +899,23 @@
             // Validasi WhatsApp
             if (!ticketWhatsapp.value.trim()) {
                 isValid = false;
-                errors.push('â€¢ Nomor WhatsApp harus diisi');
+                errors.push('• Nomor WhatsApp harus diisi');
                 ticketWhatsapp.classList.add('border-red-500');
             } else if (ticketWhatsapp.value.length < 10) {
                 isValid = false;
-                errors.push('â€¢ Nomor WhatsApp minimal 10 digit');
+                errors.push('• Nomor WhatsApp minimal 10 digit');
                 ticketWhatsapp.classList.add('border-red-500');
             } else {
                 ticketWhatsapp.classList.remove('border-red-500');
             }
-
             // Validasi Deskripsi
             if (!ticketContent.value.trim()) {
                 isValid = false;
-                errors.push('â€¢ Deskripsi masalah harus diisi');
+                errors.push('• Deskripsi masalah harus diisi');
                 ticketContent.classList.add('border-red-500');
             } else if (ticketContent.value.trim().length < 20) {
                 isValid = false;
-                errors.push('â€¢ Deskripsi masalah minimal 20 karakter');
+                errors.push('• Deskripsi masalah minimal 20 karakter');
                 ticketContent.classList.add('border-red-500');
             } else {
                 ticketContent.classList.remove('border-red-500');
@@ -932,14 +925,13 @@
             uploadedFiles.forEach(fileData => {
                 if (fileData.file.size > 2 * 1024 * 1024) {
                     isValid = false;
-                    errors.push(`â€¢ ${fileData.name} melebihi batas 2MB`);
+                    errors.push('• ' + fileData.name + ' melebihi batas 2MB');
                 }
             });
 
             if (!isValid) {
                 showAlert('Perhatian', 'Harap perbaiki kesalahan berikut:\n\n' + errors.join('\n'));
             }
-
             return isValid;
         }
 
@@ -947,6 +939,7 @@
             // Create FormData
             const formData = new FormData();
             formData.append('_token', '{{ csrf_token() }}');
+            formData.append('ticket_name_client', ticketNameClient.value);
             formData.append('ticket_title', ticketTitle.value);
             formData.append('consultant_specialization_uuid', consultantSpecialization.value);
             formData.append('ticket_email', ticketEmail.value);
@@ -960,10 +953,9 @@
 
             // Show loading
             submitForm.disabled = true;
-            const originalText = submitForm.innerHTML;
+            const originalHTML = submitForm.innerHTML;
             submitForm.innerHTML =
-                '<span class="relative"><span class="absolute inset-0 flex items-center justify-center"><span class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span></span></span>';
-            submitForm.classList.add('relative', 'text-transparent');
+                '<span class="inline-flex items-center justify-center gap-2"><span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Mengirim...</span>';
 
             // AJAX call
             $.ajax({
@@ -972,22 +964,26 @@
                 data: formData,
                 processData: false,
                 contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
                 success: function(response) {
                     if (response.success) {
-                        let fileInfo = '';
-                        if (uploadedFiles.length > 0) {
-                            fileInfo = ' dengan file lampiran';
-                        }
-                        addMessage('user',
-                            `Tiket pendampingan "${ticketTitle.value}" telah dikirim${fileInfo}.`
-                        );
+                        let fileInfo = uploadedFiles.length > 0 ? ' dengan file lampiran' : '';
+                        addMessage('user', 'Tiket pendampingan "' + ticketTitle.value +
+                            '" telah dikirim' + fileInfo + '.');
 
+                        // FIX: handle berbagai kemungkinan struktur response
                         if (response.ticket && response.ticket.code) {
                             ticketNumber.textContent = response.ticket.code;
+                        } else if (response.data && response.data.ticket_code) {
+                            ticketNumber.textContent = response.data.ticket_code;
                         } else {
                             ticketNumber.textContent = 'Tiket-' + Date.now();
                         }
 
+                        resetForm();
                         changeState(2);
                     } else {
                         showAlert('Error', response.message ||
@@ -998,27 +994,21 @@
                     let errorMessage = 'Terjadi kesalahan saat mengirim tiket.';
 
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
-                        const errors = xhr.responseJSON.errors;
-                        errorMessage = Object.values(errors).flat().join('\n');
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
                     }
-
                     showAlert('Error', errorMessage);
                 },
                 complete: function() {
                     submitForm.disabled = false;
-                    submitForm.innerHTML = originalText;
-                    submitForm.classList.remove('relative', 'text-transparent');
-
-                    if (currentState === 2) {
-                        resetForm();
-                    }
+                    submitForm.innerHTML = originalHTML;
                 }
             });
         }
 
         function resetForm() {
+            ticketNameClient.value = '';
             ticketTitle.value = '';
             consultantSpecialization.value = '';
             ticketEmail.value = '';
@@ -1037,8 +1027,8 @@
             clearSelectedFile();
 
             // Remove error styling
-            const inputs = [ticketTitle, ticketEmail, ticketWhatsapp, ticketContent];
-            inputs.forEach(input => input.classList.remove('border-red-500'));
+            [ticketNameClient, ticketTitle, ticketEmail, ticketWhatsapp, ticketContent].forEach(el => el
+                .classList.remove('border-red-500'));
         }
 
         function showAlert(title, message) {
@@ -1047,32 +1037,28 @@
                 'fixed top-4 right-4 z-[9999] px-4 py-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-lg max-w-xs';
 
             alertDiv.innerHTML = `
-                <div class="flex items-start space-x-2">
-                    <i class="fas fa-exclamation-triangle text-lg mt-0.5"></i>
-                    <div class="flex-1">
-                        <p class="font-medium text-sm mb-1">${title}</p>
-                        <p class="text-xs whitespace-pre-line">${message}</p>
-                    </div>
-                    <button class="text-yellow-600 hover:text-yellow-800 ml-2 p-1 transition-colors duration-200" onclick="this.parentElement.parentElement.remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
+            <div class="flex items-start space-x-2">
+                <i class="fas fa-exclamation-triangle text-lg mt-0.5"></i>
+                <div class="flex-1">
+                    <p class="font-medium text-sm mb-1">${title}</p>
+                    <p class="text-xs whitespace-pre-line">${message}</p>
                 </div>
-            `;
+                <button class="text-yellow-600 hover:text-yellow-800 ml-2 p-1" onclick="this.closest('.fixed').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
 
             document.body.appendChild(alertDiv);
 
             setTimeout(() => {
-                if (alertDiv.parentElement) {
-                    alertDiv.remove();
-                }
+                if (alertDiv.parentElement) alertDiv.remove();
             }, 5000);
         }
 
-        // Auto hide notification
-        setTimeout(function() {
+        // Remove error styling
+        setTimeout(() => {
             notificationBadge.classList.add('hidden');
         }, 5000);
-
         // Initial state
         changeState(0);
     });
