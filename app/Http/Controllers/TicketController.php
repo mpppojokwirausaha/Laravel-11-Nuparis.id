@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ConsultantSpecialization;
 use App\Models\Info;
 use App\Models\Ticket;
+use App\Notifications\TicketCreatedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
@@ -87,6 +89,23 @@ class TicketController extends Controller
             return back()
                 ->withErrors(['error' => $result['message']])
                 ->withInput();
+        }
+
+        // Send email notification to client
+        try {
+            Notification::route('mail', $result['data']->ticket_email)
+                ->notify(new TicketCreatedNotification($result['data']));
+
+            Log::info('TicketCreatedNotification sent successfully', [
+                'ticket_code' => $result['data']->ticket_code,
+                'email'       => $result['data']->ticket_email,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send TicketCreatedNotification', [
+                'ticket_code' => $result['data']->ticket_code,
+                'email'       => $result['data']->ticket_email,
+                'error'       => $e->getMessage(),
+            ]);
         }
 
         if ($request->expectsJson() || $request->ajax()) {
