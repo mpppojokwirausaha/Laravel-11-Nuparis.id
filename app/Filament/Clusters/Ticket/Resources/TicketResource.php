@@ -96,23 +96,7 @@ class TicketResource extends Resource
                     optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
 
                 Group::make([
-                    RichEditor::make('progress')
-                        ->toolbarButtons([
-                            'attachFiles',
-                            'blockquote',
-                            'bold',
-                            'bulletList',
-                            'codeBlock',
-                            'h2',
-                            'h3',
-                            'italic',
-                            'link',
-                            'orderedList',
-                            'redo',
-                            'strike',
-                            'underline',
-                            'undo',
-                        ]),
+                    RichEditor::make('progress'),
                     FileUpload::make('progress_files')
                         ->label('Upload File (Opsional)')
                         ->disk('public')
