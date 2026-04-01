@@ -1,29 +1,30 @@
 <?php
 
-namespace App\Filament\Clusters\Letters\Resources;
+namespace App\Filament\Clusters\Events\Resources;
 
-use App\Filament\Clusters\Letters;
-use App\Filament\Clusters\Letters\Resources\OrderLetterResource\Pages;
+use App\Filament\Clusters\Events;
+use App\Filament\Clusters\Events\Resources\OrderEventResource\Pages;
 use App\Models\Order;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Illuminate\Database\Eloquent\Builder;
 
-
-class OrderLetterResource extends Resource
+class OrderEventResource extends Resource
 {
     protected static ?string $model = Order::class;
 
     protected static bool $shouldRegisterNavigation = false;
-    protected static ?string $navigationLabel = 'Letter Order';
+
+    protected static ?string $navigationLabel = 'Event Order';
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $cluster = Letters::class;
+
+    protected static ?string $cluster = Events::class;
+
     public static function canCreate(): bool
     {
         return false;
@@ -42,20 +43,15 @@ class OrderLetterResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('order_reference_type', 'letter')
-            ->where('order_id', 'like', 'SCRIDB.NUPARIS.ID%');
-    }
-
-    protected function getBulkActions(): array
-    {
-        return [];
+            ->where('order_reference_type', 'event')
+            ->where('order_id', 'like', 'NUPARIS.ID-EVENT-%');
     }
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([]);
+        return $form->schema([]);
     }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -63,12 +59,15 @@ class OrderLetterResource extends Resource
                 TextColumn::make('order_id')
                     ->label('Order ID')
                     ->searchable(),
+
                 TextColumn::make('order_product_name')
-                    ->label('Letter Name')
+                    ->label('Event Name')
                     ->searchable(),
+
                 TextColumn::make('order_gross_amount')
                     ->label('Total')
                     ->money('idr', true),
+
                 TextColumn::make('order_transaction_status')
                     ->label('Transaction Status')
                     ->badge()
@@ -104,9 +103,9 @@ class OrderLetterResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListOrderLetters::route('/'),
-            'create' => Pages\CreateOrderLetter::route('/create'),
-            'edit' => Pages\EditOrderLetter::route('/{record}/edit'),
+            'index' => Pages\ListOrderEvents::route('/'),
+            'create' => Pages\CreateOrderEvent::route('/create'),
+            'edit' => Pages\EditOrderEvent::route('/{record}/edit'),
         ];
     }
 }

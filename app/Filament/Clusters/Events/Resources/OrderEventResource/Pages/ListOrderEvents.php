@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Clusters\Events\Resources\EventResource\Pages;
+namespace App\Filament\Clusters\Events\Resources\OrderEventResource\Pages;
 
 use App\Filament\Clusters\Events\Resources\EventCategoryResource;
 use App\Filament\Clusters\Events\Resources\EventResource;
@@ -13,22 +13,20 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
-class ListEvents extends ListRecords
+class ListOrderEvents extends ListRecords
 {
-    protected static string $resource = EventResource::class;
+    protected static string $resource = OrderEventResource::class;
 
     public function getTabs(): array
     {
         return [
             'events' => Tab::make('Events')
                 ->icon('heroicon-m-document-text')
-                ->badge(Event::count())
-                ->modifyQueryUsing(fn(Builder $query) => $query),
+                ->badge(Event::count()),
 
             'categories' => Tab::make('Categories')
                 ->icon('heroicon-m-tag')
-                ->badge(EventCategory::count())
-                ->modifyQueryUsing(fn(Builder $query) => $query),
+                ->badge(EventCategory::count()),
 
             'orders' => Tab::make('Orders')
                 ->icon('heroicon-m-currency-dollar')
