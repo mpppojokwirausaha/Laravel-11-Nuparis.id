@@ -31,7 +31,7 @@ class ListLetters extends ListRecords
 
             'orders' => Tab::make('Orders')
                 ->icon('heroicon-m-shopping-cart')
-                ->badge(Order::query()->where('order_reference_type', 'letter')->count()),
+                ->badge(Order::query()->where('order_reference_type', 'letter')->where('order_id', 'like', 'SCRIDB.NUPARIS.ID%')->count()),
         ];
     }
 

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
 class EventParticipant extends Model
 {
+    use Notifiable;
+
     public $incrementing = false;
     protected $table = 'event_participants';
     protected $primaryKey = 'uuid';
@@ -32,6 +35,14 @@ class EventParticipant extends Model
     public function event()
     {
         return $this->belongsTo(Event::class, 'event_uuid', 'uuid');
+    }
+
+    /**
+     * Route notifications for the Mail channel.
+     */
+    public function routeNotificationForMail($notification = null): string
+    {
+        return $this->participant_email;
     }
 
     public function order()

@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\EventParticipant;
 use App\Models\Letter;
 use App\Models\Order;
+use App\Notifications\EventRegistrationSuccessNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -228,7 +229,7 @@ class OrderController extends Controller
             }
 
             // FORMAT ASLI UNTUK FREE EVENT
-            $orderId = 'NUPARIS.ID-ORD-' . strtoupper(Str::random(8)) . '-' . time();
+            $orderId = 'NUPARIS.ID-EVENT-ORD-' . strtoupper(Str::random(8)) . '-' . time();
 
             $order = Order::create([
                 'uuid' => Str::uuid(),
@@ -245,7 +246,7 @@ class OrderController extends Controller
                 'order_paid_at' => now(),
             ]);
 
-            $ticketCode = 'NUPARIS.ID-TCK-' . strtoupper(Str::random(8)) . '-' . date('Ymd');
+            $ticketCode = 'NUPARIS.ID-EVENT-' . strtoupper(Str::random(8)) . '-' . date('Ymd');
 
             // Participant tetap punya company & source
             EventParticipant::create([
@@ -262,6 +263,16 @@ class OrderController extends Controller
             ]);
 
             DB::commit();
+
+            // Kirim notifikasi email ke peserta
+            try {
+                $participant = EventParticipant::where('ticket_code', $ticketCode)->first();
+                if ($participant) {
+                    $participant->notify(new EventRegistrationSuccessNotification($participant));
+                }
+            } catch (\Exception $emailError) {
+                Log::warning('Gagal mengirim email notifikasi: ' . $emailError->getMessage());
+            }
 
             Log::info('Free event registration success', [
                 'event_uuid' => $event->uuid,
@@ -361,7 +372,7 @@ class OrderController extends Controller
             if ($oldStatus !== 'success' && $newStatus === 'success' && $order->order_reference_type === 'event') {
                 $existingParticipant = EventParticipant::where('order_uuid', $order->uuid)->first();
                 if (!$existingParticipant) {
-                    $ticketCode = 'NUPARIS.ID-TCK-' . strtoupper(Str::random(8)) . '-' . date('Ymd');
+                    $ticketCode = 'NUPARIS.ID-EVENT-' . strtoupper(Str::random(8)) . '-' . date('Ymd');
 
                     // Buat participant
                     EventParticipant::create([
@@ -381,6 +392,16 @@ class OrderController extends Controller
                         'order_id' => $orderId,
                         'ticket_code' => $ticketCode
                     ]);
+
+                    // Kirim notifikasi email ke peserta
+                    try {
+                        $newParticipant = EventParticipant::where('ticket_code', $ticketCode)->first();
+                        if ($newParticipant) {
+                            $newParticipant->notify(new EventRegistrationSuccessNotification($newParticipant));
+                        }
+                    } catch (\Exception $emailError) {
+                        Log::warning('Gagal mengirim email notifikasi: ' . $emailError->getMessage());
+                    }
                 }
             }
 

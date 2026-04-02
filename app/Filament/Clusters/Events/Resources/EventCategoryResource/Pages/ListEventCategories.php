@@ -31,7 +31,10 @@ class ListEventCategories extends ListRecords
 
             'orders' => Tab::make('Orders')
                 ->icon('heroicon-m-currency-dollar')
-                ->badge(Order::query()->where('order_reference_type', 'event')->count()),
+                ->badge(Order::query()
+                    ->where('order_reference_type', 'event')
+                    ->where('order_id', 'like', 'NUPARIS.ID-EVENT-%')->count())
+                ->modifyQueryUsing(fn(Builder $query) => $query),
         ];
     }
 
