@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use setasign\Fpdi\Fpdi;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Imagick;
 use Symfony\Component\Process\Process;
@@ -31,43 +30,37 @@ class Signature extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static string $view = 'filament.pages.signature';
-    protected static ?string $title = 'Signature';
+    protected static string $view            = 'filament.pages.signature';
+    protected static ?string $title          = 'Signature';
     protected static ?string $navigationGroup = 'TOSS';
 
-    public ?string $ticketId = null; // UUID
-    public ?string $selectedFile = null;
-    public ?string $pdfUrl = null;
-    public ?string $qrUrl = null;
-    public ?array $data = [];
-    public array $debugInfo = [];
+    public ?string $ticketId       = null;
+    public ?string $selectedFile   = null;
+    public ?string $pdfUrl         = null;
+    public ?string $qrUrl          = null;
+    public ?array  $data           = [];
+    public array   $debugInfo      = [];
     public ?DocumentToss $currentDocument = null;
 
+    // ── Access Control ─────────────────────────────────────────────────────────
     public static function canAccess(): bool
     {
         return auth()->user()?->can('page_Signature');
     }
+
+    // ── Mount ──────────────────────────────────────────────────────────────────
     public function mount(): void
     {
-        $this->ticketId = null;
-        $this->selectedFile = null;
+        $this->ticketId       = null;
+        $this->selectedFile   = null;
         $this->currentDocument = null;
-        $this->form->fill([
-            'ticketId' => null,
-            'selectedFile' => null,
-            'document_name' => '',
-            'document_description' => '',
-            'document_signer' => '',
-            'document_recipient' => '',
-            'document_action' => '',
-            'document_number' => '',
-            'notes' => ''
-        ]);
+        $this->form->fill($this->emptyFormData());
         $this->addDebugInfo('Page mounted', [
-            'tickets_count' => count($this->getTicketOptions())
+            'tickets_count' => count($this->getTicketOptions()),
         ]);
     }
 
+    // ── Form Definition ────────────────────────────────────────────────────────
     public function form(Form $form): Form
     {
         return $form
@@ -79,77 +72,37 @@ class Signature extends Page implements HasForms
                             ->label('Pilih Tiket')
                             ->placeholder('Pilih salah satu opsi')
                             ->options($this->getTicketOptions())
-                            ->getOptionLabelFromRecordUsing(fn($record) => $record->ticket_code . ' - ' . $record->ticket_title)
-                            ->searchable() // Add searchable for better UX
+                            ->searchable()
                             ->live()
-                            ->preload() // Add preload to ensure options are loaded
+                            ->preload()
                             ->afterStateUpdated(function ($state) {
-                                $this->addDebugInfo('Ticket selection changed', [
-                                    'oldTicket' => $this->ticketId,
-                                    'newTicket' => $state
-                                ]);
-
-                                // Reset file selection when ticket changes
-                                $this->ticketId = $state;
-                                $this->selectedFile = null;
+                                $this->ticketId       = $state;
+                                $this->selectedFile   = null;
                                 $this->currentDocument = null;
                                 $this->clearPreview();
-
-                                // Update form state to reset file dropdown and document fields
-                                $this->form->fill([
-                                    'ticketId' => $state,
-                                    'selectedFile' => null,
-                                    'document_name' => '',
-                                    'document_description' => '',
-                                    'document_signer' => '',
-                                    'document_recipient' => '',
-                                    'document_action' => '',
-                                    'document_number' => '',
-                                    'notes' => ''
-                                ]);
-
+                                $this->form->fill(array_merge($this->emptyFormData(), ['ticketId' => $state]));
                                 $this->addDebugInfo('Ticket selected', [
-                                    'ticketUuid' => $state,
-                                    'availableFiles' => count($this->getFileOptions())
+                                    'ticketUuid'     => $state,
+                                    'availableFiles' => count($this->getFileOptions()),
                                 ]);
                             }),
 
                         Select::make('selectedFile')
                             ->label('Pilih File PDF')
-                            ->placeholder(function () {
-                                return $this->ticketId
-                                    ? 'Pilih salah satu opsi'
-                                    : 'Pilih ticket terlebih dahulu';
-                            })
+                            ->placeholder(fn() => $this->ticketId ? 'Pilih salah satu opsi' : 'Pilih ticket terlebih dahulu')
                             ->options(fn() => $this->getFileOptions())
-                            ->disabled(fn() => !$this->ticketId)
+                            ->disabled(fn() => ! $this->ticketId)
                             ->visible(fn() => $this->ticketId !== null)
-                            ->searchable() // Add searchable for better UX
+                            ->searchable()
                             ->live()
-                            ->afterStateUpdated(function (string $operation, $state) {
-                                // Validate that ticket is selected
-                                if (!$this->ticketId) {
+                            ->afterStateUpdated(function ($state) {
+                                if (! $this->ticketId) {
                                     $this->selectedFile = null;
-                                    $this->addDebugInfo('File selection blocked - no ticket', []);
-
-                                    Notification::make()
-                                        ->title('Peringatan')
-                                        ->body('Pilih ticket terlebih dahulu sebelum memilih file.')
-                                        ->warning()
-                                        ->send();
+                                    Notification::make()->title('Peringatan')->body('Pilih ticket terlebih dahulu.')->warning()->send();
                                     return;
                                 }
-
                                 $this->selectedFile = $state;
-                                $this->addDebugInfo('File selected', [
-                                    'operation' => $operation,
-                                    'file' => $state,
-                                    'ticketId' => $this->ticketId
-                                ]);
-
-                                // Check if document exists for this file
                                 $this->loadExistingDocument();
-
                                 if ($state) {
                                     $this->generatePreview();
                                 } else {
@@ -157,23 +110,24 @@ class Signature extends Page implements HasForms
                                     $this->currentDocument = null;
                                 }
                             }),
+
                         Actions::make([
                             Action::make('generatePreview')
                                 ->label('🔄 Generate Preview')
                                 ->color('primary')
                                 ->action('generatePreview')
-                                ->visible(fn(): bool => !empty($this->selectedFile) && !empty($this->ticketId)),
+                                ->visible(fn(): bool => ! empty($this->selectedFile) && ! empty($this->ticketId)),
                             Action::make('clearPreview')
                                 ->label('🗑️ Clear Preview')
                                 ->color('gray')
                                 ->action('clearPreview')
-                                ->visible(fn(): bool => !empty($this->pdfUrl))
-                        ])
+                                ->visible(fn(): bool => ! empty($this->pdfUrl)),
+                        ]),
                     ]),
 
                 Section::make('Informasi Dokumen')
                     ->description('Isi informasi detail dokumen')
-                    ->visible(fn() => !empty($this->selectedFile))
+                    ->visible(fn() => ! empty($this->selectedFile))
                     ->schema([
                         TextInput::make('document_name')
                             ->label('Nama Dokumen')
@@ -204,9 +158,7 @@ class Signature extends Page implements HasForms
                         Select::make('document_action')
                             ->label('Tindakan Dokumen')
                             ->placeholder('Pilih tindakan dokumen')
-                            ->options([
-                                'Tanda Tangan' => 'Tanda Tangan',
-                            ])
+                            ->options(['Tanda Tangan' => 'Tanda Tangan'])
                             ->required(),
 
                         TextInput::make('document_no')
@@ -219,25 +171,13 @@ class Signature extends Page implements HasForms
                             ->label('Tanggal Mulai Aktif Dokumen')
                             ->native(false)
                             ->closeOnDateSelection(true)
-                            ->default(now()->format('d/m/Y'))
-                            ->extraAttributes([
-                                'data-flatpickr' => json_encode([
-                                    'enableTime' => false,
-                                    'dateFormat' => 'd/m/Y',
-                                ]),
-                            ]),
+                            ->default(now()->format('d/m/Y')),
 
                         DateTimePicker::make('document_end')
-                            ->label('Tanggal Mulai Aktif Dokumen')
+                            ->label('Tanggal Berakhir Dokumen')
                             ->native(false)
                             ->closeOnDateSelection(true)
-                            ->default(null)
-                            ->extraAttributes([
-                                'data-flatpickr' => json_encode([
-                                    'enableTime' => false,
-                                    'dateFormat' => 'd/m/Y',
-                                ]),
-                            ]),
+                            ->default(null),
 
                         RichEditor::make('document_notes')
                             ->label('Catatan')
@@ -254,493 +194,346 @@ class Signature extends Page implements HasForms
                                 'orderedList',
                                 'strike',
                                 'underline',
-                            ])->columnSpanFull()
+                            ])
+                            ->columnSpanFull()
                             ->required(),
                     ])->columns(2),
             ])
             ->statePath('data');
     }
 
+    // ── Load Existing Document ─────────────────────────────────────────────────
     protected function loadExistingDocument(): void
     {
-        if (!$this->ticketId || !$this->selectedFile) {
+        if (! $this->ticketId || ! $this->selectedFile) {
             return;
         }
 
         try {
             $ticket = Ticket::where('uuid', $this->ticketId)->first();
-            if (!$ticket) {
-                return;
-            }
+            if (! $ticket) return;
 
-            // Look for existing document with this file path
-            $this->currentDocument = DocumentToss::where('ticket_id', $ticket->id)
-                ->where('pdf_path', $this->selectedFile)
+            $this->currentDocument = DocumentToss::where('ticket_code', $ticket->ticket_code)
+                ->where('document_path', $this->selectedFile)
                 ->first();
 
             if ($this->currentDocument) {
-                // Fill form with existing data
                 $this->form->fill([
-                    'ticketId' => $this->ticketId,
-                    'selectedFile' => $this->selectedFile,
-                    'document_name' => $this->currentDocument->nama_document ?? '',
-                    'document_description' => $this->currentDocument->description_document ?? '',
-                    'document_signer' => $this->currentDocument->penandatangan_document ?? '',
-                    'document_recipient' => $this->currentDocument->penerima_document ?? '',
-                    'document_action' => $this->currentDocument->tindakan_document ?? '',
-                    'document_number' => $this->currentDocument->no_document ?? '',
-                    'notes' => $this->currentDocument->catatan ?? ''
+                    'ticketId'             => $this->ticketId,
+                    'selectedFile'         => $this->selectedFile,
+                    'document_name'        => $this->currentDocument->document_name        ?? '',
+                    'document_description' => $this->currentDocument->document_description ?? '',
+                    'document_bySign'      => $this->currentDocument->document_bySign      ?? '',
+                    'document_toReceive'   => $this->currentDocument->document_toReceive   ?? '',
+                    'document_action'      => $this->currentDocument->document_action      ?? '',
+                    'document_no'          => $this->currentDocument->document_no          ?? '',
+                    'document_start'       => $this->currentDocument->document_start       ?? null,
+                    'document_end'         => $this->currentDocument->document_end         ?? null,
+                    'document_notes'       => $this->currentDocument->document_notes       ?? '',
                 ]);
-
-                $this->addDebugInfo('Existing document loaded', [
-                    'document_id' => $this->currentDocument->id,
-                    'document_name' => $this->currentDocument->nama_document
-                ]);
-
-                Notification::make()
-                    ->title('Dokumen Ditemukan')
-                    ->body('Data dokumen yang sudah ada telah dimuat.')
-                    ->info()
-                    ->send();
+                Notification::make()->title('Dokumen Ditemukan')->body('Data dokumen yang sudah ada telah dimuat.')->info()->send();
             }
         } catch (\Exception $e) {
-            $this->addDebugInfo('Error loading existing document', [
-                'error' => $e->getMessage()
-            ]);
+            $this->addDebugInfo('Error loading existing document', ['error' => $e->getMessage()]);
         }
     }
 
+    // ── Ticket Options ─────────────────────────────────────────────────────────
     protected function getTicketOptions(): array
     {
         try {
-            Log::info('Getting ticket options...');
-
-            // More robust query with better error handling
             $tickets = Ticket::select('uuid', 'ticket_code', 'ticket_title')
-                ->whereNotNull('uuid')
-                ->whereNotNull('ticket_code')
-                ->where('uuid', '!=', '')
-                ->where('ticket_code', '!=', '')
+                ->whereNotNull('uuid')->whereNotNull('ticket_code')
+                ->where('uuid', '!=', '')->where('ticket_code', '!=', '')
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            Log::info('Raw tickets from database:', [
-                'count' => $tickets->count(),
-                'sample' => $tickets->take(3)->toArray()
-            ]);
-
             $options = [];
-
             foreach ($tickets as $ticket) {
-                // Ensure both uuid and ticket_code are valid
-                if (!empty($ticket->uuid) && !empty($ticket->ticket_code)) {
+                if (! empty($ticket->uuid) && ! empty($ticket->ticket_code)) {
                     $options[$ticket->uuid] = $ticket->ticket_code . ' - ' . $ticket->ticket_title;
                 }
             }
 
-            Log::info('Processed ticket options:', [
-                'options_count' => count($options),
-                'options' => $options
-            ]);
-
             $this->addDebugInfo('Tickets loaded', [
-                'total_from_db' => $tickets->count(),
-                'valid_options' => count($options),
-                'sample_tickets' => $tickets->take(3)->pluck('ticket_code', 'uuid')->toArray(),
-                'final_options' => $options
+                'total'   => $tickets->count(),
+                'options' => count($options),
             ]);
-
-            if (empty($options)) {
-                $this->addDebugInfo('No valid tickets found', [
-                    'total_tickets_in_db' => Ticket::count(),
-                    'tickets_with_uuid' => Ticket::whereNotNull('uuid')->where('uuid', '!=', '')->count(),
-                    'tickets_with_code' => Ticket::whereNotNull('ticket_code')->where('ticket_code', '!=', '')->count()
-                ]);
-
-                // Try to get any tickets at all
-                $anyTickets = Ticket::select('uuid', 'ticket_code', 'ticket_title')->limit(5)->get();
-                Log::info('Sample of any tickets in database:', [
-                    'tickets' => $anyTickets->toArray()
-                ]);
-            }
 
             return $options;
         } catch (\Exception $e) {
-            $this->addDebugInfo('Error loading tickets', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            Log::error('Error loading tickets in Toss page', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            // Show notification to user
-            Notification::make()
-                ->title('Error')
-                ->body('Gagal memuat daftar tiket: ' . $e->getMessage())
-                ->danger()
-                ->send();
-
+            Log::error('Error loading tickets', ['error' => $e->getMessage()]);
+            Notification::make()->title('Error')->body('Gagal memuat daftar tiket: ' . $e->getMessage())->danger()->send();
             return [];
         }
     }
 
+    // ── File Options ───────────────────────────────────────────────────────────
     protected function getFileOptions(): array
     {
         try {
-            // Return empty if no ticket selected
-            if (!$this->ticketId) {
-                $this->addDebugInfo('No ticket ID for file options', []);
-                return [];
-            }
+            if (! $this->ticketId) return [];
 
             $ticket = Ticket::where('uuid', $this->ticketId)->first();
+            if (! $ticket) return [];
 
-            if (!$ticket) {
-                $this->addDebugInfo('Ticket not found', ['ticketUuid' => $this->ticketId]);
-                return [];
-            }
-
-            $files = [];
+            $files        = [];
             $ticketFolder = "tickets/{$ticket->ticket_code}";
 
             if (Storage::disk('public')->exists($ticketFolder)) {
-                $allFiles = Storage::disk('public')->files($ticketFolder);
-
-                foreach ($allFiles as $file) {
+                foreach (Storage::disk('public')->files($ticketFolder) as $file) {
                     if (pathinfo($file, PATHINFO_EXTENSION) === 'pdf') {
-                        $fileName = basename($file);
-                        $files[$file] = $fileName;
+                        $files[$file] = basename($file);
                     }
                 }
             }
 
-            $this->addDebugInfo('Files loaded', [
-                'ticketCode' => $ticket->ticket_code,
-                'folder' => $ticketFolder,
-                'folder_exists' => Storage::disk('public')->exists($ticketFolder),
-                'count' => count($files),
-                'files' => array_values($files)
-            ]);
-
+            $this->addDebugInfo('Files loaded', ['count' => count($files)]);
             return $files;
         } catch (\Exception $e) {
-            $this->addDebugInfo('Error loading files', [
-                'error' => $e->getMessage()
-            ]);
-
-            Notification::make()
-                ->title('Error')
-                ->body('Gagal memuat daftar file: ' . $e->getMessage())
-                ->danger()
-                ->send();
-
+            Notification::make()->title('Error')->body('Gagal memuat daftar file: ' . $e->getMessage())->danger()->send();
             return [];
         }
     }
 
+    // ── Generate Preview ───────────────────────────────────────────────────────
     public function generatePreview(): void
     {
         try {
-            // Double check validation
-            if (!$this->ticketId) {
-                Notification::make()
-                    ->title('Warning')
-                    ->body('Pilih ticket terlebih dahulu.')
-                    ->warning()
-                    ->send();
+            if (! $this->ticketId) {
+                Notification::make()->title('Warning')->body('Pilih ticket terlebih dahulu.')->warning()->send();
                 return;
             }
-
-            if (!$this->selectedFile) {
-                Notification::make()
-                    ->title('Warning')
-                    ->body('Pilih file PDF terlebih dahulu.')
-                    ->warning()
-                    ->send();
+            if (! $this->selectedFile) {
+                Notification::make()->title('Warning')->body('Pilih file PDF terlebih dahulu.')->warning()->send();
                 return;
             }
-
-            Log::info("=== Generate Preview Called ===", [
-                'ticket_uuid' => $this->ticketId,
-                'file' => $this->selectedFile
-            ]);
 
             $ticket = Ticket::where('uuid', $this->ticketId)->first();
-            if (!$ticket) {
-                throw new \Exception('Ticket tidak ditemukan');
-            }
+            if (! $ticket) throw new \Exception('Ticket tidak ditemukan');
 
-            if (!Storage::disk('public')->exists($this->selectedFile)) {
+            if (! Storage::disk('public')->exists($this->selectedFile)) {
                 throw new \Exception('File PDF tidak ditemukan: ' . $this->selectedFile);
             }
 
-            $fileName = pathinfo($this->selectedFile, PATHINFO_FILENAME);
+            $fileName      = pathinfo($this->selectedFile, PATHINFO_FILENAME);
             $progressIndex = $this->extractProgressIndex($fileName);
-
-            // Ganti spasi dengan underscore pada slug
             $cleanFileName = $this->sanitizeFileName($fileName);
-            $slug = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
-            $qrPath = "qrcodes/{$slug}.png";
+            $slug          = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
+            $qrPath        = "qrcodes/{$slug}.png";
 
             Storage::disk('public')->makeDirectory('qrcodes');
 
             $qrContent = url('toss/' . $slug);
-
-            $qrImage = QrCode::format('png')->size(300)->generate($qrContent);
-            Storage::disk('public')->put($qrPath, $qrImage);
+            Storage::disk('public')->put($qrPath, QrCode::format('png')->size(300)->generate($qrContent));
 
             $this->pdfUrl = Storage::disk('public')->url($this->selectedFile);
-            $this->qrUrl = Storage::disk('public')->url($qrPath);
-
-            Log::info("Preview generated", [
-                'pdfUrl' => $this->pdfUrl,
-                'qrUrl' => $this->qrUrl,
-                'qrContent' => $qrContent
-            ]);
+            $this->qrUrl  = Storage::disk('public')->url($qrPath);
 
             $this->addDebugInfo('Preview generated', [
-                'fileName' => $fileName,
-                'cleanFileName' => $cleanFileName,
-                'progressIndex' => $progressIndex,
-                'slug' => $slug,
+                'slug'      => $slug,
                 'qrContent' => $qrContent,
-                'pdfUrl' => $this->pdfUrl,
-                'qrUrl' => $this->qrUrl,
-                'qrPath' => $qrPath
+                'pdfUrl'    => $this->pdfUrl,
+                'qrUrl'     => $this->qrUrl,
             ]);
 
-            $this->dispatch('preview-updated', [
-                'pdfUrl' => $this->pdfUrl,
-                'qrUrl' => $this->qrUrl
-            ]);
-
-            Notification::make()
-                ->title('Success')
-                ->body('Preview berhasil di-generate!')
-                ->success()
-                ->send();
+            $this->dispatch('preview-updated', ['pdfUrl' => $this->pdfUrl, 'qrUrl' => $this->qrUrl]);
+            Notification::make()->title('Success')->body('Preview berhasil di-generate!')->success()->send();
         } catch (\Exception $e) {
-            Log::error("Error generate preview", [
-                'error' => $e->getMessage()
-            ]);
-
-            $this->addDebugInfo('Error generating preview', [
-                'error' => $e->getMessage()
-            ]);
-
-            Notification::make()
-                ->title('Error')
-                ->body('Gagal generate preview: ' . $e->getMessage())
-                ->danger()
-                ->send();
+            Log::error('Error generate preview', ['error' => $e->getMessage()]);
+            Notification::make()->title('Error')->body('Gagal generate preview: ' . $e->getMessage())->danger()->send();
         }
     }
 
+    // ── Clear Preview ──────────────────────────────────────────────────────────
     public function clearPreview(): void
     {
         $this->pdfUrl = null;
-        $this->qrUrl = null;
-
+        $this->qrUrl  = null;
         $this->addDebugInfo('Preview cleared', []);
-
-        // Only dispatch clear event, don't show notification automatically
         $this->dispatch('preview-cleared');
     }
 
+    // ── Save QR Position (main, called from JS via Livewire event) ─────────────
     #[On('save-qr-position')]
-    public function savePosition(float $x, float $y, float $scale): void
-    {
-        $ticket = Ticket::where('uuid', $this->ticketId)->first();
-
-        $fileName = pathinfo($this->selectedFile, PATHINFO_FILENAME);
-        $progressIndex = $this->extractProgressIndex($fileName);
-
-        // Ganti spasi dengan underscore pada slug
-        $cleanFileName = $this->sanitizeFileName($fileName);
-        $slug = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
-
-        // Gunakan cleanFileName untuk path
-        $qrPath = Storage::disk('public')->path("qrcodes/{$slug}.png");
-        $pdfPath = Storage::disk('public')->path($this->selectedFile);
-        $outputDir = Storage::disk('public')->path('Tosses');
-        $finalOutput = "{$outputDir}/{$slug}_final.pdf";
-
-        Storage::disk('public')->makeDirectory('Tosses');
-
-        // 1. Ambil halaman pertama sebagai gambar
-        $imagick = new Imagick();
-        $imagick->setResolution(150, 150); // kualitas
-        $imagick->readImage("{$pdfPath}[0]"); // hanya halaman pertama
-        $imagick->setImageFormat("png");
-
-        $firstPageImg = "{$outputDir}/{$slug}_page1.png";
-        $imagick->writeImage($firstPageImg);
-
-        // 2. Tempel QR di posisi yang dihitung
-        $canvasWidth = 892;
-        $canvasHeight = 1262;
-
-        $img = new Imagick($firstPageImg);
-        $qr = new Imagick($qrPath);
-        $qr->resizeImage(150, 150, Imagick::FILTER_LANCZOS, 1); // 20mm kira-kira 150px @150dpi
-
-        // Hitung posisi
-        $imgWidth = $img->getImageWidth();
-        $imgHeight = $img->getImageHeight();
-        $xPx = (int) ($x / $canvasWidth * $imgWidth);
-        $yPx = (int) (($canvasHeight - $y) / $canvasHeight * $imgHeight); // flip y
-
-        $img->compositeImage($qr, Imagick::COMPOSITE_OVER, $xPx, $yPx);
-        $mergedPage = "{$outputDir}/{$slug}_merged_page1.png";
-        $img->writeImage($mergedPage);
-
-        // 3. Convert hasil ke PDF
-        $mergedPdf = "{$outputDir}/{$slug}_page1.pdf";
-        $img->setImageFormat("pdf");
-        $img->writeImage($mergedPdf);
-
-        // 4. Extract sisa halaman PDF (halaman 2 dst)
-        $remainingPdf = "{$outputDir}/{$slug}_remaining.pdf";
-
-        // Gunakan escaped paths untuk command line
-        $escapedPdfPath = escapeshellarg($pdfPath);
-        $escapedRemainingPdf = escapeshellarg($remainingPdf);
-
-        $processExtract = Process::fromShellCommandline("gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER -dFirstPage=2 -sOutputFile={$escapedRemainingPdf} {$escapedPdfPath}");
-        $processExtract->run();
-
-        // 5. Gabungkan hasil halaman 1 + sisa halaman
-        $escapedMergedPdf = escapeshellarg($mergedPdf);
-        $escapedFinalOutput = escapeshellarg($finalOutput);
-
-        $processMerge = Process::fromShellCommandline("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile={$escapedFinalOutput} {$escapedMergedPdf} {$escapedRemainingPdf}");
-        $processMerge->run();
-
-        // Optional: hapus sementara
-        if (file_exists($firstPageImg)) unlink($firstPageImg);
-        if (file_exists($mergedPage)) unlink($mergedPage);
-        if (file_exists($mergedPdf)) unlink($mergedPdf);
-        if (file_exists($remainingPdf)) unlink($remainingPdf);
-
-        $attributes = [
-            'ticket_code' => $ticket->ticket_code,
-            'document_path' => $this->selectedFile,
-        ];
-
-        $values = [
-            'qr_position_x' => $x,
-            'qr_position_y' => $y,
-            'qr_scale' => $scale,
-            'scale' => $scale,
-            'qr_path' => "qrcodes/{$slug}.png",
-            'document_name' => $this->data['document_name'],
-            'document_description' => $this->data['document_description'],
-            'document_bySign' => $this->data['document_bySign'],
-            'document_toReceive' => $this->data['document_toReceive'],
-            'document_action' => $this->data['document_action'],
-            'document_no' => $this->data['document_no'],
-            'document_notes' => $this->data['document_notes'],
-            'document_final_path' => "Tosses/{$slug}_final.pdf",
-            'document_slug' => $slug,
-            'document_start' => $this->data['document_start'],
-            'document_end' => $this->data['document_end'],
-        ];
-
-        try {
-            DocumentToss::updateOrCreate($attributes, $values);
-            Notification::make()
-                ->title('Data Berhasil Disimpan')
-                ->body('Data berhasil disimpan')
-                ->success()
-                ->send();
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error')
-                ->body('Data gagal disimpan: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
-
-    public function savePosition01(float $x, float $y, float $scale): void
+    public function savePosition(float $x, float $y, float $scale, int $page = 1): void
     {
         try {
-            Log::info("=== Save QR Position ===", [
-                'x' => $x,
-                'y' => $y,
-                'scale' => $scale
-            ]);
+            $ticket = Ticket::where('uuid', $this->ticketId)->first();
+            if (! $ticket) throw new \Exception('Ticket tidak ditemukan');
 
-            // Save position to current document if exists
-            if ($this->currentDocument) {
-                $this->currentDocument->update([
-                    'qr_position_x' => $x,
-                    'qr_position_y' => $y,
-                    'qr_scale' => $scale
-                ]);
+            $fileName      = pathinfo($this->selectedFile, PATHINFO_FILENAME);
+            $progressIndex = $this->extractProgressIndex($fileName);
+            $cleanFileName = $this->sanitizeFileName($fileName);
+            $slug          = "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
 
-                $this->addDebugInfo('QR Position saved to database', [
-                    'document_id' => $this->currentDocument->id,
-                    'x' => $x,
-                    'y' => $y,
-                    'scale' => $scale
-                ]);
+            $qrPath      = Storage::disk('public')->path("qrcodes/{$slug}.png");
+            $pdfPath     = Storage::disk('public')->path($this->selectedFile);
+            $outputDir   = Storage::disk('public')->path('Tosses');
+            $finalOutput = "{$outputDir}/{$slug}_final.pdf";
 
-                Notification::make()
-                    ->title('Position Saved')
-                    ->body("QR position saved to database: X={$x}, Y={$y}, Scale={$scale}")
-                    ->success()
-                    ->send();
-            } else {
-                $this->addDebugInfo('QR Position saved (temporary)', [
-                    'x' => $x,
-                    'y' => $y,
-                    'scale' => $scale,
-                    'note' => 'Document not saved yet'
-                ]);
+            Storage::disk('public')->makeDirectory('Tosses');
 
-                Notification::make()
-                    ->title('Position Saved')
-                    ->body("QR position saved temporarily. Save document to persist.")
-                    ->info()
-                    ->send();
+            // ── 1. Render halaman yang dipilih user ke PNG ─────────────────────
+            $imagick = new Imagick();
+            $imagick->setResolution(150, 150);
+            $imagick->readImage("{$pdfPath}[" . ($page - 1) . "]"); // 0-based index
+            $imagick->setImageFormat('png');
+
+            $pageImg = "{$outputDir}/{$slug}_page{$page}.png";
+            $imagick->writeImage($pageImg);
+            $imagick->clear();
+            $imagick->destroy();
+
+            // ── 2. Tempel QR ke halaman PNG ────────────────────────────────────
+            // Koordinat dalam sistem PDF (origin kiri-bawah) → konversi ke pixel
+            $canvasWidth  = 892;
+            $canvasHeight = 1262;
+
+            $img = new Imagick($pageImg);
+            $qr  = new Imagick($qrPath);
+            $qr->resizeImage(150, 150, Imagick::FILTER_LANCZOS, 1);
+
+            $imgWidth  = $img->getImageWidth();
+            $imgHeight = $img->getImageHeight();
+            $xPx = (int) ($x / $canvasWidth  * $imgWidth);
+            $yPx = (int) (($canvasHeight - $y) / $canvasHeight * $imgHeight);
+
+            $img->compositeImage($qr, Imagick::COMPOSITE_OVER, $xPx, $yPx);
+            $mergedPage = "{$outputDir}/{$slug}_merged_page{$page}.png";
+            $img->writeImage($mergedPage);
+
+            // ── 3. Convert merged PNG → PDF ────────────────────────────────────
+            $mergedPdf = "{$outputDir}/{$slug}_page{$page}.pdf";
+            $img->setImageFormat('pdf');
+            $img->writeImage($mergedPdf);
+            $img->clear();
+            $img->destroy();
+            $qr->clear();
+            $qr->destroy();
+
+            // ── 4. Extract halaman sebelum & sesudah dari PDF asli ─────────────
+            $escapedPdfPath  = escapeshellarg($pdfPath);
+            $escapedMergedPdf = escapeshellarg($mergedPdf);
+            $escapedFinal    = escapeshellarg($finalOutput);
+            $parts           = [];
+
+            // Halaman 1 s/d (page-1)
+            if ($page > 1) {
+                $beforePdf = "{$outputDir}/{$slug}_before.pdf";
+                $escapedBefore = escapeshellarg($beforePdf);
+                Process::fromShellCommandline(
+                    "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                        "-dFirstPage=1 -dLastPage=" . ($page - 1) . " " .
+                        "-sOutputFile={$escapedBefore} {$escapedPdfPath}"
+                )->run();
+                $parts[] = $escapedBefore;
             }
 
-            $this->dispatch('position-saved', [
-                'x' => $x,
-                'y' => $y,
-                'scale' => $scale
-            ]);
+            // Halaman yang sudah ditempeli QR
+            $parts[] = $escapedMergedPdf;
+
+            // Halaman (page+1) s/d akhir
+            $afterPdf = "{$outputDir}/{$slug}_after.pdf";
+            $escapedAfter = escapeshellarg($afterPdf);
+            $extractAfter = Process::fromShellCommandline(
+                "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                    "-dFirstPage=" . ($page + 1) . " " .
+                    "-sOutputFile={$escapedAfter} {$escapedPdfPath}"
+            );
+            $extractAfter->run();
+            // Hanya tambahkan jika berhasil (ada halaman sesudahnya)
+            if ($extractAfter->isSuccessful() && file_exists($afterPdf) && filesize($afterPdf) > 0) {
+                $parts[] = $escapedAfter;
+            }
+
+            // ── 5. Gabungkan semua bagian jadi satu PDF final ──────────────────
+            $partsList = implode(' ', $parts);
+            Process::fromShellCommandline(
+                "gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile={$escapedFinal} {$partsList}"
+            )->run();
+
+            // ── 6. Hapus file sementara ────────────────────────────────────────
+            foreach ([$pageImg, $mergedPage, $mergedPdf, $afterPdf] as $f) {
+                if (isset($f) && file_exists($f)) unlink($f);
+            }
+            if ($page > 1 && isset($beforePdf) && file_exists($beforePdf)) {
+                unlink($beforePdf);
+            }
+
+            // ── 7. Simpan ke database ──────────────────────────────────────────
+            $attributes = [
+                'ticket_code'   => $ticket->ticket_code,
+                'document_path' => $this->selectedFile,
+            ];
+
+            $values = [
+                'qr_position_x'        => $x,
+                'qr_position_y'        => $y,
+                'qr_scale'             => $scale,
+                'scale'                => $scale,
+                'qr_page'              => $page,
+                'qr_path'              => "qrcodes/{$slug}.png",
+                'document_name'        => $this->data['document_name']        ?? '',
+                'document_description' => $this->data['document_description'] ?? '',
+                'document_bySign'      => $this->data['document_bySign']      ?? '',
+                'document_toReceive'   => $this->data['document_toReceive']   ?? '',
+                'document_action'      => $this->data['document_action']      ?? '',
+                'document_no'          => $this->data['document_no']          ?? '',
+                'document_notes'       => $this->data['document_notes']       ?? '',
+                'document_final_path'  => "Tosses/{$slug}_final.pdf",
+                'document_slug'        => $slug,
+                'document_start'       => $this->data['document_start']       ?? null,
+                'document_end'         => $this->data['document_end']         ?? null,
+            ];
+
+            DocumentToss::updateOrCreate($attributes, $values);
+            Notification::make()->title('Data Berhasil Disimpan')->body("QR ditempel di halaman {$page}.")->success()->send();
         } catch (\Exception $e) {
-            Log::error("Error save QR position", ['error' => $e->getMessage()]);
-
-            $this->addDebugInfo('Error saving position', [
-                'error' => $e->getMessage()
-            ]);
-
-            Notification::make()
-                ->title('Error')
-                ->body('Gagal menyimpan posisi: ' . $e->getMessage())
-                ->danger()
-                ->send();
+            Log::error('Error savePosition', ['error' => $e->getMessage()]);
+            Notification::make()->title('Error')->body('Data gagal disimpan: ' . $e->getMessage())->danger()->send();
         }
     }
 
-    // Alternative method for direct calls from JavaScript
-    public function saveQrPosition(float $x, float $y, float $scale): void
+    // ── Alias for direct JS calls ──────────────────────────────────────────────
+    public function saveQrPosition(float $x, float $y, float $scale, int $page = 1): void
     {
-        $this->savePosition($x, $y, $scale);
+        $this->savePosition($x, $y, $scale, $page);
     }
 
+    // ── Debug ──────────────────────────────────────────────────────────────────
     #[On('refresh-debug')]
     public function refreshDebug(): void
     {
-        $this->addDebugInfo('Debug refreshed', [
-            'timestamp' => now()->toDateTimeString()
-        ]);
+        $this->addDebugInfo('Debug refreshed', ['timestamp' => now()->toDateTimeString()]);
+    }
+
+    public function refreshTickets(): void
+    {
+        $this->ticketId       = null;
+        $this->selectedFile   = null;
+        $this->currentDocument = null;
+        $this->form->fill($this->emptyFormData());
+        $this->dispatch('$refresh');
+        Notification::make()->title('Refreshed')->body('Daftar tiket diperbarui.')->info()->send();
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    private function emptyFormData(): array
+    {
+        return [
+            'ticketId'             => null,
+            'selectedFile'         => null,
+            'document_name'        => '',
+            'document_description' => '',
+            'document_bySign'      => '',
+            'document_toReceive'   => '',
+            'document_action'      => '',
+            'document_no'          => '',
+            'document_start'       => null,
+            'document_end'         => null,
+            'document_notes'       => '',
+        ];
     }
 
     private function extractProgressIndex(string $fileName): int
@@ -751,169 +544,53 @@ class Signature extends Page implements HasForms
         return 1;
     }
 
-    /**
-     * Sanitize file name - replace spaces and special characters with underscores
-     */
     private function sanitizeFileName(string $fileName): string
     {
-        // Ganti spasi dengan underscore
-        $cleanName = str_replace(' ', '_', $fileName);
-
-        // Hapus karakter khusus lainnya (opsional)
-        $cleanName = preg_replace('/[^\w\-\.]/', '_', $cleanName);
-
-        // Hapus multiple underscores
-        $cleanName = preg_replace('/_+/', '_', $cleanName);
-
-        // Hapus underscore di awal dan akhir
-        $cleanName = trim($cleanName, '_');
-
-        return $cleanName;
+        $clean = str_replace(' ', '_', $fileName);
+        $clean = preg_replace('/[^\w\-\.]/', '_', $clean);
+        $clean = preg_replace('/_+/', '_', $clean);
+        return trim($clean, '_');
     }
 
     private function addDebugInfo(string $action, array $data): void
     {
         $this->debugInfo[] = [
-            'time' => now()->format('H:i:s.u'),
+            'time'   => now()->format('H:i:s.u'),
             'action' => $action,
-            'data' => $data
+            'data'   => $data,
         ];
-
         if (count($this->debugInfo) > 15) {
             $this->debugInfo = array_slice($this->debugInfo, -15);
         }
     }
 
-    #[Computed]
-    public function hasPdf(): bool
+    // ── Computed Properties ────────────────────────────────────────────────────
+    #[Computed] public function hasPdf(): bool
     {
-        return !empty($this->pdfUrl);
+        return ! empty($this->pdfUrl);
     }
-
-    #[Computed]
-    public function hasQr(): bool
+    #[Computed] public function hasQr(): bool
     {
-        return !empty($this->qrUrl);
+        return ! empty($this->qrUrl);
     }
-
-    #[Computed]
-    public function canPreview(): bool
+    #[Computed] public function canPreview(): bool
     {
         return $this->hasPdf && $this->hasQr;
     }
-
-    #[Computed]
-    public function isTicketSelected(): bool
+    #[Computed] public function isTicketSelected(): bool
     {
-        return !empty($this->ticketId);
+        return ! empty($this->ticketId);
     }
-
-    #[Computed]
-    public function availableFilesCount(): int
-    {
-        return count($this->getFileOptions());
-    }
-
-    #[Computed]
-    public function hasCurrentDocument(): bool
+    #[Computed] public function hasCurrentDocument(): bool
     {
         return $this->currentDocument !== null;
     }
-
-    #[Computed]
-    public function canSaveDocument(): bool
+    #[Computed] public function canSaveDocument(): bool
     {
-        return !empty($this->selectedFile) && !empty($this->ticketId);
+        return ! empty($this->selectedFile) && ! empty($this->ticketId);
     }
-
-    // Add method to refresh tickets manually if needed
-    public function refreshTickets(): void
+    #[Computed] public function availableFilesCount(): int
     {
-        $this->addDebugInfo('Manual tickets refresh', [
-            'before_count' => count($this->getTicketOptions())
-        ]);
-
-        // Clear any cached data
-        $this->ticketId = null;
-        $this->selectedFile = null;
-        $this->currentDocument = null;
-
-        // Reset form
-        $this->form->fill([
-            'ticketId' => null,
-            'selectedFile' => null,
-            'document_name' => '',
-            'document_description' => '',
-            'document_signer' => '',
-            'document_recipient' => '',
-            'document_action' => '',
-            'document_number' => '',
-            'notes' => ''
-        ]);
-
-        // This will trigger a re-render and refresh the select options
-        $this->dispatch('$refresh');
-
-        Notification::make()
-            ->title('Refreshed')
-            ->body('Daftar tiket telah diperbarui. Count: ' . count($this->getTicketOptions()))
-            ->info()
-            ->send();
-    }
-    public function testTicketData(): void
-    {
-        try {
-            // Test 1: Basic ticket count
-            $totalTickets = Ticket::count();
-
-            // Test 2: Get first 5 tickets with all fields
-            $sampleTickets = Ticket::select('uuid', 'ticket_code', 'created_at')
-                ->orderBy('ticket_code', 'desc')
-                ->limit(5)
-                ->get();
-
-            // Test 3: Count tickets with UUID
-            $withUuid = Ticket::whereNotNull('uuid')->where('uuid', '!=', '')->count();
-
-            // Test 4: Count tickets with ticket_code
-            $withCode = Ticket::whereNotNull('ticket_code')->where('ticket_code', '!=', '')->count();
-
-            // Test 5: Get valid tickets
-            $validTickets = Ticket::select('uuid', 'ticket_code')
-                ->whereNotNull('uuid')
-                ->whereNotNull('ticket_code')
-                ->where('uuid', '!=', '')
-                ->where('ticket_code', '!=', '')
-                ->get();
-
-            $debugData = [
-                'total_tickets' => $totalTickets,
-                'sample_tickets' => $sampleTickets->toArray(),
-                'tickets_with_uuid' => $withUuid,
-                'tickets_with_code' => $withCode,
-                'valid_tickets_count' => $validTickets->count(),
-                'valid_tickets' => $validTickets->toArray(),
-                'options_generated' => $this->getTicketOptions()
-            ];
-
-            Log::info('Ticket Data Debug:', $debugData);
-
-            Notification::make()
-                ->title('Debug Info')
-                ->body('Check Laravel log for detailed ticket data. Total: ' . $totalTickets . ', Valid: ' . $validTickets->count())
-                ->info()
-                ->send();
-        } catch (\Exception $e) {
-            Log::error('Error in testTicketData:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            Notification::make()
-                ->title('Error')
-                ->body('Error testing ticket data: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
+        return count($this->getFileOptions());
     }
 }
