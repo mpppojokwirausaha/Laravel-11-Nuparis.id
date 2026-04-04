@@ -104,10 +104,10 @@ class Ticket extends Model
         // }
 
         $progressData = json_decode($this->progress, true);
-        // if (!is_array($progressData)) {
-        //     \Log::error('Failed to decode progress JSON');
-        //     return;
-        // }
+        if (!is_array($progressData)) {
+            \Log::error('Failed to decode progress JSON');
+            return;
+        }
 
         $updated = false;
 
