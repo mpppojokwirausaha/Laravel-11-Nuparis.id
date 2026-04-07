@@ -10,10 +10,10 @@ use App\Filament\Clusters\Ticket\Resources\TicketResource\Pages;
 use App\Models\Ticket as TicketModel;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\View;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -97,26 +97,33 @@ class TicketResource extends Resource
 
                 Group::make([
                     RichEditor::make('progress')
-                        ->toolbarButtons([
-                            'attachFiles',
-                            'blockquote',
-                            'bold',
-                            'bulletList',
-                            'codeBlock',
-                            'h2',
-                            'h3',
-                            'italic',
-                            'link',
-                            'orderedList',
-                            'redo',
-                            'strike',
-                            'underline',
-                            'undo',
-                        ]),
+                        ->label('Progress')
+                        ->placeholder('Tulis progress terbaru...')
+                        ->fileAttachmentsDirectory(function ($get, $record) {
+                            // Cara 1: Dari record (edit mode)
+                            if ($record && $record->ticket_code) {
+                                return 'tickets/' . $record->ticket_code;
+                            }
+
+                            // Cara 2: Dari form state (create mode)
+                            $ticketCode = $get('ticket_code');
+                            if ($ticketCode) {
+                                return 'tickets/' . $ticketCode;
+                            }
+
+                            // Cara 3: Fallback
+                            return 'tickets/temp_' . auth()->id();
+                        })
+                        ->fileAttachmentsDisk('public')
+                        ->fileAttachmentsVisibility('public')
+                        ->columnSpanFull(),
                     FileUpload::make('progress_files')
                         ->label('Upload File (Opsional)')
                         ->disk('public')
-                        ->directory(fn($get) => 'tickets/' . $get('ticket_code'))
+                        ->directory(function ($get) {
+                            $ticketCode = $get('ticket_code');
+                            return 'tickets/' . $ticketCode;
+                        })
                         ->multiple()
                         ->nullable()
                         ->downloadable()

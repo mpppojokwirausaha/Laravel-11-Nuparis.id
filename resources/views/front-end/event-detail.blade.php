@@ -149,7 +149,8 @@
 
                     $isQuotaFull = $quota > 0 && $remainingQuota <= 0;
                     $isEventEnded = $now->gt($end);
-                    $canRegister = !$isQuotaFull && !$isEventEnded;
+                    // Gunakan canRegister dari controller jika tersedia
+                    $canRegister = $canRegister ?? !$isQuotaFull && !$isEventEnded;
                 @endphp
 
                 <div class="flex flex-col lg:grid lg:grid-cols-3 gap-6 sm:gap-8">
@@ -926,24 +927,24 @@
 
                                             <div class="space-y-3 sm:space-y-4">
                                                 ${isFreeEvent ? `
-                                                                                <!-- Free Event Display -->
-                                                                                <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
-                                                                                    <div>
-                                                                                        <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket Gratis</div>
-                                                                                        <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
-                                                                                    </div>
-                                                                                    <div class="font-medium text-gray-900 text-sm sm:text-base">Rp 0</div>
-                                                                                </div>
-                                                                            ` : `
-                                                                                <!-- Paid Event Display -->
-                                                                                <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
-                                                                                    <div>
-                                                                                        <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket</div>
-                                                                                        <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
-                                                                                    </div>
-                                                                                    <div class="font-medium text-gray-900 text-sm sm:text-base">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
-                                                                                </div>
-                                                                            `}
+                                                        <!-- Free Event Display -->
+                                                        <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
+                                                            <div>
+                                                                <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket Gratis</div>
+                                                                <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
+                                                            </div>
+                                                            <div class="font-medium text-gray-900 text-sm sm:text-base">Rp 0</div>
+                                                        </div>
+                                                    ` : `
+                                                        <!-- Paid Event Display -->
+                                                        <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
+                                                            <div>
+                                                                <div class="font-medium text-gray-900 text-sm sm:text-base">Tiket</div>
+                                                                <div class="text-xs sm:text-sm text-gray-600">1 x Tiket</div>
+                                                            </div>
+                                                            <div class="font-medium text-gray-900 text-sm sm:text-base">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
+                                                        </div>
+                                                    `}
 
                                                 <!-- Benefits Included -->
                                                 <div class="mb-4 sm:mb-6">
@@ -965,33 +966,33 @@
                                                 </div>
 
                                                 ${isFreeEvent ? `
-                                                                                <!-- Free Price Display -->
-                                                                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                                    <div class="flex justify-between items-center">
-                                                                                        <div>
-                                                                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                                            <div class="text-xs sm:text-sm text-gray-600">Workshop ini gratis sepenuhnya</div>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
-                                                                                            <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ` : `
-                                                                                <!-- Total for Paid Event -->
-                                                                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                                    <div class="flex justify-between items-center">
-                                                                                        <div>
-                                                                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                                            <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            `}
+                                                            <!-- Free Price Display -->
+                                                            <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                                                <div class="flex justify-between items-center">
+                                                                    <div>
+                                                                        <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                                                        <div class="text-xs sm:text-sm text-gray-600">Workshop ini gratis sepenuhnya</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
+                                                                        <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ` : `
+                                                            <!-- Total for Paid Event -->
+                                                            <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                                                <div class="flex justify-between items-center">
+                                                                    <div>
+                                                                        <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                                                        <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        `}
                                             </div>
                                         </div>
 
@@ -1034,12 +1035,8 @@
 
             document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-            // Close modal when clicking outside
-            document.getElementById('registrationModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeModal();
-                }
-            });
+            // Prevent closing when clicking on the backdrop (outside modal)
+            // Only allow closing via the close button (X) or after successful registration
         }
 
         // Close modal function
@@ -1216,11 +1213,11 @@
                         </div>
                         
                         ${ticketCode ? `
-                                                <div class="bg-primary/10 p-3 sm:p-4 rounded-lg mb-4">
-                                                    <p class="text-xs text-gray-600 mb-1">Kode Tiket Anda:</p>
-                                                    <p class="font-mono font-bold text-primary text-lg sm:text-xl">${ticketCode}</p>
-                                                </div>
-                                                ` : ''}
+                                                                                <div class="bg-primary/10 p-3 sm:p-4 rounded-lg mb-4">
+                                                                                    <p class="text-xs text-gray-600 mb-1">Kode Tiket Anda:</p>
+                                                                                    <p class="font-mono font-bold text-primary text-lg sm:text-xl">${ticketCode}</p>
+                                                                                </div>
+                                                                                ` : ''}
                         
                         <div class="bg-red-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-left">
                             <h4 class="font-bold text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Info Penting:</h4>

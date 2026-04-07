@@ -79,6 +79,15 @@ class EventController extends Controller
         // Hitung sisa kuota
         $remainingQuota = $event->event_quota ? max($event->event_quota - $registeredCount, 0) : null;
 
+        // Cek apakah pendaftaran aktif (event_is_active = true)
+        $isRegistrationActive = (bool) $event->event_is_active;
+
+        // Cek apakah kuota masih tersedia
+        $isQuotaAvailable = $remainingQuota === null || $remainingQuota > 0;
+
+        // Tombol pendaftaran aktif jika event aktif DAN kuota tersedia
+        $canRegister = $isRegistrationActive && $isQuotaAvailable;
+
         return view('front-end.event-detail', [
             'title' => 'Event | ' . config('app.name'),
             'infos' => (new Info)->getInfo(),
@@ -86,6 +95,8 @@ class EventController extends Controller
             'event' => $event,
             'registeredCount' => $registeredCount,
             'remainingQuota' => $remainingQuota,
+            'canRegister' => $canRegister,
+            'isRegistrationActive' => $isRegistrationActive,
         ]);
     }
 }
