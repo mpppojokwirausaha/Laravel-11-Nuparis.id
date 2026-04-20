@@ -18,7 +18,8 @@ use Filament\Tables\Actions\DeleteAction;
 class LetterCategoryResource extends Resource
 {
     protected static ?string $model = LetterCategory::class;
-    protected static ?int $navigationSort = 2;
+
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $cluster = Letters::class;
 

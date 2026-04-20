@@ -1,953 +1,902 @@
-    <x-filament-panels::page>
-        {{-- Form Section --}}
-        <div class="mb-6">
-            {{ $this->form }}
+<x-filament-panels::page>
+
+    <div class="mb-6">
+        {{ $this->form }}
+    </div>
+
+    @if ($this->canPreview)
+        <x-filament::section class="mt-6">
+            <x-slot name="heading">📄 PDF Preview dengan QR Code</x-slot>
+            <x-slot name="description">
+                Pilih halaman, drag QR code ke posisi yang tepat, lalu klik <strong>Simpan Posisi</strong>.
+            </x-slot>
+
+            {{-- URL Info --}}
+            <div
+                class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg text-xs space-y-1 border border-blue-100 dark:border-blue-900">
+                <div><strong class="text-blue-700 dark:text-blue-300">PDF:</strong>
+                    <a href="{{ $this->pdfUrl }}" target="_blank"
+                        class="text-blue-600 dark:text-blue-400 hover:underline break-all">{{ $this->pdfUrl }}</a>
+                </div>
+                <div><strong class="text-blue-700 dark:text-blue-300">QR:</strong>
+                    <a href="{{ $this->qrUrl }}" target="_blank"
+                        class="text-blue-600 dark:text-blue-400 hover:underline break-all">{{ $this->qrUrl }}</a>
+                </div>
+            </div>
+
+            {{-- Page Info Bar --}}
+            <div id="page-info-bar"
+                class="hidden mb-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        Halaman
+                        <span id="current-page-display"
+                            class="text-primary-600 dark:text-primary-400 font-bold text-base">1</span>
+                        dari
+                        <span id="total-pages-display" class="font-bold text-base">?</span>
+                    </div>
+
+                    {{-- Nav buttons --}}
+                    <div class="flex items-center gap-1 ml-auto">
+                        <button id="btn-first-page" title="Halaman pertama"
+                            class="nav-btn p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <button id="btn-prev-page" title="Sebelumnya"
+                            class="nav-btn p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+
+                        <input id="page-jump-input" type="number" min="1" value="1"
+                            class="w-16 text-center text-sm py-1.5 px-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                            title="Ketik nomor halaman lalu tekan Enter" />
+
+                        <button id="btn-next-page" title="Berikutnya"
+                            class="nav-btn p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <button id="btn-last-page" title="Halaman terakhir"
+                            class="nav-btn p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Zoom --}}
+                    <div class="flex items-center gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
+                        <button id="btn-zoom-out" title="Perkecil"
+                            class="p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                            </svg>
+                        </button>
+                        <span id="zoom-level-display"
+                            class="text-xs font-bold text-gray-600 dark:text-gray-400 w-12 text-center tabular-nums">100%</span>
+                        <button id="btn-zoom-in" title="Perbesar"
+                            class="p-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                        </button>
+                        <button id="btn-zoom-reset"
+                            class="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 transition-all">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Thumbnail Strip --}}
+            <div id="thumbnail-strip-wrapper"
+                class="hidden mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Semua
+                        Halaman</span>
+                    <span id="thumb-loading-badge"
+                        class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 font-medium">Memuat…</span>
+                    <button id="toggle-thumbnails"
+                        class="ml-auto text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all">
+                        Sembunyikan
+                    </button>
+                </div>
+                <div id="thumbnail-strip" class="flex gap-2 overflow-x-auto pb-2 scroll-smooth"
+                    style="scrollbar-width: thin; min-height: 130px;"></div>
+            </div>
+
+            {{-- Loading --}}
+            <div id="pdf-loading-overlay"
+                class="hidden flex items-center justify-center py-20 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                <div class="text-center">
+                    <svg class="animate-spin w-10 h-10 text-primary-500 mx-auto mb-3" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <p id="loading-text" class="text-sm font-semibold text-gray-600 dark:text-gray-300">Memuat PDF…
+                    </p>
+                    <p id="loading-subtext"
+                        class="text-xs text-gray-400 dark:text-gray-500 mt-1 break-all max-w-xs mx-auto"></p>
+                </div>
+            </div>
+
+            {{-- Canvas --}}
+            <div class="bg-gray-200 dark:bg-gray-950 p-4 rounded-lg border border-gray-300 dark:border-gray-700 overflow-auto"
+                style="max-height: 82vh;">
+                <div id="pdf-container" class="relative inline-block shadow-2xl"
+                    style="min-width: 100px; min-height: 100px;">
+                    <canvas id="pdf-canvas"
+                        class="block bg-white border border-gray-400 dark:border-gray-600"></canvas>
+
+                    {{-- QR: posisi diatur HANYA lewat JS, tidak ada inline top/left --}}
+                    <img id="qr-overlay" src="{{ $this->qrUrl }}" alt="QR Code"
+                        class="absolute cursor-move select-none"
+                        style="width:100px;height:100px;top:0;left:0;z-index:10;
+                               border:2px dashed #3b82f6;background:white;padding:4px;
+                               box-shadow:0 2px 12px rgba(0,0,0,0.3);pointer-events:auto;
+                               transform:translate(0px,0px);">
+
+                    <div id="page-render-indicator"
+                        class="hidden absolute inset-0 flex items-center justify-center z-20"
+                        style="background:rgba(255,255,255,0.55);">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl px-5 py-3 shadow-xl flex items-center gap-3">
+                            <svg class="animate-spin w-5 h-5 text-primary-500 shrink-0" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10"
+                                    stroke="currentColor" stroke-width="4" />
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Merender
+                                halaman…</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- QR Notice --}}
+            <div id="page-selected-notice"
+                class="hidden mt-3 p-2.5 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                QR code akan ditempelkan di halaman <strong id="qr-target-page" class="font-bold mx-1">1</strong>.
+                Pastikan ini halaman yang benar sebelum menyimpan.
+            </div>
+        </x-filament::section>
+
+        {{-- Control Bar --}}
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button id="save-position-btn" type="button"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Simpan Posisi
+            </button>
+            <button id="reset-position-btn" type="button"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset Posisi QR
+            </button>
+            <button id="refresh-debug-btn" type="button" wire:click="refreshDebug"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Debug
+            </button>
+
+            {{-- QR Size --}}
+            <div class="flex items-center gap-2 ml-auto border-l border-gray-300 dark:border-gray-600 pl-4">
+                <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Ukuran
+                    QR:</label>
+                <input id="qr-size-slider" type="range" min="40" max="300" value="100"
+                    class="w-24 accent-primary-600" />
+                <span id="qr-size-display"
+                    class="text-xs tabular-nums text-gray-600 dark:text-gray-400 w-16 font-mono">100 × 100</span>
+            </div>
         </div>
 
-        {{-- Debug Panel - Filament 3 Style --}}
-
-
-        {{-- Preview Section --}}
-        @if ($this->canPreview)
-            <x-filament::section class="mt-6">
-                <x-slot name="heading">
-                    📄 PDF Preview dengan QR Code
-                </x-slot>
-
-                <x-slot name="description">
-                    Drag QR code untuk mengatur posisi, lalu klik "Simpan Posisi" untuk menyimpan koordinat.
-                </x-slot>
-
-                {{-- URL Info untuk debugging --}}
-                <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs space-y-1">
-                    <div>
-                        <strong>PDF:</strong>
-                        <a href="{{ $this->pdfUrl }}" target="_blank" class="text-blue-600 hover:underline">
-                            {{ $this->pdfUrl }}
-                        </a>
-                    </div>
-                    <div>
-                        <strong>QR:</strong>
-                        <a href="{{ $this->qrUrl }}" target="_blank" class="text-blue-600 hover:underline">
-                            {{ $this->qrUrl }}
-                        </a>
-                    </div>
-                </div>
-
-                {{-- PDF Container - FIXED: Better structure and positioning --}}
-                <div class="bg-white dark:bg-gray-800 p-4 rounded border overflow-hidden">
-                    <div id="pdf-container" class="relative inline-block border border-gray-300 bg-white"
-                        style="position: relative; min-height: 200px;">
-                        <canvas id="pdf-canvas" class="block border border-black"></canvas>
-                        <img id="qr-overlay" src="{{ $this->qrUrl }}" alt="QR Code"
-                            class="absolute cursor-move border-2 border-dashed border-blue-500 bg-white p-1"
-                            style="width: 100px; height: 100px; top: 50px; left: 50px; z-index: 10; user-select: none; pointer-events: auto;">
-                    </div>
-                </div>
-            </x-filament::section>
-
-            {{-- Controls --}}
-            <div class="mt-4 flex flex-wrap gap-3">
-                <button id="save-position-btn" type="button"
-                    class="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 focus:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                    💾 Simpan Posisi
-                </button>
-
-                <button id="reset-position-btn" type="button"
-                    class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                    🔄 Reset Posisi
-                </button>
-
-                <button id="refresh-debug-btn" type="button" wire:click="refreshDebug"
-                    class="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:bg-yellow-700 active:bg-yellow-900 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                    🐛 Refresh Debug
-                </button>
-            </div>
-
-            {{-- Position Info --}}
-            <div id="position-info" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                Position: <span id="current-position">X: 0, Y: 0</span>
-            </div>
-        @else
-            <x-filament::section class="mt-6">
-                <x-slot name="heading">
-                    ⚠️ Preview Tidak Tersedia
-                </x-slot>
-
-                <div class="text-center py-8">
-                    <div class="text-gray-500 dark:text-gray-400 mb-4">
-                        @if (!$this->selectedFile)
-                            <p>Silakan pilih file PDF dari dropdown di atas.</p>
-                        @elseif(!$this->hasPdf)
-                            <p>PDF URL tidak tersedia. Coba generate preview lagi.</p>
-                        @elseif(!$this->hasQr)
-                            <p>QR Code belum di-generate. Coba generate preview lagi.</p>
-                        @else
-                            <p>Terjadi masalah tidak diketahui. Periksa debug log.</p>
-                        @endif
-                    </div>
-
-                    @if ($this->selectedFile)
-                        <button wire:click="generatePreview" type="button"
-                            class="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 focus:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                            🔄 Coba Generate Lagi
-                        </button>
+        {{-- Status bar --}}
+        <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 font-mono">
+            <span>Posisi: <strong id="current-position" class="text-gray-700 dark:text-gray-200">X=0,
+                    Y=0</strong></span>
+            <span>Rasio: <strong id="ratio-display" class="text-gray-500 dark:text-gray-400">rx=0.50,
+                    ry=0.50</strong></span>
+            <span>QR di halaman: <strong id="qr-page-indicator"
+                    class="text-primary-600 dark:text-primary-400">—</strong></span>
+            <span class="italic text-gray-400 dark:text-gray-600">← → halaman &nbsp;|&nbsp; Ctrl+/- zoom</span>
+        </div>
+    @else
+        <x-filament::section class="mt-6">
+            <x-slot name="heading">Preview Tidak Tersedia</x-slot>
+            <div class="text-center py-10">
+                <div class="text-gray-500 dark:text-gray-400 mb-5 text-sm">
+                    @if (!$this->selectedFile)
+                        <p>Silakan pilih file PDF dari dropdown di atas.</p>
+                    @elseif (!$this->hasPdf)
+                        <p>PDF URL tidak tersedia. Coba generate preview lagi.</p>
+                    @elseif (!$this->hasQr)
+                        <p>QR Code belum di-generate. Coba generate preview lagi.</p>
+                    @else
+                        <p>Terjadi masalah tidak diketahui.</p>
                     @endif
                 </div>
-            </x-filament::section>
-        @endif
+                @if ($this->selectedFile)
+                    <button wire:click="generatePreview" type="button"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 border border-transparent rounded-lg font-semibold text-sm text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition">
+                        Generate Preview
+                    </button>
+                @endif
+            </div>
+        </x-filament::section>
+    @endif
 
-        {{-- Scripts --}}
-        @push('scripts')
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-            <script>
-                // PDF.js Worker
-                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-            </script>
-            <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    @push('scripts')
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script>
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
-            <script>
-                // Global helper function to dispatch Livewire events
-                function dispatchLivewireEvent(eventName, eventData) {
-                    console.log(`📡 Dispatching Livewire event: ${eventName}`, eventData);
+        <script>
+            // ── Livewire helper ────────────────────────────────────────────────────
+            function dispatchToLivewire(eventName, eventData) {
+                if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
+                    try {
+                        window.Livewire.dispatch(eventName, eventData);
+                        return;
+                    } catch (_) {}
+                }
+                if (typeof Livewire !== 'undefined' && typeof Livewire.dispatch === 'function') {
+                    try {
+                        Livewire.dispatch(eventName, eventData);
+                        return;
+                    } catch (_) {}
+                }
+                document.dispatchEvent(new CustomEvent(eventName, {
+                    detail: eventData,
+                    bubbles: true
+                }));
+            }
 
-                    // Try multiple methods to dispatch the event
-                    let dispatched = false;
+            (function() {
+                'use strict';
 
-                    // Method 1: Try window.Livewire (Livewire v2/v3)
-                    if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
-                        try {
-                            window.Livewire.dispatch(eventName, eventData);
-                            console.log('✅ Event dispatched via window.Livewire.dispatch');
-                            dispatched = true;
-                        } catch (e) {
-                            console.warn('⚠️ Failed to dispatch via window.Livewire.dispatch:', e);
-                        }
+                // ── State ─────────────────────────────────────────────────────────
+                var pdfDoc = null;
+                var currentPage = 1;
+                var totalPages = 0;
+                var renderScale = 1.5;
+                var BASE_SCALE = 1.5;
+                var isRendering = false;
+                var pendingPage = null;
+                var currentPdfUrl = null;
+                var qrDragInst = null;
+                var thumbsVisible = true;
+                var thumbsDone = 0;
+
+                // ── QR state: simpan sebagai RASIO (0..1) bukan pixel ─────────────
+                // Ini kunci agar QR ikut zoom: konversi rasio → pixel saat apply
+                var qrRatioX = 0.5; // posisi tengah secara default
+                var qrRatioY = 0.5;
+                var qrSize = 100; // pixel, di-scale bareng canvas
+
+                var $ = function(id) {
+                    return document.getElementById(id);
+                };
+
+                // ── Init ──────────────────────────────────────────────────────────
+                function init() {
+                    bindAllButtons();
+                    bindLivewireEvents();
+                    bindKeyboard();
+
+                    var initialUrl = @json($this->pdfUrl ?? '');
+                    if (initialUrl && initialUrl !== 'null' && initialUrl !== '') {
+                        loadPdf(initialUrl);
                     }
-
-                    // Method 2: Try Livewire.dispatch (global)
-                    if (!dispatched && typeof Livewire !== 'undefined' && typeof Livewire.dispatch === 'function') {
-                        try {
-                            Livewire.dispatch(eventName, eventData);
-                            console.log('✅ Event dispatched via Livewire.dispatch');
-                            dispatched = true;
-                        } catch (e) {
-                            console.warn('⚠️ Failed to dispatch via Livewire.dispatch:', e);
-                        }
-                    }
-
-                    // Method 3: Try $wire (if available)
-                    if (!dispatched && typeof $wire !== 'undefined' && typeof $wire.dispatch === 'function') {
-                        try {
-                            $wire.dispatch(eventName, eventData);
-                            console.log('✅ Event dispatched via $wire.dispatch');
-                            dispatched = true;
-                        } catch (e) {
-                            console.warn('⚠️ Failed to dispatch via $wire.dispatch:', e);
-                        }
-                    }
-
-                    // Method 4: Try Alpine.js $dispatch (if available)
-                    if (!dispatched) {
-                        try {
-                            const event = new CustomEvent(eventName, {
-                                detail: eventData,
-                                bubbles: true
-                            });
-                            document.dispatchEvent(event);
-                            console.log('✅ Event dispatched via CustomEvent');
-                            dispatched = true;
-                        } catch (e) {
-                            console.warn('⚠️ Failed to dispatch via CustomEvent:', e);
-                        }
-                    }
-
-                    // Method 5: Try Livewire hook (alternative method)
-                    if (!dispatched) {
-                        try {
-                            // Create a hidden button and trigger wire:click programmatically
-                            const hiddenBtn = document.createElement('button');
-                            hiddenBtn.setAttribute('wire:click',
-                                `savePosition(${eventData.x}, ${eventData.y}, ${eventData.scale})`);
-                            hiddenBtn.style.display = 'none';
-                            document.body.appendChild(hiddenBtn);
-                            hiddenBtn.click();
-                            document.body.removeChild(hiddenBtn);
-                            console.log('✅ Event dispatched via hidden button method');
-                            dispatched = true;
-                        } catch (e) {
-                            console.warn('⚠️ Failed to dispatch via hidden button method:', e);
-                        }
-                    }
-
-                    if (!dispatched) {
-                        console.error('❌ All dispatch methods failed. Event not sent:', eventName, eventData);
-                    }
-
-                    return dispatched;
                 }
 
-                document.addEventListener('alpine:init', () => {
-                    Alpine.data('pdfPreview', () => ({
-                        currentPdfUrl: null,
-                        pdfDocument: null,
-                        qrDragInstance: null,
-                        isLoading: false,
-                        debounceTimer: null,
-
-                        init() {
-                            console.log('🚀 PDF Preview Alpine Component Initialized');
-                            this.setupApp();
-                        },
-
-                        setupApp() {
-                            console.log('🎯 Setting up app');
-
-                            // Setup event listeners
-                            this.setupEventListeners();
-
-                            // Initial setup
-                            this.$nextTick(() => {
-                                this.setupPdfPreview();
-                            });
-                        },
-
-                        setupEventListeners() {
-                            // Listen for Livewire events
-                            window.addEventListener('preview-updated', (event) => {
-                                console.log('📡 Preview updated event:', event.detail);
-
-                                // Clear existing debounce timer
-                                if (this.debounceTimer) {
-                                    clearTimeout(this.debounceTimer);
-                                }
-
-                                // Debounce to avoid premature clearing
-                                this.debounceTimer = setTimeout(() => {
-                                    this.$nextTick(() => {
-                                        // Get PDF URL from event data
-                                        const eventData = event.detail[0];
-                                        if (eventData && eventData.pdfUrl) {
-                                            // Only clear if we're loading a different PDF
-                                            if (this.currentPdfUrl !== eventData
-                                                .pdfUrl) {
-                                                console.log(
-                                                    '🔄 Loading different PDF, clearing previous'
-                                                );
-                                                this
-                                                    .clearCanvasQuietly(); // Clear without notification
-                                            }
-                                            this.setupPdfPreview(eventData.pdfUrl);
-                                        }
-                                        // Don't auto-clear if no PDF URL - let user decide
-                                    });
-                                }, 300);
-                            });
-
-                            // Only trigger when user explicitly clears preview
-                            window.addEventListener('preview-cleared', () => {
-                                console.log('🧹 Preview cleared by user');
-                                if (this.debounceTimer) {
-                                    clearTimeout(this.debounceTimer);
-                                }
-                                this.clearCanvas(); // This will show the "preview dibersihkan" message
-                            });
-
-                            window.addEventListener('position-saved', (event) => {
-                                console.log('💾 Position saved event:', event.detail);
-                                this.updatePositionDisplay();
-                            });
-                        },
-
-                        setupPdfPreview(eventPdfUrl = null) {
-                            console.log('🎯 Setting up PDF preview');
-
-                            // Get PDF URL from event or backend
-                            const pdfUrl = eventPdfUrl || @json($this->pdfUrl ?? '');
-                            const canvas = document.getElementById('pdf-canvas');
-
-                            console.log('PDF URL:', pdfUrl);
-
-                            if (!pdfUrl || pdfUrl === 'null' || pdfUrl === '') {
-                                console.warn('⚠️ PDF URL is empty or invalid');
-                                // Don't clear, just return silently
-                                return;
-                            }
-
-                            if (!canvas) {
-                                console.warn('⚠️ Canvas element not found');
-                                return;
-                            }
-
-                            // Skip if same PDF is already loaded
-                            if (this.currentPdfUrl === pdfUrl && this.pdfDocument) {
-                                console.log('📄 PDF already loaded, setting up QR only');
-                                this.setupQrDragging();
-                                return;
-                            }
-
-                            console.log('📄 Loading new PDF:', pdfUrl);
-                            this.isLoading = true;
-                            this.currentPdfUrl = pdfUrl;
-
-                            const loadingTask = pdfjsLib.getDocument({
-                                url: pdfUrl,
-                                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-                                cMapPacked: true,
-                                verbosity: 0
-                            });
-
-                            loadingTask.promise
-                                .then(pdf => {
-                                    console.log('✅ PDF loaded successfully');
-                                    this.pdfDocument = pdf;
-                                    return pdf.getPage(1);
-                                })
-                                .then(page => {
-                                    const scale = 1.5;
-                                    const viewport = page.getViewport({
-                                        scale
-                                    });
-                                    const context = canvas.getContext('2d');
-
-                                    canvas.height = viewport.height;
-                                    canvas.width = viewport.width;
-
-                                    console.log(
-                                        `🎨 Rendering PDF to canvas (${canvas.width}x${canvas.height})`);
-
-                                    const renderContext = {
-                                        canvasContext: context,
-                                        viewport: viewport
-                                    };
-
-                                    return page.render(renderContext).promise;
-                                })
-                                .then(() => {
-                                    console.log('✅ PDF rendered successfully');
-                                    this.isLoading = false;
-                                    this.setupQrDragging();
-                                })
-                                .catch(error => {
-                                    console.error('❌ Error loading/rendering PDF:', error);
-                                    this.isLoading = false;
-                                    // Only clear on critical errors that user should know about
-                                    if (error.name !== 'AbortException' && error.name !==
-                                        'InvalidPDFException') {
-                                        console.error('Critical PDF error, clearing canvas silently');
-                                        this.clearCanvasQuietly();
-                                    }
-                                });
-                        },
-
-                        setupQrDragging() {
-                            const qr = document.getElementById('qr-overlay');
-                            const container = document.getElementById('pdf-container');
-                            const canvas = document.getElementById('pdf-canvas');
-
-                            if (!qr || !container || !canvas) {
-                                console.warn('⚠️ Required elements not found for QR dragging');
-                                return;
-                            }
-
-                            console.log('🎯 Setting up QR dragging with constraints');
-
-                            // Clean up existing interact instance
-                            if (this.qrDragInstance) {
-                                this.qrDragInstance.unset();
-                            }
-
-                            // Reset QR position to center of canvas
-                            this.resetQrPosition();
-
-                            // Setup new interact instance with proper canvas boundaries
-                            this.qrDragInstance = interact(qr).draggable({
-                                listeners: {
-                                    start: (event) => {
-                                        console.log('🎯 Drag started');
-                                        event.target.style.opacity = '0.8';
-                                        event.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-
-                                        console.log(
-                                            `Canvas dimensions: ${canvas.width}x${canvas.height}`
-                                        );
-                                    },
-                                    move: (event) => {
-                                        const target = event.target;
-                                        let x = (parseFloat(target.getAttribute('data-x')) || 0) +
-                                            event.dx;
-                                        let y = (parseFloat(target.getAttribute('data-y')) || 0) +
-                                            event.dy;
-
-                                        // Get current canvas dimensions
-                                        const canvasWidth = canvas.width || canvas.offsetWidth;
-                                        const canvasHeight = canvas.height || canvas.offsetHeight;
-                                        const qrSize = 100; // QR code size
-
-                                        // Apply strict constraints to keep QR within canvas bounds
-                                        x = Math.max(0, Math.min(x, canvasWidth - qrSize));
-                                        y = Math.max(0, Math.min(y, canvasHeight - qrSize));
-
-                                        target.style.transform = `translate(${x}px, ${y}px)`;
-                                        target.setAttribute('data-x', x);
-                                        target.setAttribute('data-y', y);
-
-                                        // Update position display with corrected coordinates
-                                        this.updatePositionDisplay(x, y);
-                                    },
-                                    end: (event) => {
-                                        console.log('🎯 Drag ended');
-                                        event.target.style.opacity = '1';
-                                        event.target.style.boxShadow = '';
-
-                                        const x = parseFloat(event.target.getAttribute('data-x')) ||
-                                            0;
-                                        const y = parseFloat(event.target.getAttribute('data-y')) ||
-                                            0;
-                                        console.log(`📍 Final QR position: x=${x}, y=${y}`);
-                                    }
-                                },
-                                // Remove complex modifiers that might interfere
-                                modifiers: []
-                            });
-
-                            // Setup button events
-                            this.setupButtons();
-                        },
-
-                        setupButtons() {
-                            const saveBtn = document.getElementById('save-position-btn');
-                            const resetBtn = document.getElementById('reset-position-btn');
-
-                            if (saveBtn) {
-                                saveBtn.onclick = () => this.saveQrPosition();
-                            }
-
-                            if (resetBtn) {
-                                resetBtn.onclick = () => this.resetQrPosition();
-                            }
-                        },
-
-                        saveQrPosition() {
-                            const qr = document.getElementById('qr-overlay');
-                            const canvas = document.getElementById('pdf-canvas');
-                            if (!qr || !canvas) return;
-
-                            const x = parseFloat(qr.getAttribute('data-x')) || 0;
-                            const y = parseFloat(qr.getAttribute('data-y')) || 0;
-
-                            // Convert pixel position to PDF coordinates
-                            // PDF coordinate system: (0,0) at bottom-left, Y increases upward
-                            // Canvas coordinate system: (0,0) at top-left, Y increases downward
-                            const pdfX = x; // X remains the same
-                            const pdfY = canvas.height - y - 100; // Flip Y coordinate and account for QR height
-
-                            const rect = qr.getBoundingClientRect();
-                            const scale = rect.width;
-
-                            console.log(`💾 Saving QR position:`);
-                            console.log(`  Canvas position: x=${x}, y=${y}`);
-                            console.log(`  PDF position: x=${pdfX}, y=${pdfY}`);
-                            console.log(`  Canvas height: ${canvas.height}`);
-                            console.log(`  Scale: ${scale}`);
-
-                            // Use global helper function to dispatch event
-                            dispatchLivewireEvent('save-qr-position', {
-                                x: pdfX,
-                                y: pdfY,
-                                scale,
-                                canvasHeight: canvas.height,
-                                canvasWidth: canvas.width
-                            });
-                        },
-
-                        resetQrPosition() {
-                            const qr = document.getElementById('qr-overlay');
-                            const canvas = document.getElementById('pdf-canvas');
-                            if (!qr || !canvas) return;
-
-                            console.log('🔄 Resetting QR position');
-
-                            // Position QR at center of canvas, or fallback to safe position
-                            const canvasWidth = canvas.width || canvas.offsetWidth || 400;
-                            const canvasHeight = canvas.height || canvas.offsetHeight || 300;
-                            const qrSize = 100;
-
-                            // Center position with bounds checking
-                            const centerX = Math.max(0, (canvasWidth - qrSize) / 2);
-                            const centerY = Math.max(0, (canvasHeight - qrSize) / 2);
-
-                            qr.style.transform = `translate(${centerX}px, ${centerY}px)`;
-                            qr.setAttribute('data-x', centerX.toString());
-                            qr.setAttribute('data-y', centerY.toString());
-
-                            this.updatePositionDisplay(centerX, centerY);
-                            console.log(`QR reset to center: x=${centerX}, y=${centerY}`);
-                        },
-
-                        updatePositionDisplay(x = 0, y = 0) {
-                            const canvas = document.getElementById('pdf-canvas');
-                            const positionInfo = document.getElementById('current-position');
-                            if (positionInfo && canvas) {
-                                // Show both canvas coordinates and PDF coordinates
-                                const pdfX = x;
-                                const pdfY = canvas.height - y - 100; // Convert to PDF coordinate system
-                                positionInfo.innerHTML =
-                                    `Canvas: X=${Math.round(x)}, Y=${Math.round(y)} | PDF: X=${Math.round(pdfX)}, Y=${Math.round(pdfY)}`;
-                            }
-                        },
-
-                        clearCanvas() {
-                            const canvas = document.getElementById('pdf-canvas');
-                            if (canvas) {
-                                const ctx = canvas.getContext('2d');
-                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                // Reset canvas dimensions
-                                canvas.width = 0;
-                                canvas.height = 0;
-                                console.log('🧹 Canvas cleared by user');
-                            }
-
-                            // Clean up QR dragging
-                            if (this.qrDragInstance) {
-                                this.qrDragInstance.unset();
-                                this.qrDragInstance = null;
-                            }
-
-                            // Reset QR position
-                            const qr = document.getElementById('qr-overlay');
-                            if (qr) {
-                                qr.style.transform = 'translate(0px, 0px)';
-                                qr.setAttribute('data-x', '0');
-                                qr.setAttribute('data-y', '0');
-                            }
-
-                            this.updatePositionDisplay(0, 0);
-                            this.currentPdfUrl = null;
-                            this.pdfDocument = null;
-
-                            // Show notification that preview was cleared by user
-                            console.log('📢 Preview dibersihkan oleh user');
-                        },
-
-                        clearCanvasQuietly() {
-                            const canvas = document.getElementById('pdf-canvas');
-                            if (canvas) {
-                                const ctx = canvas.getContext('2d');
-                                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                // Reset canvas dimensions
-                                canvas.width = 0;
-                                canvas.height = 0;
-                                console.log('🔄 Canvas cleared quietly for new content');
-                            }
-
-                            // Clean up QR dragging
-                            if (this.qrDragInstance) {
-                                this.qrDragInstance.unset();
-                                this.qrDragInstance = null;
-                            }
-
-                            // Reset QR position
-                            const qr = document.getElementById('qr-overlay');
-                            if (qr) {
-                                qr.style.transform = 'translate(0px, 0px)';
-                                qr.setAttribute('data-x', '0');
-                                qr.setAttribute('data-y', '0');
-                            }
-
-                            this.updatePositionDisplay(0, 0);
-                            this.currentPdfUrl = null;
-                            this.pdfDocument = null;
-
-                            // No notification - this is internal cleanup
-                        },
-                    }));
-                });
-
-                // Fallback initialization for non-Alpine environments
-                document.addEventListener('DOMContentLoaded', function() {
-                    if (typeof Alpine === 'undefined') {
-                        console.log('📌 Alpine not found, using fallback initialization');
-                        initializeFallback();
-                    }
-                });
-
-                function initializeFallback() {
-                    // Global variables
-                    let currentPdfUrl = null;
-                    let pdfDocument = null;
-                    let qrDragInstance = null;
-                    let isLoading = false;
-                    let debounceTimer = null;
-
-                    console.log('🚀 Fallback PDF Preview Script Loaded');
-
-                    // Initialize the application
-                    function initializeApp() {
-                        console.log('🎯 Initializing App (Fallback)');
-                        setupPdfPreview();
-                        setupEventListeners();
-                        setupButtons();
-                    }
-
-                    // Setup event listeners
-                    function setupEventListeners() {
-                        // Livewire hooks
-                        document.addEventListener('livewire:navigated', () => {
-                            console.log('🔄 Livewire navigated');
-                            setTimeout(initializeApp, 100);
-                        });
-
-                        // Custom events from Livewire
-                        window.addEventListener('preview-updated', (event) => {
-                            console.log('📡 Preview updated event:', event.detail);
-
-                            // Clear existing debounce timer
-                            if (debounceTimer) {
-                                clearTimeout(debounceTimer);
-                            }
-
-                            // Debounce to avoid premature clearing
-                            debounceTimer = setTimeout(() => {
-                                // Get PDF URL from event data
-                                const eventData = event.detail[0];
-                                if (eventData && eventData.pdfUrl) {
-                                    // Only clear if we're loading a different PDF
-                                    if (currentPdfUrl !== eventData.pdfUrl) {
-                                        console.log('🔄 Loading different PDF, clearing previous');
-                                        clearCanvasQuietly(); // Clear without notification
-                                    }
-                                    setupPdfPreview(eventData.pdfUrl);
-                                }
-                                // Don't auto-clear if no PDF URL - let user decide
-                            }, 300);
-                        });
-
-                        // Only trigger when user explicitly clears preview
-                        window.addEventListener('preview-cleared', (event) => {
-                            console.log('🧹 Preview cleared by user');
-                            if (debounceTimer) {
-                                clearTimeout(debounceTimer);
-                            }
-                            clearCanvas(); // This will show the "preview dibersihkan" message
-                        });
-
-                        window.addEventListener('position-saved', (event) => {
-                            console.log('💾 Position saved event:', event.detail);
-                            updatePositionDisplay();
-                        });
-                    }
-
-                    // Setup PDF preview
-                    function setupPdfPreview(eventPdfUrl = null) {
-                        console.log('🎯 Setting up PDF preview (Fallback)');
-
-                        // Get PDF URL from event or backend
-                        const pdfUrl = eventPdfUrl || @json($this->pdfUrl ?? '');
-                        const canvas = document.getElementById('pdf-canvas');
-
-                        console.log('PDF URL:', pdfUrl);
-
-                        if (!pdfUrl || pdfUrl === 'null' || pdfUrl === '') {
-                            console.warn('⚠️ PDF URL is empty or invalid');
-                            // Don't clear, just return silently
-                            return;
-                        }
-
-                        if (!canvas) {
-                            console.warn('⚠️ Canvas element not found');
-                            return;
-                        }
-
-                        // Skip if same PDF is already loaded
-                        if (currentPdfUrl === pdfUrl && pdfDocument) {
-                            console.log('📄 PDF already loaded, setting up QR only');
-                            setupQrDragging();
-                            return;
-                        }
-
-                        console.log('📄 Loading new PDF:', pdfUrl);
-                        isLoading = true;
-                        currentPdfUrl = pdfUrl;
-
-                        const loadingTask = pdfjsLib.getDocument({
-                            url: pdfUrl,
-                            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-                            cMapPacked: true,
-                            verbosity: 0
-                        });
-
-                        loadingTask.promise
-                            .then(pdf => {
-                                console.log('✅ PDF loaded successfully');
-                                pdfDocument = pdf;
-                                return pdf.getPage(1);
-                            })
-                            .then(page => {
-                                const scale = 1.5;
-                                const viewport = page.getViewport({
-                                    scale
-                                });
-                                const context = canvas.getContext('2d');
-
-                                canvas.height = viewport.height;
-                                canvas.width = viewport.width;
-
-                                console.log(`🎨 Rendering PDF to canvas (${canvas.width}x${canvas.height})`);
-
-                                const renderContext = {
-                                    canvasContext: context,
-                                    viewport: viewport
-                                };
-
-                                return page.render(renderContext).promise;
-                            })
-                            .then(() => {
-                                console.log('✅ PDF rendered successfully');
-                                isLoading = false;
-                                setupQrDragging();
-                            })
-                            .catch(error => {
-                                console.error('❌ Error loading/rendering PDF:', error);
-                                isLoading = false;
-                                // Only clear on critical errors that user should know about
-                                if (error.name !== 'AbortException' && error.name !== 'InvalidPDFException') {
-                                    console.error('Critical PDF error, clearing canvas silently');
-                                    clearCanvasQuietly();
-                                }
-                            });
-                    }
-
-                    // Setup QR dragging functionality with constraints
-                    function setupQrDragging() {
-                        const qr = document.getElementById('qr-overlay');
-                        const container = document.getElementById('pdf-container');
-                        const canvas = document.getElementById('pdf-canvas');
-
-                        if (!qr || !container || !canvas) {
-                            console.warn('⚠️ Required elements not found for QR dragging');
-                            return;
-                        }
-
-                        console.log('🎯 Setting up QR dragging with constraints (Fallback)');
-
-                        // Clean up existing interact instance
-                        if (qrDragInstance) {
-                            qrDragInstance.unset();
-                        }
-
-                        // Reset QR position to center
-                        resetQrPosition();
-
-                        // Setup new interact instance with proper canvas boundaries
-                        qrDragInstance = interact(qr).draggable({
-                            listeners: {
-                                start(event) {
-                                    console.log('🎯 Drag started');
-                                    event.target.style.opacity = '0.8';
-                                    event.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-
-                                    console.log(`Canvas dimensions: ${canvas.width}x${canvas.height}`);
-                                },
-                                move(event) {
-                                    const target = event.target;
-                                    let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-                                    let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-
-                                    // Get current canvas dimensions
-                                    const canvasWidth = canvas.width || canvas.offsetWidth;
-                                    const canvasHeight = canvas.height || canvas.offsetHeight;
-                                    const qrSize = 100; // QR code size
-
-                                    // Apply strict constraints to keep QR within canvas bounds
-                                    x = Math.max(0, Math.min(x, canvasWidth - qrSize));
-                                    y = Math.max(0, Math.min(y, canvasHeight - qrSize));
-
-                                    target.style.transform = `translate(${x}px, ${y}px)`;
-                                    target.setAttribute('data-x', x);
-                                    target.setAttribute('data-y', y);
-
-                                    // Update position display with corrected coordinates
-                                    updatePositionDisplay(x, y);
-                                },
-                                end(event) {
-                                    console.log('🎯 Drag ended');
-                                    event.target.style.opacity = '1';
-                                    event.target.style.boxShadow = '';
-
-                                    const x = parseFloat(event.target.getAttribute('data-x')) || 0;
-                                    const y = parseFloat(event.target.getAttribute('data-y')) || 0;
-                                    console.log(`📍 Final QR position: x=${x}, y=${y}`);
-                                }
-                            },
-                            // Remove complex modifiers that might interfere
-                            modifiers: []
-                        });
-                    }
-
-                    // Setup button functionality
-                    function setupButtons() {
-                        const saveBtn = document.getElementById('save-position-btn');
-                        const resetBtn = document.getElementById('reset-position-btn');
-
-                        if (saveBtn) {
-                            saveBtn.onclick = function() {
+                // ── Event Delegation ──────────────────────────────────────────────
+                function bindAllButtons() {
+                    document.addEventListener('click', function(e) {
+                        var btn = e.target.closest('[id]');
+                        if (!btn) return;
+                        switch (btn.id) {
+                            case 'btn-first-page':
+                                e.preventDefault();
+                                goToPage(1);
+                                break;
+                            case 'btn-prev-page':
+                                e.preventDefault();
+                                goToPage(currentPage - 1);
+                                break;
+                            case 'btn-next-page':
+                                e.preventDefault();
+                                goToPage(currentPage + 1);
+                                break;
+                            case 'btn-last-page':
+                                e.preventDefault();
+                                goToPage(totalPages);
+                                break;
+                            case 'btn-zoom-in':
+                                e.preventDefault();
+                                applyZoom(renderScale + 0.25);
+                                break;
+                            case 'btn-zoom-out':
+                                e.preventDefault();
+                                applyZoom(renderScale - 0.25);
+                                break;
+                            case 'btn-zoom-reset':
+                                e.preventDefault();
+                                applyZoom(BASE_SCALE);
+                                break;
+                            case 'save-position-btn':
+                                e.preventDefault();
                                 saveQrPosition();
-                            };
+                                break;
+                            case 'reset-position-btn':
+                                e.preventDefault();
+                                resetQrToCenter();
+                                break;
+                            case 'toggle-thumbnails':
+                                e.preventDefault();
+                                toggleThumbnails();
+                                break;
                         }
-
-                        if (resetBtn) {
-                            resetBtn.onclick = function() {
-                                resetQrPosition();
-                            };
+                        var thumbItem = e.target.closest('.thumb-item');
+                        if (thumbItem && thumbItem.dataset.page) {
+                            goToPage(parseInt(thumbItem.dataset.page));
                         }
-                    }
+                    });
 
-                    // Save QR position
-                    function saveQrPosition() {
-                        const qr = document.getElementById('qr-overlay');
-                        const canvas = document.getElementById('pdf-canvas');
-                        if (!qr || !canvas) return;
-
-                        const x = parseFloat(qr.getAttribute('data-x')) || 0;
-                        const y = parseFloat(qr.getAttribute('data-y')) || 0;
-
-                        // Convert pixel position to PDF coordinates
-                        // PDF coordinate system: (0,0) at bottom-left, Y increases upward
-                        // Canvas coordinate system: (0,0) at top-left, Y increases downward
-                        const pdfX = x; // X remains the same
-                        const pdfY = canvas.height - y - 100; // Flip Y coordinate and account for QR height
-
-                        const rect = qr.getBoundingClientRect();
-                        const scale = rect.width;
-
-                        console.log(`💾 Saving QR position:`);
-                        console.log(`  Canvas position: x=${x}, y=${y}`);
-                        console.log(`  PDF position: x=${pdfX}, y=${pdfY}`);
-                        console.log(`  Canvas height: ${canvas.height}`);
-                        console.log(`  Scale: ${scale}`);
-
-                        // Use global helper function to dispatch event
-                        dispatchLivewireEvent('save-qr-position', {
-                            x: pdfX,
-                            y: pdfY,
-                            scale,
-                            canvasHeight: canvas.height,
-                            canvasWidth: canvas.width
-                        });
-                    }
-
-                    // Reset QR position
-                    function resetQrPosition() {
-                        const qr = document.getElementById('qr-overlay');
-                        const canvas = document.getElementById('pdf-canvas');
-                        if (!qr || !canvas) return;
-
-                        console.log('🔄 Resetting QR position');
-
-                        // Position QR at center of canvas, or fallback to safe position
-                        const canvasWidth = canvas.width || canvas.offsetWidth || 400;
-                        const canvasHeight = canvas.height || canvas.offsetHeight || 300;
-                        const qrSize = 100;
-
-                        // Center position with bounds checking
-                        const centerX = Math.max(0, (canvasWidth - qrSize) / 2);
-                        const centerY = Math.max(0, (canvasHeight - qrSize) / 2);
-
-                        qr.style.transform = `translate(${centerX}px, ${centerY}px)`;
-                        qr.setAttribute('data-x', centerX.toString());
-                        qr.setAttribute('data-y', centerY.toString());
-
-                        updatePositionDisplay(centerX, centerY);
-                        console.log(`QR reset to center: x=${centerX}, y=${centerY}`);
-                    }
-
-                    // Update position display
-                    function updatePositionDisplay(x = 0, y = 0) {
-                        const canvas = document.getElementById('pdf-canvas');
-                        const positionInfo = document.getElementById('current-position');
-                        if (positionInfo && canvas) {
-                            // Show both canvas coordinates and PDF coordinates
-                            const pdfX = x;
-                            const pdfY = canvas.height - y - 100; // Convert to PDF coordinate system
-                            positionInfo.innerHTML =
-                                `Canvas: X=${Math.round(x)}, Y=${Math.round(y)} | PDF: X=${Math.round(pdfX)}, Y=${Math.round(pdfY)}`;
+                    document.addEventListener('keydown', function(e) {
+                        if (e.target && e.target.id === 'page-jump-input' && e.key === 'Enter') {
+                            e.preventDefault();
+                            goToPage(parseInt(e.target.value) || 1);
                         }
-                    }
-
-                    // Clear canvas (user-triggered)
-                    function clearCanvas() {
-                        const canvas = document.getElementById('pdf-canvas');
-                        if (canvas) {
-                            const ctx = canvas.getContext('2d');
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            // Reset canvas dimensions
-                            canvas.width = 0;
-                            canvas.height = 0;
-                            console.log('🧹 Canvas cleared by user');
+                    });
+                    document.addEventListener('change', function(e) {
+                        if (e.target && e.target.id === 'page-jump-input') {
+                            goToPage(parseInt(e.target.value) || 1);
                         }
-
-                        // Clean up QR dragging
-                        if (qrDragInstance) {
-                            qrDragInstance.unset();
-                            qrDragInstance = null;
+                    });
+                    document.addEventListener('input', function(e) {
+                        if (e.target && e.target.id === 'qr-size-slider') {
+                            qrSize = parseInt(e.target.value);
+                            var display = $('qr-size-display');
+                            if (display) display.textContent = qrSize + ' × ' + qrSize;
+                            // Terapkan ukuran baru + reposisi berdasarkan rasio yang tersimpan
+                            applyQrFromRatio();
                         }
-
-                        // Reset QR position
-                        const qr = document.getElementById('qr-overlay');
-                        if (qr) {
-                            qr.style.transform = 'translate(0px, 0px)';
-                            qr.setAttribute('data-x', '0');
-                            qr.setAttribute('data-y', '0');
-                        }
-
-                        updatePositionDisplay(0, 0);
-                        currentPdfUrl = null;
-                        pdfDocument = null;
-
-                        // Show notification that preview was cleared by user
-                        console.log('📢 Preview dibersihkan oleh user');
-                    }
-
-                    // Clear canvas quietly (internal use)
-                    function clearCanvasQuietly() {
-                        const canvas = document.getElementById('pdf-canvas');
-                        if (canvas) {
-                            const ctx = canvas.getContext('2d');
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            // Reset canvas dimensions
-                            canvas.width = 0;
-                            canvas.height = 0;
-                            console.log('🔄 Canvas cleared quietly for new content');
-                        }
-
-                        // Clean up QR dragging
-                        if (qrDragInstance) {
-                            qrDragInstance.unset();
-                            qrDragInstance = null;
-                        }
-
-                        // Reset QR position
-                        const qr = document.getElementById('qr-overlay');
-                        if (qr) {
-                            qr.style.transform = 'translate(0px, 0px)';
-                            qr.setAttribute('data-x', '0');
-                            qr.setAttribute('data-y', '0');
-                        }
-
-                        updatePositionDisplay(0, 0);
-                        currentPdfUrl = null;
-                        pdfDocument = null;
-
-                        // No notification - this is internal cleanup
-                    }
-
-                    // Initialize the app
-                    initializeApp();
+                    });
                 }
-            </script>
-        @endpush
 
-        {{-- Add Alpine.js data attribute --}}
-        <div x-data="pdfPreview" style="display: none;"></div>
-    </x-filament-panels::page>
+                // ── Livewire Events ───────────────────────────────────────────────
+                function bindLivewireEvents() {
+                    window.addEventListener('preview-updated', function(e) {
+                        var data = Array.isArray(e.detail) ? e.detail[0] : e.detail;
+                        if (data && data.pdfUrl && data.pdfUrl !== currentPdfUrl) loadPdf(data.pdfUrl);
+                        if (data && data.qrUrl) {
+                            var qrEl = $('qr-overlay');
+                            if (qrEl && qrEl.src !== data.qrUrl) qrEl.src = data.qrUrl;
+                        }
+                    });
+                    window.addEventListener('preview-cleared', resetAll);
+                }
+
+                // ── Load PDF ──────────────────────────────────────────────────────
+                function loadPdf(url) {
+                    currentPdfUrl = url;
+                    currentPage = 1;
+                    totalPages = 0;
+                    thumbsDone = 0;
+                    pdfDoc = null;
+                    // Reset rasio ke tengah saat PDF baru dimuat
+                    qrRatioX = 0.5;
+                    qrRatioY = 0.5;
+
+                    showLoading('Memuat PDF…', url.split('/').pop());
+                    hideThumbnailStrip();
+                    hidePageInfoBar();
+
+                    pdfjsLib.getDocument({
+                        url: url,
+                        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                        cMapPacked: true,
+                        verbosity: 0
+                    }).promise.then(function(pdf) {
+                        pdfDoc = pdf;
+                        totalPages = pdf.numPages;
+                        hideLoading();
+                        showPageInfoBar();
+                        updatePageUI();
+                        return renderPage(1);
+                    }).then(function() {
+                        setupQrDrag();
+                        generateThumbnails();
+                        showThumbnailStrip();
+                    }).catch(function(err) {
+                        console.error('[PDF] Load error:', err);
+                        hideLoading();
+                    });
+                }
+
+                // ── Render Halaman ────────────────────────────────────────────────
+                function renderPage(pageNum) {
+                    if (!pdfDoc) return Promise.resolve();
+                    if (isRendering) {
+                        pendingPage = pageNum;
+                        return Promise.resolve();
+                    }
+
+                    isRendering = true;
+                    currentPage = Math.max(1, Math.min(pageNum, totalPages));
+                    updatePageUI();
+                    showPageSpinner();
+
+                    return pdfDoc.getPage(currentPage).then(function(page) {
+                        var vp = page.getViewport({
+                            scale: renderScale
+                        });
+                        var canvas = $('pdf-canvas');
+                        var ctx = canvas.getContext('2d');
+                        canvas.width = vp.width;
+                        canvas.height = vp.height;
+                        return page.render({
+                            canvasContext: ctx,
+                            viewport: vp
+                        }).promise;
+                    }).then(function() {
+                        isRendering = false;
+                        hidePageSpinner();
+                        highlightThumb(currentPage);
+
+                        // Update notice
+                        var notice = $('page-selected-notice');
+                        if (notice) notice.classList.remove('hidden');
+                        var tgt = $('qr-target-page');
+                        if (tgt) tgt.textContent = currentPage;
+                        var ind = $('qr-page-indicator');
+                        if (ind) ind.textContent = 'Halaman ' + currentPage;
+
+                        // ── KUNCI: setelah canvas di-render ulang (zoom/ganti halaman),
+                        //    terapkan ulang posisi QR dari rasio yang tersimpan
+                        applyQrFromRatio();
+
+                        if (pendingPage !== null && pendingPage !== currentPage) {
+                            var next = pendingPage;
+                            pendingPage = null;
+                            return renderPage(next);
+                        }
+                    }).catch(function(err) {
+                        isRendering = false;
+                        hidePageSpinner();
+                        console.error('[PDF] Render error:', err);
+                    });
+                }
+
+                // ── Navigasi ──────────────────────────────────────────────────────
+                function goToPage(page) {
+                    if (!pdfDoc) return;
+                    page = Math.max(1, Math.min(page, totalPages));
+                    if (page === currentPage && pendingPage === null) return;
+                    renderPage(page);
+                    // TIDAK reset posisi QR saat ganti halaman — rasio tetap sama
+                }
+
+                function updatePageUI() {
+                    var curEl = $('current-page-display');
+                    var totEl = $('total-pages-display');
+                    var input = $('page-jump-input');
+                    if (curEl) curEl.textContent = currentPage;
+                    if (totEl) totEl.textContent = totalPages || '?';
+                    if (input) {
+                        input.value = currentPage;
+                        input.max = totalPages;
+                    }
+
+                    setNavDisabled($('btn-first-page'), currentPage <= 1);
+                    setNavDisabled($('btn-prev-page'), currentPage <= 1);
+                    setNavDisabled($('btn-next-page'), currentPage >= totalPages);
+                    setNavDisabled($('btn-last-page'), currentPage >= totalPages);
+                }
+
+                function setNavDisabled(btn, disabled) {
+                    if (!btn) return;
+                    if (disabled) {
+                        btn.setAttribute('disabled', 'disabled');
+                        btn.classList.add('opacity-40', 'cursor-not-allowed');
+                    } else {
+                        btn.removeAttribute('disabled');
+                        btn.classList.remove('opacity-40', 'cursor-not-allowed');
+                    }
+                }
+
+                // ── QR: Posisi berbasis RASIO ─────────────────────────────────────
+                //
+                // Alur:
+                //  drag  → catat pixel X,Y → hitung rasio (X/canvasW, Y/canvasH) → simpan
+                //  zoom  → render ulang canvas (ukuran berubah) → applyQrFromRatio()
+                //           → pixel baru = rasio × canvasW/H baru → terapkan ke QR
+                //
+                // Dengan cara ini QR selalu berada di posisi RELATIF yang sama
+                // terhadap dokumen, tidak peduli skala zoom.
+
+                function applyQrFromRatio() {
+                    var canvas = $('pdf-canvas');
+                    var qr = $('qr-overlay');
+                    if (!canvas || !qr) return;
+
+                    var cw = canvas.width || canvas.offsetWidth || 600;
+                    var ch = canvas.height || canvas.offsetHeight || 800;
+
+                    // Hitung ukuran QR proporsional terhadap zoom
+                    // qrSize adalah ukuran "base" saat zoom 100% (BASE_SCALE)
+                    var scaledQrSize = Math.round(qrSize * (renderScale / BASE_SCALE));
+                    qr.style.width = scaledQrSize + 'px';
+                    qr.style.height = scaledQrSize + 'px';
+
+                    // Konversi rasio → pixel, clamp supaya tidak keluar canvas
+                    var px = Math.max(0, Math.min(qrRatioX * cw, cw - scaledQrSize));
+                    var py = Math.max(0, Math.min(qrRatioY * ch, ch - scaledQrSize));
+
+                    qr.style.transform = 'translate(' + px + 'px,' + py + 'px)';
+                    qr.setAttribute('data-x', px);
+                    qr.setAttribute('data-y', py);
+
+                    updatePositionDisplay(px, py, scaledQrSize);
+                }
+
+                function resetQrToCenter() {
+                    qrRatioX = 0.5;
+                    qrRatioY = 0.5;
+                    applyQrFromRatio();
+                }
+
+                function setupQrDrag() {
+                    var qr = $('qr-overlay');
+                    var canvas = $('pdf-canvas');
+                    if (!qr || !canvas) return;
+
+                    if (qrDragInst) {
+                        qrDragInst.unset();
+                        qrDragInst = null;
+                    }
+
+                    // Terapkan posisi awal dari rasio
+                    applyQrFromRatio();
+
+                    qrDragInst = interact(qr).draggable({
+                        listeners: {
+                            start: function(e) {
+                                e.target.style.opacity = '0.75';
+                            },
+                            move: function(e) {
+                                var t = e.target;
+                                var cw = canvas.width || canvas.offsetWidth || 600;
+                                var ch = canvas.height || canvas.offsetHeight || 800;
+                                var scaledQrSize = parseInt(t.style.width) || qrSize;
+
+                                var x = (parseFloat(t.getAttribute('data-x')) || 0) + e.dx;
+                                var y = (parseFloat(t.getAttribute('data-y')) || 0) + e.dy;
+
+                                // Clamp dalam batas canvas
+                                x = Math.max(0, Math.min(x, cw - scaledQrSize));
+                                y = Math.max(0, Math.min(y, ch - scaledQrSize));
+
+                                // ── Simpan sebagai rasio setiap kali drag ────────
+                                qrRatioX = x / cw;
+                                qrRatioY = y / ch;
+
+                                t.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+                                t.setAttribute('data-x', x);
+                                t.setAttribute('data-y', y);
+
+                                updatePositionDisplay(x, y, scaledQrSize);
+                            },
+                            end: function(e) {
+                                e.target.style.opacity = '1';
+                            }
+                        },
+                        modifiers: []
+                    });
+                }
+
+                function saveQrPosition() {
+                    var qr = $('qr-overlay');
+                    var canvas = $('pdf-canvas');
+                    if (!qr || !canvas) return;
+
+                    var x = parseFloat(qr.getAttribute('data-x')) || 0;
+                    var y = parseFloat(qr.getAttribute('data-y')) || 0;
+                    var scaledQrSize = parseInt(qr.style.width) || qrSize;
+
+                    // Konversi ke koordinat PDF (origin kiri-bawah)
+                    // Gunakan rasio untuk akurasi, bukan pixel mentah
+                    // karena pixel bergantung pada zoom
+                    var pdfX = qrRatioX; // kirim rasio ke backend
+                    var pdfY = 1 - qrRatioY; // flip Y (PDF origin bottom-left)
+
+                    var rect = qr.getBoundingClientRect();
+
+                    dispatchToLivewire('save-qr-position', {
+                        x: x,
+                        y: canvas.height - y - scaledQrSize, // pixel absolut untuk Imagick
+                        ratioX: qrRatioX, // rasio untuk referensi
+                        ratioY: qrRatioY,
+                        scale: rect.width,
+                        page: currentPage,
+                        canvasWidth: canvas.width,
+                        canvasHeight: canvas.height,
+                        renderScale: renderScale,
+                    });
+                }
+
+                function updatePositionDisplay(x, y, size) {
+                    var canvas = $('pdf-canvas');
+                    var el = $('current-position');
+                    var ratioEl = $('ratio-display');
+                    if (!el) return;
+                    size = size || qrSize;
+                    var pdfY = canvas ? (canvas.height - y - size) : 0;
+                    el.textContent = 'X=' + Math.round(x) + ', Y=' + Math.round(y) +
+                        ' → PDF X=' + Math.round(x) + ', Y=' + Math.round(pdfY);
+                    if (ratioEl) {
+                        ratioEl.textContent = 'rx=' + qrRatioX.toFixed(3) + ', ry=' + qrRatioY.toFixed(3);
+                    }
+                }
+
+                // ── Zoom ──────────────────────────────────────────────────────────
+                function applyZoom(scale) {
+                    renderScale = Math.max(0.5, Math.min(4.0, scale));
+                    var pct = Math.round(renderScale / BASE_SCALE * 100);
+                    var disp = $('zoom-level-display');
+                    if (disp) disp.textContent = pct + '%';
+                    // renderPage akan memanggil applyQrFromRatio() setelah canvas dirender
+                    if (pdfDoc) renderPage(currentPage);
+                }
+
+                // ── Thumbnails ────────────────────────────────────────────────────
+                function generateThumbnails() {
+                    var strip = $('thumbnail-strip');
+                    if (!strip || !pdfDoc) return;
+
+                    strip.innerHTML = '';
+                    thumbsDone = 0;
+                    var badge = $('thumb-loading-badge');
+                    if (badge) badge.classList.remove('hidden');
+
+                    for (var i = 1; i <= totalPages; i++) {
+                        (function(pageNum) {
+                            var wrapper = document.createElement('div');
+                            wrapper.className =
+                                'thumb-item flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer';
+                            wrapper.dataset.page = pageNum;
+
+                            var tc = document.createElement('canvas');
+                            tc.id = 'thumb-' + pageNum;
+                            tc.style.cssText =
+                                'display:block;width:70px;border:2px solid transparent;border-radius:6px;transition:all 0.15s ease;background:#fff;';
+
+                            var lbl = document.createElement('span');
+                            lbl.textContent = pageNum;
+                            lbl.className = 'text-xs text-gray-400 dark:text-gray-500 font-medium';
+
+                            wrapper.appendChild(tc);
+                            wrapper.appendChild(lbl);
+                            strip.appendChild(wrapper);
+
+                            pdfDoc.getPage(pageNum).then(function(page) {
+                                var vp = page.getViewport({
+                                    scale: 0.25
+                                });
+                                tc.width = vp.width;
+                                tc.height = vp.height;
+                                page.render({
+                                    canvasContext: tc.getContext('2d'),
+                                    viewport: vp
+                                }).promise.then(function() {
+                                    thumbsDone++;
+                                    if (thumbsDone >= totalPages && badge) badge.classList.add(
+                                        'hidden');
+                                });
+                            });
+                        })(i);
+                    }
+                    highlightThumb(currentPage);
+                }
+
+                function highlightThumb(page) {
+                    document.querySelectorAll('.thumb-item').forEach(function(w) {
+                        var active = parseInt(w.dataset.page) === page;
+                        var tc = w.querySelector('canvas');
+                        var lbl = w.querySelector('span');
+                        if (tc) {
+                            tc.style.borderColor = active ? '#3b82f6' : 'transparent';
+                            tc.style.boxShadow = active ? '0 0 0 1px #3b82f6' : 'none';
+                            tc.style.opacity = active ? '1' : '0.55';
+                        }
+                        if (lbl) {
+                            lbl.style.color = active ? '#3b82f6' : '';
+                            lbl.style.fontWeight = active ? '700' : '';
+                        }
+                        if (active) w.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                            inline: 'center'
+                        });
+                    });
+                }
+
+                function toggleThumbnails() {
+                    thumbsVisible = !thumbsVisible;
+                    var strip = $('thumbnail-strip');
+                    var btn = $('toggle-thumbnails');
+                    if (strip) strip.style.display = thumbsVisible ? '' : 'none';
+                    if (btn) btn.textContent = thumbsVisible ? 'Sembunyikan' : 'Tampilkan';
+                }
+
+                // ── Keyboard ──────────────────────────────────────────────────────
+                function bindKeyboard() {
+                    document.addEventListener('keydown', function(e) {
+                        var tag = e.target && e.target.tagName;
+                        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goToPage(currentPage + 1);
+                        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goToPage(currentPage - 1);
+                        if (e.key === 'Home') goToPage(1);
+                        if (e.key === 'End') goToPage(totalPages);
+                        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+                            e.preventDefault();
+                            applyZoom(renderScale + 0.25);
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                            e.preventDefault();
+                            applyZoom(renderScale - 0.25);
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                            e.preventDefault();
+                            applyZoom(BASE_SCALE);
+                        }
+                    });
+                }
+
+                // ── UI Helpers ────────────────────────────────────────────────────
+                function showLoading(msg, sub) {
+                    var ov = $('pdf-loading-overlay');
+                    if (ov) ov.classList.remove('hidden');
+                    var t = $('loading-text');
+                    if (t) t.textContent = msg || 'Memuat…';
+                    var s = $('loading-subtext');
+                    if (s) s.textContent = sub || '';
+                    var c = $('pdf-canvas');
+                    if (c) {
+                        c.width = 0;
+                        c.height = 0;
+                    }
+                }
+
+                function hideLoading() {
+                    var o = $('pdf-loading-overlay');
+                    if (o) o.classList.add('hidden');
+                }
+
+                function showPageInfoBar() {
+                    var b = $('page-info-bar');
+                    if (b) b.classList.remove('hidden');
+                }
+
+                function hidePageInfoBar() {
+                    var b = $('page-info-bar');
+                    if (b) b.classList.add('hidden');
+                }
+
+                function showThumbnailStrip() {
+                    var w = $('thumbnail-strip-wrapper');
+                    if (w) w.classList.remove('hidden');
+                }
+
+                function hideThumbnailStrip() {
+                    var w = $('thumbnail-strip-wrapper');
+                    if (w) w.classList.add('hidden');
+                }
+
+                function showPageSpinner() {
+                    var s = $('page-render-indicator');
+                    if (s) s.classList.remove('hidden');
+                }
+
+                function hidePageSpinner() {
+                    var s = $('page-render-indicator');
+                    if (s) s.classList.add('hidden');
+                }
+
+                function resetAll() {
+                    pdfDoc = null;
+                    currentPage = 1;
+                    totalPages = 0;
+                    currentPdfUrl = null;
+                    thumbsDone = 0;
+                    qrRatioX = 0.5;
+                    qrRatioY = 0.5;
+                    var c = $('pdf-canvas');
+                    if (c) {
+                        c.getContext('2d').clearRect(0, 0, c.width, c.height);
+                        c.width = 0;
+                        c.height = 0;
+                    }
+                    var strip = $('thumbnail-strip');
+                    if (strip) strip.innerHTML = '';
+                    if (qrDragInst) {
+                        qrDragInst.unset();
+                        qrDragInst = null;
+                    }
+                    hidePageInfoBar();
+                    hideThumbnailStrip();
+                }
+
+                // ── Bootstrap ─────────────────────────────────────────────────────
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', init);
+                } else {
+                    init();
+                }
+                document.addEventListener('livewire:navigated', function() {
+                    setTimeout(init, 150);
+                });
+
+            })();
+        </script>
+
+        <style>
+            #thumbnail-strip::-webkit-scrollbar {
+                height: 4px;
+            }
+
+            #thumbnail-strip::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            #thumbnail-strip::-webkit-scrollbar-thumb {
+                background: #94a3b8;
+                border-radius: 9999px;
+            }
+
+            .thumb-item canvas {
+                transition: border-color .15s, box-shadow .15s, opacity .15s;
+            }
+
+            .thumb-item:hover canvas {
+                opacity: 1 !important;
+                border-color: #93c5fd !important;
+            }
+
+            #qr-overlay:hover {
+                box-shadow: 0 4px 20px rgba(59, 130, 246, 0.45) !important;
+            }
+        </style>
+    @endpush
+
+</x-filament-panels::page>

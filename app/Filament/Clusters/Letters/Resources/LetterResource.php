@@ -23,7 +23,8 @@ use Illuminate\Support\Str;
 class LetterResource extends Resource
 {
     protected static ?string $model = Letter::class;
-    protected static ?int $navigationSort = 1;
+
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $cluster = Letters::class;
     public static function form(Form $form): Form

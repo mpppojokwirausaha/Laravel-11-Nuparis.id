@@ -39,4 +39,9 @@ class EditTicket extends EditRecord
         return $data;
     }
 
+    // Reload setelah save
+    protected function afterSave(): void
+    {
+        $this->js('window.location.reload()');
+    }
 }

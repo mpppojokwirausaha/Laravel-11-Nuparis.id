@@ -15,7 +15,10 @@ class Event extends Model
     public $incrementing = false;
     protected $table = 'events';
     protected $primaryKey = 'uuid';
-    protected $casts = ['uuid' => 'string'];
+    protected $casts = [
+        'uuid' => 'string',
+        'event_type' => 'array',
+    ];
     protected $keyType = 'string';
     protected $fillable = [
         'uuid',
@@ -23,6 +26,9 @@ class Event extends Model
         'event_slug',
         'event_description',
         'event_image',
+        'event_link',
+        'event_type',
+        'event_is_active',
         'event_date_start',
         'event_date_end',
         'event_location',
