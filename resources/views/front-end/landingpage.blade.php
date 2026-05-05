@@ -90,7 +90,7 @@
                     </a>
 
                     @if (auth()->check())
-                        <a href="https://www.nuptaris.id/management" id="login-button"
+                        <a href="https://www.nuparis.id/management" id="login-button"
                             class="inline-flex items-center justify-center bg-white text-primary px-5 py-2 rounded-full font-medium hover:bg-white/90 transition-all duration-200 shadow-lg">
                             Dashboard
                         </a>
