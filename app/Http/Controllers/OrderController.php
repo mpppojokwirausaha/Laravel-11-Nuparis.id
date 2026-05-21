@@ -37,6 +37,37 @@ class OrderController extends Controller
         Config::$is3ds = true;
     }
 
+    private function normalizePhoneNumber($phone)
+    {
+        if (empty($phone)) {
+            return null;
+        }
+
+        // Remove all non-numeric characters except '+'
+        $phone = preg_replace('/[^0-9+]/', '', $phone);
+
+        // Remove leading '+' if exists (will add later if needed)
+        $phone = ltrim($phone, '+');
+
+        // Check if starts with 0 (e.g., 083xxxxx)
+        if (preg_match('/^0/', $phone)) {
+            $phone = '62' . substr($phone, 1);
+        }
+        // Check if starts with 62 (already international)
+        elseif (preg_match('/^62/', $phone)) {
+            $phone = $phone;
+        }
+        // Check if starts with 8 (local without 0, e.g., 8xxxx)
+        elseif (preg_match('/^8/', $phone)) {
+            $phone = '62' . $phone;
+        }
+
+        // Remove any non-digit characters again just in case
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        return $phone;
+    }
+
     /**
      * Main entry point for transaction creation
      */
@@ -87,6 +118,7 @@ class OrderController extends Controller
             'company' => 'nullable|string',
             'source' => 'nullable|string',
         ]);
+        $data['phone'] = $this->normalizePhoneNumber($data['phone']);
 
         DB::beginTransaction();
 
@@ -180,6 +212,7 @@ class OrderController extends Controller
             'company' => 'nullable|string',
             'source' => 'nullable|string',
         ]);
+        $participant['phone'] = $this->normalizePhoneNumber($participant['phone']);
 
         $this->checkEventQuota($event);
 
@@ -314,12 +347,14 @@ class OrderController extends Controller
         }
 
         if ($order->order_reference_type === self::TYPE_EVENT) {
+            $normalizedPhone = $this->normalizePhoneNumber($order->order_customer_phone);
+
             $participant = EventParticipant::createWithTicket([
                 'event_uuid' => $order->order_reference_uuid,
                 'order_uuid' => $order->uuid,
                 'participant_name' => $order->order_customer_name,
                 'participant_email' => $order->order_customer_email,
-                'participant_no_wa' => $order->order_customer_phone,
+                'participant_no_wa' => $normalizedPhone,
             ]);
 
             $this->sendEmail($participant, new EventRegistrationSuccessNotification($participant));

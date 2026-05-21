@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use \setasign\Fpdi\Fpdi;
 use App\Models\Ticket;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -19,7 +21,6 @@ use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class Report extends Page implements HasForms
 {
@@ -57,9 +58,9 @@ class Report extends Page implements HasForms
         $reportData = $this->hasReport ? cache()->get($this->cacheKey, []) : [];
 
         return [
-            'reportData' => $reportData,
+            'reportData'    => $reportData,
             'reportSummary' => $this->reportSummary,
-            'debugInfo' => $this->debugInfo,
+            'debugInfo'     => $this->debugInfo,
         ];
     }
 
@@ -86,15 +87,15 @@ class Report extends Page implements HasForms
                                 Select::make('date_range')
                                     ->label('Periode Laporan')
                                     ->options([
-                                        'today' => 'Hari Ini',
-                                        'yesterday' => 'Kemarin',
-                                        'this_week' => 'Minggu Ini',
-                                        'last_week' => 'Minggu Lalu',
+                                        'today'      => 'Hari Ini',
+                                        'yesterday'  => 'Kemarin',
+                                        'this_week'  => 'Minggu Ini',
+                                        'last_week'  => 'Minggu Lalu',
                                         'this_month' => 'Bulan Ini',
                                         'last_month' => 'Bulan Lalu',
-                                        'this_year' => 'Tahun Ini',
-                                        'last_year' => 'Tahun Lalu',
-                                        'custom' => 'Kustom',
+                                        'this_year'  => 'Tahun Ini',
+                                        'last_year'  => 'Tahun Lalu',
+                                        'custom'     => 'Kustom',
                                     ])
                                     ->default(null)
                                     ->live()
@@ -138,7 +139,7 @@ class Report extends Page implements HasForms
                                         if (!empty($originalName)) {
                                             return 'Nama client dari database: ' . $originalName;
                                         }
-                                        return '⚠️ Data client kosong, silakan isi manual';
+                                        return 'Data client kosong, silakan isi manual';
                                     })
                                     ->default(function ($get) {
                                         return $this->getOriginalClientName($get('selected_tickets'));
@@ -235,7 +236,6 @@ class Report extends Page implements HasForms
     protected function getOriginalClientName(?string $uuid): ?string
     {
         if (empty($uuid)) return null;
-
         $ticket = Ticket::where('uuid', $uuid)->first();
         return $ticket?->ticket_name_client ?? null;
     }
@@ -244,19 +244,17 @@ class Report extends Page implements HasForms
     {
         if (empty($uuid)) {
             $this->form->fill(array_merge($this->data ?? [], [
-                'client_name' => null,
+                'client_name'  => null,
                 'proposal_for' => null,
             ]));
             return;
         }
 
         $ticket = Ticket::where('uuid', $uuid)->first();
-        if (!$ticket) {
-            return;
-        }
+        if (!$ticket) return;
 
         $this->form->fill(array_merge($this->data ?? [], [
-            'client_name' => $ticket->ticket_name_client ?? '',
+            'client_name'  => $ticket->ticket_name_client ?? '',
             'proposal_for' => $ticket->ticket_title ?? '-',
         ]));
     }
@@ -266,49 +264,50 @@ class Report extends Page implements HasForms
         $this->isLoading = true;
 
         try {
+            Log::info('=== GENERATE REPORT START ===');
+
             $tickets = $this->getFilteredTickets();
 
             if ($tickets->isEmpty()) {
-                Notification::make()
-                    ->title('Informasi')
+                Log::warning('No tickets found');
+                Notification::make()->title('Informasi')
                     ->body('Tidak ada data tiket yang sesuai dengan filter yang dipilih.')
-                    ->warning()
-                    ->send();
+                    ->warning()->send();
                 return;
             }
+
+            Log::info('Tickets found', ['count' => $tickets->count()]);
 
             $reportData = $this->buildReport($tickets);
 
             if (empty($reportData['data'])) {
-                Notification::make()
-                    ->title('Informasi')
+                Log::warning('No progress data in selected period');
+                Notification::make()->title('Informasi')
                     ->body('Tidak ada progress tiket dalam periode yang dipilih.')
-                    ->warning()
-                    ->send();
+                    ->warning()->send();
                 return;
             }
 
             cache()->put($this->cacheKey, $reportData, now()->addHours(2));
-
             $this->reportSummary = $reportData['summary'];
             $this->hasReport = true;
 
-            Notification::make()
-                ->title('Sukses')
+            Log::info('=== GENERATE REPORT SUCCESS ===', [
+                'total_tickets' => $tickets->count(),
+                'cache_key' => $this->cacheKey
+            ]);
+
+            Notification::make()->title('Sukses')
                 ->body("Laporan berhasil ditampilkan. Total tiket: {$tickets->count()}")
-                ->success()
-                ->send();
+                ->success()->send();
         } catch (\Exception $e) {
             Log::error('Error generating report', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
-            Notification::make()
-                ->title('Error')
+            Notification::make()->title('Error')
                 ->body('Gagal menampilkan laporan: ' . $e->getMessage())
-                ->danger()
-                ->send();
+                ->danger()->send();
         } finally {
             $this->isLoading = false;
         }
@@ -317,11 +316,11 @@ class Report extends Page implements HasForms
     protected function getFilteredTickets(): Collection
     {
         $state = $this->form->getState();
-
         $query = Ticket::query()->orderBy('created_at', 'desc')->limit(1000);
 
         if (!empty($state['selected_tickets'])) {
             $query->where('uuid', $state['selected_tickets']);
+            Log::info('Filtering by ticket UUID', ['uuid' => $state['selected_tickets']]);
         }
 
         $query->whereNotNull('ticket_progress')
@@ -334,6 +333,12 @@ class Report extends Page implements HasForms
     protected function filterProgressesByDate(array $progresses, array $state): array
     {
         [$startDate, $endDate] = $this->resolveDateRange($state);
+        Log::info('Filtering progress by date range', [
+            'start' => $startDate->toDateTimeString(),
+            'end' => $endDate->toDateTimeString(),
+            'total_progress' => count($progresses)
+        ]);
+
         return array_values(array_filter($progresses, function ($p) use ($startDate, $endDate) {
             if (empty($p['timestamp'])) return false;
             return Carbon::parse($p['timestamp'])->between($startDate, $endDate);
@@ -346,18 +351,24 @@ class Report extends Page implements HasForms
 
         if ($range !== 'custom') {
             [$start, $end] = match ($range) {
-                'today' => [Carbon::today(), Carbon::today()],
-                'yesterday' => [Carbon::yesterday(), Carbon::yesterday()],
-                'this_week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
-                'last_week' => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
+                'today'      => [Carbon::today(), Carbon::today()],
+                'yesterday'  => [Carbon::yesterday(), Carbon::yesterday()],
+                'this_week'  => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+                'last_week'  => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
                 'this_month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
                 'last_month' => [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()],
-                'this_year' => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
-                'last_year' => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
-                default => [Carbon::now()->startOfMonth(), Carbon::now()],
+                'this_year'  => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
+                'last_year'  => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
+                default      => [Carbon::now()->startOfMonth(), Carbon::now()],
             };
+            Log::info('Date range resolved (preset)', ['range' => $range]);
             return [$start->startOfDay(), $end->endOfDay()];
         }
+
+        Log::info('Date range resolved (custom)', [
+            'start' => $state['start_date'] ?? now()->startOfMonth(),
+            'end' => $state['end_date'] ?? now()
+        ]);
 
         return [
             Carbon::parse($state['start_date'] ?? now()->startOfMonth())->startOfDay(),
@@ -370,55 +381,53 @@ class Report extends Page implements HasForms
         if ($range === null || $range === 'custom') return;
 
         [$startDate, $endDate] = match ($range) {
-            'today' => [Carbon::today(), Carbon::today()],
-            'yesterday' => [Carbon::yesterday(), Carbon::yesterday()],
-            'this_week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
-            'last_week' => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
+            'today'      => [Carbon::today(), Carbon::today()],
+            'yesterday'  => [Carbon::yesterday(), Carbon::yesterday()],
+            'this_week'  => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+            'last_week'  => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
             'this_month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
             'last_month' => [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()],
-            'this_year' => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
-            'last_year' => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
-            default => [Carbon::now()->startOfMonth(), Carbon::now()],
+            'this_year'  => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
+            'last_year'  => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
+            default      => [Carbon::now()->startOfMonth(), Carbon::now()],
         };
 
         $this->form->fill(array_merge($this->data, [
             'start_date' => $startDate->format('Y-m-d'),
-            'end_date' => $endDate->format('Y-m-d'),
+            'end_date'   => $endDate->format('Y-m-d'),
         ]));
     }
 
     protected function buildReport(Collection $tickets): array
     {
         $state = $this->form->getState();
-        $data = $this->groupByTicket($tickets);
+        $data  = $this->groupByTicket($tickets);
 
-        // Get ticket code from first ticket data
         $ticketCode = '-';
         if (!empty($data) && isset($data[0]['ticket_code'])) {
             $ticketCode = $data[0]['ticket_code'];
         }
 
-        // Get current timestamp for report generation
-        $generatedByName = $state['generated_by'] ?? auth()->user()?->name ?? 'System';
-        $generatedAt = Carbon::now();
+        $generatedByName          = $state['generated_by'] ?? auth()->user()?->name ?? 'System';
+        $generatedAt              = Carbon::now();
         $generatedByWithTimestamp = $generatedByName . '; ' . $generatedAt->translatedFormat('d F Y H:i');
 
         return [
             'summary' => [
-                'total_tickets' => count($data),
-                'ticket_code' => $ticketCode,
-                'date_range' => (function () use ($state) {
+                'total_tickets'       => count($data),
+                'ticket_code'         => $ticketCode,
+                'date_range'          => (function () use ($state) {
                     [$start, $end] = $this->resolveDateRange($state);
                     return $start->translatedFormat('d M Y') . ' s/d ' . $end->translatedFormat('d M Y');
                 })(),
-                'generated_at' => $generatedAt->translatedFormat('d M Y H:i:s'),
-                'generated_by' => $generatedByWithTimestamp,
-                'generated_by_name' => $generatedByName,
+                'generated_at'        => $generatedAt->translatedFormat('d M Y H:i:s'),
+                'generated_by'        => $generatedByWithTimestamp,
+                'generated_by_name'   => $generatedByName,
                 'generated_timestamp' => $generatedAt->translatedFormat('d F Y H:i'),
-                'client_name' => $state['client_name'] ?? '-',
-                'proposal_id' => $state['proposal_id'] ?? '-',
-                'enquiry' => $state['enquiry'] ?? '-',
-                'proposal_for' => $state['proposal_for'] ?? '-',
+                'client_name'         => $state['client_name'] ?? '-',
+                'proposal_id'         => $state['proposal_id'] ?? '-',
+                'enquiry'             => $state['enquiry'] ?? '-',
+                'proposal_for'        => $state['proposal_for'] ?? '-',
             ],
             'data' => $data,
         ];
@@ -430,48 +439,59 @@ class Report extends Page implements HasForms
 
         return $tickets
             ->map(function (Ticket $ticket) use ($state) {
-                $allProgresses = $this->parseProgresses($ticket->ticket_progress);
-                $filteredProgresses = $this->filterProgressesByDate($allProgresses, $state);
+                Log::info('Processing ticket', [
+                    'ticket_code' => $ticket->ticket_code,
+                    'uuid' => $ticket->uuid
+                ]);
 
-                $clientFiles = $this->extractClientFiles($ticket);
-                $progressDocuments = array_map(
-                    fn($p) => $this->resolveProgressDocument($p),
-                    $filteredProgresses
-                );
+                $allProgresses      = $this->parseProgresses($ticket->ticket_progress);
+                $filteredProgresses = $this->filterProgressesByDate($allProgresses, $state);
+                $clientFiles        = $this->extractClientFiles($ticket);
+
+                // 🔥 KIRIM ticket_code KE resolveProgressDocument
+                $progressDocuments = array_map(function ($p) use ($ticket) {
+                    return $this->resolveProgressDocument($p, $ticket->ticket_code);
+                }, $filteredProgresses);
+
+                Log::info('Ticket files summary', [
+                    'ticket_code' => $ticket->ticket_code,
+                    'client_files_count' => count($clientFiles),
+                    'progress_documents_count' => count($progressDocuments)
+                ]);
 
                 $documents = [];
 
                 if (!empty($clientFiles)) {
                     $documents[] = [
-                        'text' => '',
-                        'embedded_images' => [],
-                        'thumbnail_files' => [],
-                        'other_files' => $clientFiles,
-                        'pdf_files' => [],
-                        'timestamp' => $ticket->created_at?->toISOString() ?? now()->toISOString(),
+                        'text'               => '',
+                        'text_html'          => '',
+                        'embedded_images'    => [],
+                        'thumbnail_files'    => [],
+                        'other_files'        => $clientFiles,
+                        'pdf_files'          => [],
+                        'timestamp'          => $ticket->created_at?->toISOString() ?? now()->toISOString(),
                         'is_client_document' => true,
-                        'is_progress' => false,
+                        'is_progress'        => false,
                     ];
                 }
 
                 foreach ($progressDocuments as $progressDoc) {
-                    $progressDoc['is_progress'] = true;
+                    $progressDoc['is_progress']        = true;
                     $progressDoc['is_client_document'] = false;
+                    $progressDoc['text']               = $progressDoc['text_html'];
                     $documents[] = $progressDoc;
                 }
 
                 if (empty($documents)) return null;
 
-                $progressCount = count($progressDocuments);
-
                 return [
-                    'ticket_code' => $ticket->ticket_code,
-                    'ticket_title' => $ticket->ticket_title,
-                    'status' => $ticket->status ?? '',
-                    'created_at' => $ticket->created_at?->format('d/m/Y H:i') ?? '-',
-                    'documents_count' => $progressCount,
+                    'ticket_code'      => $ticket->ticket_code,
+                    'ticket_title'     => $ticket->ticket_title,
+                    'status'           => $ticket->status ?? '',
+                    'created_at'       => $ticket->created_at?->format('d/m/Y H:i') ?? '-',
+                    'documents_count'  => count($progressDocuments),
                     'has_client_files' => !empty($clientFiles),
-                    'documents' => $documents,
+                    'documents'        => $documents,
                 ];
             })
             ->filter()
@@ -479,6 +499,9 @@ class Report extends Page implements HasForms
             ->toArray();
     }
 
+    /**
+     * Extract client files - langsung pakai ticket_code
+     */
     protected function extractClientFiles(Ticket $ticket): array
     {
         $clientFiles = [];
@@ -491,103 +514,88 @@ class Report extends Page implements HasForms
 
         if (is_string($rawClientFiles)) {
             $decoded = json_decode($rawClientFiles, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $rawClientFiles = $decoded;
-            } else {
-                $rawClientFiles = [$rawClientFiles];
-            }
+            $rawClientFiles = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                ? $decoded
+                : [$rawClientFiles];
         }
 
         if (!is_array($rawClientFiles)) {
             $rawClientFiles = [$rawClientFiles];
         }
 
+        $ticketCode = $ticket->ticket_code;
+
         foreach ($rawClientFiles as $cf) {
             if (empty($cf)) continue;
 
-            if (is_string($cf)) {
-                $filePath = $cf;
-                $fullPath = 'public/' . ltrim($filePath, '/');
-                $fileSize = Storage::exists($fullPath) ? Storage::size($fullPath) : 0;
+            $fileName = '';
 
-                $clientFiles[] = [
-                    'url' => asset('storage/' . $filePath),
-                    'name' => basename($filePath),
-                    'ext' => strtolower(pathinfo($filePath, PATHINFO_EXTENSION)),
-                    'size_formatted' => $fileSize > 0 ? self::formatFileSize($fileSize) : '',
-                    'type' => 'client',
-                    'file' => $filePath,
-                ];
+            if (is_string($cf)) {
+                $fileName = basename($cf);
             } elseif (is_array($cf)) {
                 $filePath = $cf['path'] ?? $cf['url'] ?? '';
-                $url = $cf['url'] ?? (isset($cf['path']) ? asset('storage/' . $cf['path']) : '#');
-                $fileName = $cf['name'] ?? basename($url);
-
-                $fullPath = 'public/' . ltrim($filePath, '/');
-                $fileSize = Storage::exists($fullPath) ? Storage::size($fullPath) : 0;
-
-                $clientFiles[] = [
-                    'url' => $url,
-                    'name' => $fileName,
-                    'ext' => $cf['ext'] ?? strtolower(pathinfo($fileName, PATHINFO_EXTENSION)),
-                    'size_formatted' => $cf['size_formatted'] ?? ($fileSize > 0 ? self::formatFileSize($fileSize) : ''),
-                    'type' => 'client',
-                    'file' => $filePath,
-                ];
+                $fileName = $cf['name'] ?? basename($filePath);
             }
+
+            if (empty($fileName)) continue;
+
+            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
+            $fileExists = file_exists($localPath);
+
+            $encodedFileName = rawurlencode($fileName);
+            $url = asset("storage/tickets/{$ticketCode}/{$encodedFileName}");
+
+            $fileSize = $fileExists ? filesize($localPath) : 0;
+
+            $clientFiles[] = [
+                'url'            => $url,
+                'name'           => $fileName,
+                'ext'            => strtolower(pathinfo($fileName, PATHINFO_EXTENSION)),
+                'size_formatted' => $fileSize > 0 ? self::formatFileSize($fileSize) : '',
+                'local_path'     => $fileExists ? $localPath : null,
+                'type'           => 'client',
+                'file'           => $fileName,
+                'ticket_code'    => $ticketCode,
+            ];
         }
 
         return $clientFiles;
     }
 
-    protected function resolveProgressDocument(array $p): array
+    protected function resolveProgressDocument(array $p, string $ticketCode): array
     {
         $rawHtml = $p['progress'] ?? '';
         $allFiles = is_array($p['file'] ?? []) ? ($p['file'] ?? []) : [$p['file'] ?? ''];
-
-        preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $rawHtml, $matches);
-        $embeddedImageUrls = $matches[1] ?? [];
-
-        $embeddedImages = [];
-        foreach ($embeddedImageUrls as $url) {
-            $localPath = $this->convertUrlToLocalPath($url);
-            if ($localPath && file_exists($localPath)) {
-                $embeddedImages[] = [
-                    'url' => $url,
-                    'path' => $localPath,
-                    'name' => basename($localPath),
-                    'ext' => strtolower(pathinfo($localPath, PATHINFO_EXTENSION))
-                ];
-            }
-        }
-
-        $cleanText = $this->sanitiseProgressHtml($rawHtml);
 
         $videoExt = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv'];
         $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
 
         $thumbnailFiles = [];
-        $otherFiles = [];
-        $pdfFiles = [];
+        $otherFiles     = [];
+        $pdfFiles       = [];
 
         foreach ($allFiles as $file) {
             if (empty($file)) continue;
 
-            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-            $filePath = 'public/' . $file;
-            $exists = Storage::exists($filePath);
-            $fileSize = $exists ? Storage::size($filePath) : 0;
-            $localPath = $exists ? Storage::path($filePath) : null;
+            $fileName = basename($file);
+            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
+            $fileExists = file_exists($localPath);
+            $fileSize = $fileExists ? filesize($localPath) : 0;
+
+            $encodedFileName = rawurlencode($fileName);
+            $url = asset("storage/tickets/{$ticketCode}/{$encodedFileName}");
 
             $meta = [
-                'file' => $file,
-                'url' => asset('storage/' . $file),
-                'name' => basename($file),
-                'ext' => $ext,
-                'size_bytes' => $fileSize,
+                'file'           => $file,
+                'url'            => $url,
+                'name'           => $fileName,
+                'ext'            => $ext,
+                'size_bytes'     => $fileSize,
                 'size_formatted' => $fileSize > 0 ? self::formatFileSize($fileSize) : '',
-                'local_path' => $localPath,
-                'type' => 'internal',
+                'local_path'     => $fileExists ? $localPath : null,
+                'type'           => 'internal',
             ];
 
             if ($ext === 'pdf') {
@@ -599,63 +607,34 @@ class Report extends Page implements HasForms
             }
         }
 
+        // Extract embedded images dari HTML
+        preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $rawHtml, $matches);
+        $embeddedImages = [];
+        foreach ($matches[1] ?? [] as $url) {
+            $fileName = basename(parse_url($url, PHP_URL_PATH));
+            $fileName = rawurldecode($fileName);
+
+            // 🔥 LANGSUNG PAKAI ticket_code untuk gambar
+            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
+            if (file_exists($localPath)) {
+                $embeddedImages[] = [
+                    'url'  => $url,
+                    'path' => $localPath,
+                    'name' => basename($localPath),
+                    'ext'  => strtolower(pathinfo($localPath, PATHINFO_EXTENSION)),
+                ];
+            }
+        }
+
         return [
-            'text' => $cleanText,
+            'text'            => $rawHtml,
+            'text_html'       => $rawHtml,
             'embedded_images' => $embeddedImages,
             'thumbnail_files' => $thumbnailFiles,
-            'other_files' => $otherFiles,
-            'pdf_files' => $pdfFiles,
-            'timestamp' => $p['timestamp'] ?? null,
+            'other_files'     => $otherFiles,
+            'pdf_files'       => $pdfFiles,
+            'timestamp'       => $p['timestamp'] ?? null,
         ];
-    }
-
-    protected function convertUrlToLocalPath(string $url): ?string
-    {
-        if (str_contains($url, '/storage/')) {
-            $relativePath = substr($url, strpos($url, '/storage/') + 9);
-            $localPath = storage_path('app/public/' . $relativePath);
-            if (file_exists($localPath)) {
-                return $localPath;
-            }
-        }
-
-        if (filter_var($url, FILTER_VALIDATE_URL)) {
-            $parsed = parse_url($url);
-            $path = $parsed['path'] ?? '';
-            if (str_contains($path, '/storage/')) {
-                $relativePath = substr($path, strpos($path, '/storage/') + 9);
-                $localPath = storage_path('app/public/' . $relativePath);
-                if (file_exists($localPath)) {
-                    return $localPath;
-                }
-            }
-        }
-
-        $directPath = storage_path('app/public/' . ltrim($url, '/'));
-        if (file_exists($directPath)) {
-            return $directPath;
-        }
-
-        return null;
-    }
-
-    protected function sanitiseProgressHtml(string $html): string
-    {
-        $cleaned = preg_replace(
-            [
-                '/<img[^>]+>/i',
-                '/<a[^>]*href=["\'][^"\']*\.(jpg|jpeg|png|gif|webp|svg|bmp)["\'][^>]*>.*?<\/a>/is',
-                '/[\w\-\.]+\.(jpg|jpeg|png|gif|webp|svg|bmp)\s*[\d\.,]+\s*(B|KB|MB|GB|TB)/i',
-                '/<p[^>]*>\s*<\/p>/i',
-            ],
-            '',
-            $html
-        );
-
-        $allowed = '<p><br><strong><em><ul><ol><li><a><span><h1><h2><h3><h4><h5><h6><blockquote><code><pre>';
-        $cleaned = strip_tags($cleaned, $allowed);
-
-        return trim(preg_replace('/\s+/', ' ', $cleaned));
     }
 
     public function resetFilters(): void
@@ -663,1026 +642,345 @@ class Report extends Page implements HasForms
         $this->form->fill($this->defaultFormState());
         $this->clearReport();
 
-        Notification::make()
-            ->title('Filter Direset')
+        Notification::make()->title('Filter Direset')
             ->body('Semua filter telah dikembalikan ke pengaturan awal.')
-            ->info()
-            ->send();
+            ->info()->send();
     }
 
     protected function clearReport(): void
     {
-        $this->hasReport = false;
+        $this->hasReport     = false;
         $this->reportSummary = [];
-        $this->debugInfo = [];
+        $this->debugInfo     = [];
         cache()->forget($this->cacheKey);
     }
 
     public function exportReport(): void
     {
         if (!$this->hasReport) {
-            Notification::make()
-                ->title('Informasi')
+            Notification::make()->title('Informasi')
                 ->body('Tidak ada data untuk diexport. Tampilkan laporan terlebih dahulu.')
-                ->warning()
-                ->send();
+                ->warning()->send();
             return;
         }
 
         $reportData = cache()->get($this->cacheKey, []);
 
         if (empty($reportData)) {
-            Notification::make()
-                ->title('Informasi')
+            Notification::make()->title('Informasi')
                 ->body('Sesi laporan telah habis. Silakan tampilkan laporan kembali.')
-                ->warning()
-                ->send();
+                ->warning()->send();
             return;
         }
 
+        Log::info('Exporting report', [
+            'cache_key' => $this->cacheKey,
+            'summary' => $reportData['summary'] ?? null,
+            'data_count' => count($reportData['data'] ?? [])
+        ]);
+
         cache()->put($this->cacheKey . '_summary', $reportData['summary'] ?? [], now()->addMinutes(5));
-        cache()->put($this->cacheKey . '_data', $reportData['data'] ?? [], now()->addMinutes(5));
-        cache()->put($this->cacheKey . '_notes', $this->data['admin_notes'] ?? '', now()->addMinutes(5));
+        cache()->put($this->cacheKey . '_data',    $reportData['data'] ?? [],    now()->addMinutes(5));
+        cache()->put($this->cacheKey . '_notes',   $this->data['admin_notes'] ?? '', now()->addMinutes(5));
 
         $this->dispatch('open-download-url', url: route('report.download', [
-            'key' => $this->cacheKey
+            'key' => $this->cacheKey,
         ]));
     }
 
-    // =========================================================================
-    // RENDER PDF
-    // =========================================================================
+    protected static function convertPdfWithGhostscript(string $inputPath, ?string $outputPath = null): ?string
+    {
+        if (!file_exists($inputPath)) {
+            Log::error('PDF file not found for conversion', ['path' => $inputPath]);
+            return null;
+        }
 
+        if (empty($outputPath)) {
+            $outputPath = sys_get_temp_dir() . '/gs_converted_' . uniqid() . '.pdf';
+        }
+
+        $command = sprintf(
+            'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNOPROMPT '
+                . '-sDEVICE=pdfwrite '
+                . '-dCompatibilityLevel=1.4 '
+                . '-sOutputFile=%s %s 2>&1',
+            escapeshellarg($outputPath),
+            escapeshellarg($inputPath)
+        );
+
+        Log::info('Running Ghostscript conversion', [
+            'input' => $inputPath,
+            'output' => $outputPath,
+        ]);
+
+        exec($command, $output, $returnCode);
+
+        if ($returnCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0) {
+            Log::info('Ghostscript conversion successful', [
+                'input' => $inputPath,
+                'output' => $outputPath,
+                'size' => filesize($outputPath)
+            ]);
+            return $outputPath;
+        }
+
+        Log::error('Ghostscript conversion failed', [
+            'input' => $inputPath,
+            'return_code' => $returnCode,
+            'output' => $output
+        ]);
+
+        return null;
+    }
+
+    /**
+     * Render PDF dengan merge lampiran
+     */
     public static function renderPdfStatic(array $summary, array $data, ?string $notes): string
     {
+        Log::info('=== RENDER PDF STATIC START ===');
+
         $attachedPdfs = [];
 
         foreach ($data as $ticket) {
+            $ticketCode = $ticket['ticket_code'] ?? '';
+
             foreach ($ticket['documents'] ?? [] as $doc) {
                 $isClientDoc = $doc['is_client_document'] ?? false;
 
                 if ($isClientDoc) {
                     foreach ($doc['other_files'] ?? [] as $cf) {
-                        if (($cf['ext'] ?? '') === 'pdf') {
-                            $localPath = null;
-                            $url = $cf['url'] ?? '';
+                        if (strtolower($cf['ext'] ?? '') !== 'pdf') continue;
 
-                            if (!empty($url) && str_contains($url, '/storage/')) {
-                                $relativePath = substr($url, strpos($url, '/storage/') + 9);
-                                $possiblePath = storage_path('app/public/' . $relativePath);
-                                if (file_exists($possiblePath)) {
-                                    $localPath = $possiblePath;
-                                }
-                            }
+                        $localPath = $cf['local_path'] ?? null;
 
-                            if (!$localPath && isset($cf['file'])) {
-                                $possiblePath = storage_path('app/public/' . ltrim($cf['file'], '/'));
-                                if (file_exists($possiblePath)) {
-                                    $localPath = $possiblePath;
-                                }
+                        if (!$localPath || !file_exists($localPath)) {
+                            $fileName = $cf['name'] ?? '';
+                            if ($ticketCode && $fileName) {
+                                $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
                             }
+                        }
 
-                            if ($localPath && file_exists($localPath)) {
-                                $attachedPdfs[] = [
-                                    'name' => $cf['name'] ?? basename($localPath),
-                                    'path' => $localPath,
-                                    'ticket_code' => $ticket['ticket_code'] ?? '-',
-                                    'type' => 'client_document',
-                                ];
-                            }
+                        if ($localPath && file_exists($localPath)) {
+                            $attachedPdfs[] = [
+                                'name'           => $cf['name'] ?? basename($localPath),
+                                'path'           => $localPath,
+                                'url'            => $cf['url'] ?? '',
+                                'ticket_code'    => $ticketCode,
+                                'type'           => 'client_document',
+                                'size_formatted' => $cf['size_formatted'] ?? '',
+                            ];
                         }
                     }
                     continue;
                 }
 
                 foreach ($doc['pdf_files'] ?? [] as $pf) {
-                    $localPath = null;
-                    if (isset($pf['local_path']) && $pf['local_path'] && file_exists($pf['local_path'])) {
-                        $localPath = $pf['local_path'];
-                    } elseif (isset($pf['file']) && $pf['file']) {
-                        $possiblePath = storage_path('app/public/' . ltrim($pf['file'], '/'));
-                        if (file_exists($possiblePath)) {
-                            $localPath = $possiblePath;
+                    $localPath = $pf['local_path'] ?? null;
+
+                    if (!$localPath || !file_exists($localPath)) {
+                        $fileName = $pf['name'] ?? '';
+                        if ($ticketCode && $fileName) {
+                            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
                         }
                     }
+
                     if ($localPath && file_exists($localPath)) {
                         $attachedPdfs[] = [
-                            'name' => $pf['name'] ?? basename($localPath),
-                            'path' => $localPath,
-                            'ticket_code' => $ticket['ticket_code'] ?? '-',
-                            'type' => 'progress_document',
+                            'name'           => $pf['name'] ?? basename($localPath),
+                            'path'           => $localPath,
+                            'url'            => $pf['url'] ?? asset("storage/tickets/{$ticketCode}/" . rawurlencode($pf['name'] ?? '')),
+                            'ticket_code'    => $ticketCode,
+                            'type'           => 'progress_document',
+                            'size_formatted' => $pf['size_formatted'] ?? '',
                         ];
                     }
                 }
             }
         }
 
-        $pdf = new class($summary, $data, $notes, $attachedPdfs) extends \setasign\Fpdi\Fpdi {
-            private array $summary;
-            private array $data;
-            private ?string $notes;
-            private array $attachedPdfs;
-            private float $leftMargin = 15;
-            private float $rightMargin = 15;
-            private float $topMargin = 20;
-            private float $bottomMargin = 20;
-            private float $pageWidth;
+        // Hapus duplikat
+        $uniquePdfs = [];
+        foreach ($attachedPdfs as $pdf) {
+            $key = $pdf['path'];
+            if (!isset($uniquePdfs[$key])) {
+                $uniquePdfs[$key] = $pdf;
+            }
+        }
+        $attachedPdfs = array_values($uniquePdfs);
 
-            public function __construct(array $summary, array $data, ?string $notes, array $attachedPdfs)
-            {
-                parent::__construct('P', 'mm', 'A4');
-                $this->summary = $summary;
-                $this->data = $data;
-                $this->notes = $notes;
-                $this->attachedPdfs = $attachedPdfs;
-                $this->pageWidth = 210 - $this->leftMargin - $this->rightMargin;
+        Log::info('Total unique PDFs to process', ['count' => count($attachedPdfs)]);
 
-                $this->SetAutoPageBreak(false, $this->bottomMargin);
-                $this->SetMargins($this->leftMargin, $this->topMargin, $this->rightMargin);
-                $this->AddPage();
+        // Konversi PDF dengan Ghostscript
+        $convertedPdfPaths = [];
+        foreach ($attachedPdfs as $index => $pdfData) {
+            $convertedPath = self::convertPdfWithGhostscript($pdfData['path']);
+            if ($convertedPath) {
+                $convertedPdfPaths[] = $convertedPath;
+                $attachedPdfs[$index]['converted_path'] = $convertedPath;
+            } else {
+                $attachedPdfs[$index]['converted_path'] = $pdfData['path'];
+            }
+        }
 
-                $this->buildHeader();
-                if (!empty($this->notes)) {
-                    $this->buildNotes();
-                }
-                $this->buildTickets();
+        // Generate HTML
+        $html = view('filament.pages.pdf.report', compact('summary', 'data', 'notes', 'attachedPdfs'))->render();
+        $html = self::replaceImageUrlsWithLocalPaths($html);
 
-                if (!empty($this->attachedPdfs)) {
-                    $this->appendAttachedPdfs();
+        $pdf = Pdf::loadHTML($html);
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->set_option('isPhpEnabled', true);
+        $pdf->set_option('isRemoteEnabled', false);
+
+        $mainPdfPath = tempnam(sys_get_temp_dir(), 'report_main_') . '.pdf';
+        file_put_contents($mainPdfPath, $pdf->output());
+
+        // Cek ada PDF valid
+        $hasValidPdfs = false;
+        foreach ($attachedPdfs as $pdf) {
+            if (file_exists($pdf['converted_path'])) {
+                $hasValidPdfs = true;
+                break;
+            }
+        }
+
+        if (!$hasValidPdfs) {
+            $output = file_get_contents($mainPdfPath);
+            @unlink($mainPdfPath);
+            return $output;
+        }
+
+        try {
+            $fpdi = new Fpdi();
+
+            $mainPageCount = $fpdi->setSourceFile($mainPdfPath);
+            for ($i = 1; $i <= $mainPageCount; $i++) {
+                $tpl = $fpdi->importPage($i);
+                $size = $fpdi->getTemplateSize($tpl);
+                $fpdi->AddPage($size['orientation'] ?? 'P', [$size['width'], $size['height']]);
+                $fpdi->useTemplate($tpl);
+            }
+
+            foreach ($attachedPdfs as $pdfData) {
+                $pdfPath = $pdfData['converted_path'];
+                if (!file_exists($pdfPath)) continue;
+
+                try {
+                    $typeLabel = $pdfData['type'] === 'client_document' ? 'Dokumen Client' : 'Dokumen Progress';
+                    $pageCount = $fpdi->setSourceFile($pdfPath);
+
+                    for ($p = 1; $p <= $pageCount; $p++) {
+                        $tpl = $fpdi->importPage($p);
+                        $size = $fpdi->getTemplateSize($tpl);
+                        $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+                        $pageW = $orientation === 'L' ? 297 : 210;
+                        $pageH = $orientation === 'L' ? 210 : 297;
+
+                        $fpdi->AddPage($orientation);
+
+                        // Header
+                        $fpdi->SetFillColor(243, 244, 246);
+                        $fpdi->Rect(0, 0, $pageW, 13, 'F');
+                        $fpdi->SetDrawColor(209, 213, 219);
+                        $fpdi->Line(0, 13, $pageW, 13);
+
+                        $fpdi->SetFont('Helvetica', 'B', 7.5);
+                        $fpdi->SetTextColor(31, 41, 55);
+                        $fpdi->SetXY(10, 3.5);
+                        $dispName = strlen($pdfData['name']) > 60 ? substr($pdfData['name'], 0, 57) . '...' : $pdfData['name'];
+                        $fpdi->Cell(120, 4, mb_convert_encoding($dispName, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
+
+                        $fpdi->SetFont('Helvetica', 'I', 6.5);
+                        $fpdi->SetTextColor(107, 114, 128);
+                        $fpdi->SetXY($pageW - 80, 3.5);
+                        $fpdi->Cell(30, 4, $typeLabel, 0, 0, 'R');
+
+                        $fpdi->SetFont('Helvetica', '', 6.5);
+                        $fpdi->SetXY($pageW - 46, 3.5);
+                        $fpdi->Cell(36, 4, $pdfData['ticket_code'] . '  ' . $p . '/' . $pageCount, 0, 0, 'R');
+
+                        $margin = 8;
+                        $headerH = 15;
+                        $availW = $pageW - ($margin * 2);
+                        $availH = $pageH - $headerH - $margin;
+                        $scale = min($availW / $size['width'], $availH / $size['height'], 1.0);
+                        $drawW = $size['width'] * $scale;
+                        $drawH = $size['height'] * $scale;
+                        $drawX = $margin + (($availW - $drawW) / 2);
+
+                        $fpdi->useTemplate($tpl, $drawX, $headerH, $drawW, $drawH);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to merge PDF', ['name' => $pdfData['name'], 'error' => $e->getMessage()]);
+                    self::addErrorPage($fpdi, $pdfData);
                 }
             }
 
-            private function appendAttachedPdfs(): void
-            {
-                $this->AddPage();
-                $this->drawSeparatorPage();
+            $finalOutput = $fpdi->Output('S');
 
-                $groupedPdfs = [];
-                foreach ($this->attachedPdfs as $att) {
-                    $ticketCode = $att['ticket_code'];
-                    if (!isset($groupedPdfs[$ticketCode])) {
-                        $groupedPdfs[$ticketCode] = [];
-                    }
-                    $groupedPdfs[$ticketCode][] = $att;
-                }
-
-                foreach ($groupedPdfs as $ticketCode => $pdfs) {
-                    foreach ($pdfs as $att) {
-                        try {
-                            $pageCount = $this->setSourceFile($att['path']);
-                            $typeLabel = ($att['type'] ?? '') === 'client_document' ? 'Dokumen Client' : 'Dokumen Progress';
-
-                            for ($p = 1; $p <= $pageCount; $p++) {
-                                $tpl = $this->importPage($p);
-                                $size = $this->getTemplateSize($tpl);
-                                $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
-                                $this->AddPage($orientation);
-
-                                $this->setFont('Helvetica', 'B', 8);
-                                $this->setFillColor(243, 244, 246);
-                                $this->Rect(0, 0, $orientation === 'L' ? 297 : 210, 14, 'F');
-                                $this->setY(3);
-                                $this->setX($this->leftMargin);
-                                $this->Cell(0, 5, mb_convert_encoding($att['name'], 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-                                $this->setFont('Helvetica', 'I', 7);
-                                $this->setX(-75);
-                                $this->Cell(30, 5, $typeLabel, 0, 0, 'R');
-                                $this->setX(-45);
-                                $this->setFont('Helvetica', '', 7);
-                                $this->Cell(35, 5, $att['ticket_code'] . ' | Page ' . $p . '/' . $pageCount, 0, 0, 'R');
-
-                                $margin = 10;
-                                $headerH = 16;
-                                $pageW = $orientation === 'L' ? 297 : 210;
-                                $pageH = $orientation === 'L' ? 210 : 297;
-                                $availW = $pageW - ($margin * 2);
-                                $availH = $pageH - $headerH - $margin;
-                                $scale = min($availW / $size['width'], $availH / $size['height'], 1.0);
-                                $drawW = $size['width'] * $scale;
-                                $drawH = $size['height'] * $scale;
-                                $drawX = $margin + (($availW - $drawW) / 2);
-                                $drawY = $headerH + 2;
-                                $this->useTemplate($tpl, $drawX, $drawY, $drawW, $drawH);
-                            }
-                        } catch (\Exception $e) {
-                            $this->AddPage();
-                            $this->setY(80);
-                            $this->setFont('Helvetica', 'B', 12);
-                            $this->setTextColor(185, 28, 28);
-                            $this->Cell(0, 10, 'Cannot display: ' . mb_convert_encoding($att['name'], 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-                        }
-                    }
-                }
+            @unlink($mainPdfPath);
+            foreach ($convertedPdfPaths as $tempFile) {
+                @unlink($tempFile);
             }
 
-            private function drawSeparatorPage(): void
-            {
-                $this->setFillColor(249, 250, 251);
-                $this->Rect(0, 0, 210, 297, 'F');
-                $this->setFillColor(31, 41, 55);
-                $this->Rect(0, 100, 210, 1.5, 'F');
-                $this->setFont('Helvetica', 'B', 28);
-                $this->setTextColor(17, 24, 39);
-                $this->setY(108);
-                $this->Cell(0, 14, 'LAMPIRAN PDF', 0, 1, 'C');
-                $this->setFont('Helvetica', '', 11);
-                $this->setTextColor(107, 114, 128);
-                $this->setY(124);
-                $this->Cell(0, 6, 'Dokumen PDF yang dilampirkan pada laporan ini', 0, 1, 'C');
-                $this->setFillColor(31, 41, 55);
-                $this->Rect(0, 132, 210, 1.5, 'F');
-                $this->setY(145);
-                $this->setFont('Helvetica', 'B', 10);
-                $this->setTextColor(55, 65, 81);
-                $this->setX($this->leftMargin);
-                $this->Cell(0, 8, 'Daftar Lampiran:', 0, 1, 'L');
-
-                $y = $this->GetY();
-                foreach ($this->attachedPdfs as $i => $att) {
-                    if ($y > 260) {
-                        $this->AddPage();
-                        $y = $this->GetY();
-                    }
-                    $this->setFont('Helvetica', '', 9);
-                    $this->setTextColor(31, 41, 55);
-                    $this->setX($this->leftMargin);
-                    $this->Cell(10, 6, ($i + 1) . '.', 0, 0, 'L');
-                    $name = strlen($att['name']) > 55 ? substr($att['name'], 0, 52) . '...' : $att['name'];
-                    $this->Cell(120, 6, mb_convert_encoding($name, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                    $typeLabel = ($att['type'] ?? '') === 'client_document' ? 'Client' : 'Progress';
-                    $this->setFont('Helvetica', 'I', 7);
-                    $this->setTextColor(139, 92, 246);
-                    $this->setX($this->leftMargin + 135);
-                    $this->Cell(25, 6, $typeLabel, 0, 0, 'L');
-
-                    $this->setFont('Helvetica', '', 8);
-                    $this->setTextColor(107, 114, 128);
-                    $this->Cell(0, 6, '[' . $att['ticket_code'] . ']', 0, 1, 'R');
-                    $y = $this->GetY();
-                }
-            }
-
-            private function checkPageBreak(float $neededHeight): void
-            {
-                if ($this->GetY() + $neededHeight > (297 - $this->bottomMargin)) {
-                    $this->AddPage();
-                }
-            }
-
-            private function buildHeader(): void
-            {
-                // LOGO DI KIRI
-                $logoPath = base_path('public/storage/meta/01KF044971QVAFZJTQ6V5MKX3T.png');
-                $logoWidth = 20;
-
-                if (file_exists($logoPath)) {
-                    $this->Image($logoPath, $this->leftMargin, 10, $logoWidth);
-                } else {
-                    $this->setFont('Helvetica', 'B', 8);
-                    $this->setTextColor(156, 163, 175);
-                    $this->setXY($this->leftMargin, 14);
-                    $this->Cell($logoWidth, 4, 'LOGO', 0, 0, 'C');
-                }
-
-                // TABEL KETERANGAN
-                $tableStartX = $this->leftMargin + $logoWidth + 5;
-                $col1Width = 30;
-                $col2Width = 50;
-                $col3Width = 32;
-                $col4Width = 48;
-                $rowHeight = 6.5;
-                $startY = 10;
-                $headerBg = [243, 244, 246];
-                $rowBg = [255, 255, 255];
-
-                // BARIS 1: ID Laporan | Klien
-                $y = $startY;
-                $this->setFillColor($headerBg[0], $headerBg[1], $headerBg[2]);
-                $this->Rect($tableStartX, $y, $col1Width, $rowHeight, 'F');
-                $this->setDrawColor(209, 213, 219);
-                $this->Rect($tableStartX, $y, $col1Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', 'B', 6.5);
-                $this->setTextColor(55, 65, 81);
-                $this->setXY($tableStartX + 2, $y + 1.5);
-                $this->Cell($col1Width - 4, 4, 'ID Laporan', 0, 0, 'L');
-
-                $x2 = $tableStartX + $col1Width;
-                $this->setFillColor($rowBg[0], $rowBg[1], $rowBg[2]);
-                $this->Rect($x2, $y, $col2Width, $rowHeight, 'F');
-                $this->Rect($x2, $y, $col2Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(31, 41, 55);
-                $this->setXY($x2 + 2, $y + 1.5);
-
-                // Ambil ticket_code dari data tiket pertama
-                $ticketCode = '-';
-                if (!empty($this->data) && isset($this->data[0]['ticket_code'])) {
-                    $ticketCode = $this->data[0]['ticket_code'];
-                }
-                $this->Cell($col2Width - 4, 4, mb_convert_encoding($ticketCode, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                $x3 = $x2 + $col2Width;
-                $this->setFillColor($headerBg[0], $headerBg[1], $headerBg[2]);
-                $this->Rect($x3, $y, $col3Width, $rowHeight, 'F');
-                $this->Rect($x3, $y, $col3Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', 'B', 6.5);
-                $this->setTextColor(55, 65, 81);
-                $this->setXY($x3 + 2, $y + 1.5);
-                $this->Cell($col3Width - 4, 4, 'Klien', 0, 0, 'L');
-
-                $x4 = $x3 + $col3Width;
-                $this->setFillColor($rowBg[0], $rowBg[1], $rowBg[2]);
-                $this->Rect($x4, $y, $col4Width, $rowHeight, 'F');
-                $this->Rect($x4, $y, $col4Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(31, 41, 55);
-                $this->setXY($x4 + 2, $y + 1.5);
-                $klien = mb_substr($this->summary['client_name'] ?? '-', 0, 20);
-                $this->Cell($col4Width - 4, 4, mb_convert_encoding($klien, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                // BARIS 2: Pekerjaan (full width)
-                $y = $startY + $rowHeight;
-                $fullWidth = $col1Width + $col2Width + $col3Width + $col4Width;
-                $this->setFillColor($headerBg[0], $headerBg[1], $headerBg[2]);
-                $this->Rect($tableStartX, $y, 30, $rowHeight, 'F');
-                $this->Rect($tableStartX, $y, 30, $rowHeight, 'D');
-                $this->setFont('Helvetica', 'B', 6.5);
-                $this->setTextColor(55, 65, 81);
-                $this->setXY($tableStartX + 2, $y + 1.5);
-                $this->Cell(26, 4, 'Pekerjaan', 0, 0, 'L');
-
-                $this->setFillColor($rowBg[0], $rowBg[1], $rowBg[2]);
-                $this->Rect($tableStartX + 30, $y, $fullWidth - 30, $rowHeight, 'F');
-                $this->Rect($tableStartX + 30, $y, $fullWidth - 30, $rowHeight, 'D');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(31, 41, 55);
-                $this->setXY($tableStartX + 33, $y + 1.5);
-                $pekerjaan = mb_substr($this->summary['proposal_for'] ?? '-', 0, 45);
-                $this->Cell($fullWidth - 35, 4, mb_convert_encoding($pekerjaan, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                // BARIS 3: Dilaporkan oleh | Periode Laporan
-                $y = $startY + ($rowHeight * 2);
-                $this->setFillColor($headerBg[0], $headerBg[1], $headerBg[2]);
-                $this->Rect($tableStartX, $y, $col1Width, $rowHeight, 'F');
-                $this->Rect($tableStartX, $y, $col1Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', 'B', 6.5);
-                $this->setTextColor(55, 65, 81);
-                $this->setXY($tableStartX + 2, $y + 1.5);
-                $this->Cell($col1Width - 4, 4, 'Dilaporkan oleh', 0, 0, 'L');
-
-                $this->setFillColor($rowBg[0], $rowBg[1], $rowBg[2]);
-                $this->Rect($x2, $y, $col2Width, $rowHeight, 'F');
-                $this->Rect($x2, $y, $col2Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(31, 41, 55);
-                $this->setXY($x2 + 2, $y + 1.5);
-                // Gunakan format yang sudah termasuk timestamp
-                $dilaporkanOleh = mb_substr($this->summary['generated_by'] ?? '-', 0, 30);
-                $this->Cell($col2Width - 4, 4, mb_convert_encoding($dilaporkanOleh, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                $this->setFillColor($headerBg[0], $headerBg[1], $headerBg[2]);
-                $this->Rect($x3, $y, $col3Width, $rowHeight, 'F');
-                $this->Rect($x3, $y, $col3Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', 'B', 6.5);
-                $this->setTextColor(55, 65, 81);
-                $this->setXY($x3 + 2, $y + 1.5);
-                $this->Cell($col3Width - 4, 4, 'Periode Laporan', 0, 0, 'L');
-
-                $this->setFillColor($rowBg[0], $rowBg[1], $rowBg[2]);
-                $this->Rect($x4, $y, $col4Width, $rowHeight, 'F');
-                $this->Rect($x4, $y, $col4Width, $rowHeight, 'D');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(31, 41, 55);
-                $this->setXY($x4 + 2, $y + 1.5);
-                $periode = mb_substr($this->summary['date_range'] ?? '-', 0, 25);
-                $this->Cell($col4Width - 4, 4, mb_convert_encoding($periode, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                // GARIS PEMISAH
-                $this->setY($y + $rowHeight + 5);
-                $this->setDrawColor(229, 231, 235);
-                $this->Line($this->leftMargin, $this->GetY(), $this->leftMargin + $this->pageWidth, $this->GetY());
-                $this->Ln(6);
-            }
-
-            private function buildNotes(): void
-            {
-                $this->heading('Summary / Catatan');
-                $plainText = $this->plainText($this->notes ?? '');
-                if (empty($plainText)) return;
-                $this->setFont('Helvetica', '', 9);
-                $this->setTextColor(55, 65, 81);
-                $this->setDrawColor(229, 231, 235);
-                $this->MultiCell($this->pageWidth, 5, mb_convert_encoding($plainText, 'ISO-8859-1', 'UTF-8'), 1, 'L');
-                $this->Ln(5);
-            }
-
-            private function buildTickets(): void
-            {
-                $this->heading('Progres Pekerjaan');
-
-                foreach ($this->data as $ticket) {
-                    $docs = $ticket['documents'] ?? [];
-                    $hasClientDocs = false;
-                    $progressDocs = [];
-
-                    foreach ($docs as $doc) {
-                        if (($doc['is_client_document'] ?? false)) {
-                            $hasClientDocs = true;
-                        } else {
-                            $progressDocs[] = $doc;
-                        }
-                    }
-
-                    // TIMELINE DI KANAN
-                    $timelineX = $this->leftMargin + $this->pageWidth - 18;
-                    $cardStartX = $this->leftMargin;
-                    $cardWidth = $this->pageWidth - 16;
-
-                    // CLIENT DOCUMENTS
-                    if ($hasClientDocs) {
-                        $this->setFont('Helvetica', 'B', 9);
-                        $this->setTextColor(139, 92, 246);
-                        $this->setX($this->leftMargin + 4);
-                        $this->Cell(0, 8, 'Dokumen Pendukung Client', 0, 1, 'L');
-                        $this->setDrawColor(221, 214, 254);
-                        $this->Line($this->leftMargin + 4, $this->GetY(), $this->leftMargin + $this->pageWidth - 4, $this->GetY());
-                        $this->Ln(4);
-
-                        $clientDocsArray = array_values(array_filter($docs, fn($d) => $d['is_client_document'] ?? false));
-
-                        $startY = $this->GetY();
-                        $totalHeight = 0;
-                        foreach ($clientDocsArray as $doc) {
-                            $totalHeight += $this->calculateClientDocumentHeight($doc);
-                        }
-
-                        // Garis vertikal utama
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Line($timelineX, $startY - 2, $timelineX, $startY + $totalHeight);
-
-                        $currentY = $startY;
-                        foreach ($clientDocsArray as $idx => $doc) {
-                            $isLatest = $idx === count($clientDocsArray) - 1;
-                            $height = $this->drawClientDocumentAtPosition($doc, $isLatest, $currentY, $timelineX, $cardStartX, $cardWidth);
-                            $currentY += $height;
-                        }
-
-                        $this->setY($startY + $totalHeight);
-                        $this->Ln(4);
-                    }
-
-                    // PROGRESS DOCUMENTS
-                    if (!empty($progressDocs)) {
-                        $this->setFont('Helvetica', 'B', 9);
-                        $this->setTextColor(31, 41, 55);
-                        $this->setX($this->leftMargin + 4);
-                        $this->Cell(0, 8, 'Riwayat Progress', 0, 1, 'L');
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Line($this->leftMargin + 4, $this->GetY(), $this->leftMargin + $this->pageWidth - 4, $this->GetY());
-                        $this->Ln(4);
-
-                        $startY = $this->GetY();
-                        $totalHeight = 0;
-                        foreach ($progressDocs as $doc) {
-                            $totalHeight += $this->calculateProgressDocumentHeight($doc);
-                        }
-
-                        // Garis vertikal utama
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Line($timelineX, $startY - 2, $timelineX, $startY + $totalHeight);
-
-                        $currentY = $startY;
-                        foreach ($progressDocs as $idx => $doc) {
-                            $isLatest = $idx === count($progressDocs) - 1;
-                            $height = $this->drawProgressDocumentAtPosition($doc, $isLatest, $currentY, $timelineX, $cardStartX, $cardWidth);
-                            $currentY += $height;
-                        }
-
-                        $this->setY($startY + $totalHeight);
-                    }
-
-                    $this->Ln(4);
-                    $this->setDrawColor(229, 231, 235);
-                    $this->Line($this->leftMargin, $this->GetY(), $this->leftMargin + $this->pageWidth, $this->GetY());
-                    $this->Ln(6);
-                }
-            }
-
-            private function calculateClientDocumentHeight(array $doc): float
-            {
-                $text = $this->plainText($doc['text'] ?? '');
-                $textHeight = empty($text) ? 0 : (count(explode("\n", wordwrap($text, 85, "\n"))) * 4);
-
-                $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-                $thumbnailFiles = [];
-                $otherFiles = [];
-
-                foreach ($doc['other_files'] ?? [] as $cf) {
-                    $ext = strtolower($cf['ext'] ?? '');
-                    if (in_array($ext, $imageExt)) {
-                        $thumbnailFiles[] = $cf;
-                    } else {
-                        $otherFiles[] = $cf;
-                    }
-                }
-
-                $hasImages = !empty($thumbnailFiles);
-                $imagesHeight = $hasImages ? 26 : 0;
-                $otherCount = count($otherFiles);
-                $filesHeight = min($otherCount, 5) * 9;
-
-                return 20 + $textHeight + $imagesHeight + $filesHeight + 15;
-            }
-
-            private function calculateProgressDocumentHeight(array $doc): float
-            {
-                $text = $this->plainText($doc['text'] ?? '');
-                $textHeight = empty($text) ? 0 : (count(explode("\n", wordwrap($text, 85, "\n"))) * 4);
-
-                $thumbCount = count($doc['thumbnail_files'] ?? []);
-                $embeddedCount = count($doc['embedded_images'] ?? []);
-                $hasImages = ($thumbCount > 0 || $embeddedCount > 0);
-                $imagesHeight = $hasImages ? 26 : 0;
-
-                $otherCount = count($doc['other_files'] ?? []);
-                $pdfCount = count($doc['pdf_files'] ?? []);
-                $filesHeight = (min($otherCount + $pdfCount, 5)) * 9;
-
-                return 20 + $textHeight + $imagesHeight + $filesHeight + 15;
-            }
-
-            private function drawClientDocumentAtPosition(array $doc, bool $isLatest, float $startY, float $timelineX, float $cardStartX, float $cardWidth): float
-            {
-                $text = $this->plainText($doc['text'] ?? '');
-                $textHeight = empty($text) ? 0 : (count(explode("\n", wordwrap($text, 85, "\n"))) * 4);
-
-                $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-                $thumbnailFiles = [];
-                $otherFiles = [];
-
-                foreach ($doc['other_files'] ?? [] as $cf) {
-                    $ext = strtolower($cf['ext'] ?? '');
-                    if (in_array($ext, $imageExt)) {
-                        $thumbnailFiles[] = $cf;
-                    } else {
-                        $otherFiles[] = $cf;
-                    }
-                }
-
-                $hasImages = !empty($thumbnailFiles);
-                $imagesHeight = $hasImages ? 26 : 0;
-                $otherCount = count($otherFiles);
-                $filesHeight = min($otherCount, 5) * 9;
-
-                $this->setY($startY);
-                $currentY = $this->GetY();
-
-                // DOT TIMELINE DI KANAN
-                $dotX = $timelineX - 2;
-                $dotY = $currentY + 4;
-                $this->setFont('ZapfDingbats', '', 8);
-                if ($isLatest) {
-                    $this->setTextColor(55, 65, 81);
-                    $this->setXY($dotX - 1, $dotY - 3);
-                    $this->Cell(5, 5, 'l', 0, 0, 'C');
-                } else {
-                    $this->setTextColor(209, 213, 219);
-                    $this->setXY($dotX - 1, $dotY - 3);
-                    $this->Cell(5, 5, 'o', 0, 0, 'C');
-                }
-
-                // BADGE
-                $badgeText = 'Dokumen Client';
-                $badgeWidth = 45;
-                $this->setFillColor(243, 244, 246);
-                $this->setDrawColor(229, 231, 235);
-                $this->Rect($cardStartX + 6, $currentY, $badgeWidth, 5.5, 'FD');
-                $this->setTextColor(107, 114, 128);
-                $this->setFont('Helvetica', 'B', 7);
-                $this->setXY($cardStartX + 10, $currentY + 1);
-                $this->Cell($badgeWidth - 8, 4, $badgeText, 0, 0, 'L');
-
-                // TIMESTAMP
-                $timestamp = Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(156, 163, 175);
-                $this->setXY($cardStartX + $cardWidth - 55, $currentY + 1);
-                $this->Cell(50, 4, $timestamp, 0, 0, 'R');
-                $this->setY($currentY + 9);
-
-                // TEXT
-                if (!empty($text)) {
-                    $this->setFont('Helvetica', '', 8);
-                    $this->setTextColor(55, 65, 81);
-                    foreach (explode("\n", wordwrap($text, 85, "\n")) as $line) {
-                        $line = trim($line);
-                        if ($line === '') continue;
-                        $this->checkPageBreak(5);
-                        $this->setX($cardStartX + 6);
-                        $this->Cell($cardWidth - 12, 4, mb_convert_encoding($line, 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
-                    }
-                    $this->Ln(2);
-                }
-
-                // THUMBNAILS
-                if (!empty($thumbnailFiles)) {
-                    $thumbW = 28;
-                    $thumbH = 22;
-                    $thumbX = $cardStartX + 6;
-                    $thumbY = $this->GetY();
-
-                    foreach (array_slice($thumbnailFiles, 0, 4) as $i => $thumb) {
-                        $posX = $thumbX + ($i * ($thumbW + 3));
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Rect($posX, $thumbY, $thumbW, $thumbH, 'D');
-
-                        $imagePath = null;
-                        if (isset($thumb['local_path']) && file_exists($thumb['local_path'])) {
-                            $imagePath = $thumb['local_path'];
-                        } elseif (isset($thumb['file'])) {
-                            $possiblePath = storage_path('app/public/' . ltrim($thumb['file'], '/'));
-                            if (file_exists($possiblePath)) {
-                                $imagePath = $possiblePath;
-                            }
-                        } elseif (isset($thumb['url'])) {
-                            $possiblePath = $this->urlToLocalPath($thumb['url']);
-                            if ($possiblePath && file_exists($possiblePath)) {
-                                $imagePath = $possiblePath;
-                            }
-                        }
-
-                        if ($imagePath && file_exists($imagePath)) {
-                            try {
-                                $this->Image($imagePath, $posX, $thumbY, $thumbW, $thumbH);
-                            } catch (\Exception $e) {
-                                $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $thumb['ext'] ?? 'IMG');
-                            }
-                        } else {
-                            $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $thumb['ext'] ?? 'IMG');
-                        }
-                    }
-                    $this->setY($thumbY + $thumbH + 4);
-                }
-
-                // OTHER FILES
-                if (!empty($otherFiles)) {
-                    foreach (array_slice($otherFiles, 0, 5) as $lf) {
-                        $this->checkPageBreak(9);
-                        $ry = $this->GetY();
-
-                        $this->setFillColor(245, 243, 255);
-                        $this->setDrawColor(221, 214, 254);
-                        $this->Rect($cardStartX + 6, $ry, $cardWidth - 12, 8, 'FD');
-
-                        $this->setFillColor(229, 231, 235);
-                        $this->Rect($cardStartX + 10, $ry + 1.5, 14, 5, 'F');
-                        $this->setFont('Helvetica', 'B', 5.5);
-                        $this->setTextColor(55, 65, 81);
-                        $this->setXY($cardStartX + 13, $ry + 2.5);
-                        $fileExt = strtoupper(substr($lf['ext'] ?? 'FILE', 0, 3));
-                        $this->Cell(8, 4, $fileExt, 0, 0, 'C');
-
-                        $this->setFont('Helvetica', '', 7);
-                        $this->setTextColor(55, 65, 81);
-                        $this->setXY($cardStartX + 28, $ry + 2.5);
-                        $name = strlen($lf['name'] ?? '') > 45 ? substr($lf['name'], 0, 42) . '...' : ($lf['name'] ?? '-');
-                        $this->Cell(80, 4, mb_convert_encoding($name, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                        $this->setFont('Helvetica', 'I', 5.5);
-                        $this->setTextColor(139, 92, 246);
-                        $this->setXY($cardStartX + 112, $ry + 2.5);
-                        $this->Cell(20, 4, 'Client Doc', 0, 0, 'L');
-
-                        if (!empty($lf['size_formatted'])) {
-                            $this->setFont('Helvetica', '', 6);
-                            $this->setTextColor(156, 163, 175);
-                            $this->setXY($cardStartX + $cardWidth - 45, $ry + 2.5);
-                            $this->Cell(35, 4, $lf['size_formatted'], 0, 0, 'R');
-                        }
-                        $this->setY($ry + 9);
-                    }
-                }
-
-                $this->Ln(4);
-                $divY = $this->GetY();
-                $this->setDrawColor(243, 244, 246);
-                $this->Line($cardStartX + 6, $divY, $cardStartX + $cardWidth - 6, $divY);
-
-                $totalHeight = $divY - $startY + 6;
-                return $totalHeight;
-            }
-
-            private function drawProgressDocumentAtPosition(array $doc, bool $isLatest, float $startY, float $timelineX, float $cardStartX, float $cardWidth): float
-            {
-                $text = $this->plainText($doc['text'] ?? '');
-                $textHeight = empty($text) ? 0 : (count(explode("\n", wordwrap($text, 85, "\n"))) * 4);
-
-                $thumbCount = count($doc['thumbnail_files'] ?? []);
-                $embeddedCount = count($doc['embedded_images'] ?? []);
-                $hasImages = ($thumbCount > 0 || $embeddedCount > 0);
-                $imagesHeight = $hasImages ? 26 : 0;
-
-                $otherCount = count($doc['other_files'] ?? []);
-                $pdfCount = count($doc['pdf_files'] ?? []);
-                $filesHeight = (min($otherCount + $pdfCount, 5)) * 9;
-
-                $this->setY($startY);
-                $currentY = $this->GetY();
-
-                // DOT TIMELINE DI KANAN
-                $dotX = $timelineX - 2;
-                $dotY = $currentY + 4;
-                $this->setFont('ZapfDingbats', '', 8);
-                if ($isLatest) {
-                    $this->setTextColor(55, 65, 81);
-                    $this->setXY($dotX - 1, $dotY - 3);
-                    $this->Cell(5, 5, 'l', 0, 0, 'C');
-                } else {
-                    $this->setTextColor(209, 213, 219);
-                    $this->setXY($dotX - 1, $dotY - 3);
-                    $this->Cell(5, 5, 'o', 0, 0, 'C');
-                }
-
-                // BADGE
-                $badgeText = $isLatest ? 'Terbaru' : 'Sebelumnya';
-                $badgeWidth = 35;
-                if ($isLatest) {
-                    $this->setDrawColor(55, 65, 81);
-                    $this->Rect($cardStartX + 6, $currentY, $badgeWidth, 5.5, 'D');
-                    $this->setTextColor(31, 41, 55);
-                    $this->setFont('Helvetica', 'B', 7);
-                } else {
-                    $this->setFillColor(243, 244, 246);
-                    $this->setDrawColor(229, 231, 235);
-                    $this->Rect($cardStartX + 6, $currentY, $badgeWidth, 5.5, 'FD');
-                    $this->setTextColor(107, 114, 128);
-                    $this->setFont('Helvetica', '', 7);
-                }
-                $this->setXY($cardStartX + 10, $currentY + 1);
-                $this->Cell($badgeWidth - 8, 4, $badgeText, 0, 0, 'L');
-
-                // TIMESTAMP
-                $timestamp = Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i');
-                $this->setFont('Helvetica', '', 6.5);
-                $this->setTextColor(156, 163, 175);
-                $this->setXY($cardStartX + $cardWidth - 55, $currentY + 1);
-                $this->Cell(50, 4, $timestamp, 0, 0, 'R');
-                $this->setY($currentY + 9);
-
-                // TEXT - dengan bullet points
-                if (!empty($text)) {
-                    $this->setFont('Helvetica', '', 8);
-                    $this->setTextColor(55, 65, 81);
-                    $lines = explode("\n", $text);
-                    foreach ($lines as $line) {
-                        $line = trim($line);
-                        if ($line === '') continue;
-                        $this->checkPageBreak(5);
-                        $this->setX($cardStartX + 6);
-                        // Tambahkan bullet point jika line dimulai dengan "- "
-                        if (str_starts_with($line, '- ')) {
-                            $this->Cell(4, 4, '•', 0, 0, 'L');
-                            $this->setX($cardStartX + 10);
-                            $this->Cell($cardWidth - 16, 4, mb_convert_encoding(substr($line, 2), 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
-                        } else {
-                            $this->Cell($cardWidth - 12, 4, mb_convert_encoding($line, 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
-                        }
-                    }
-                    $this->Ln(2);
-                }
-
-                // THUMBNAILS
-                if ($thumbCount > 0) {
-                    $thumbW = 28;
-                    $thumbH = 22;
-                    $thumbX = $cardStartX + 6;
-                    $thumbY = $this->GetY();
-
-                    foreach (array_slice($doc['thumbnail_files'], 0, 4) as $i => $tf) {
-                        $posX = $thumbX + ($i * ($thumbW + 3));
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Rect($posX, $thumbY, $thumbW, $thumbH, 'D');
-
-                        $imagePath = null;
-                        if (isset($tf['local_path']) && $tf['local_path'] && file_exists($tf['local_path'])) {
-                            $imagePath = $tf['local_path'];
-                        } elseif (isset($tf['file']) && $tf['file']) {
-                            $possiblePath = storage_path('app/public/' . ltrim($tf['file'], '/'));
-                            if (file_exists($possiblePath)) {
-                                $imagePath = $possiblePath;
-                            }
-                        }
-
-                        if ($imagePath && file_exists($imagePath)) {
-                            try {
-                                $this->Image($imagePath, $posX, $thumbY, $thumbW, $thumbH);
-                            } catch (\Exception $e) {
-                                $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $tf['ext'] ?? 'IMG');
-                            }
-                        } else {
-                            $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $tf['ext'] ?? 'IMG');
-                        }
-                    }
-                    $this->setY($thumbY + $thumbH + 4);
-                }
-
-                // EMBEDDED IMAGES
-                if ($embeddedCount > 0) {
-                    $thumbW = 28;
-                    $thumbH = 22;
-                    $thumbX = $cardStartX + 6;
-                    $thumbY = $this->GetY();
-
-                    foreach (array_slice($doc['embedded_images'], 0, 4) as $i => $img) {
-                        $posX = $thumbX + ($i * ($thumbW + 3));
-                        $this->setDrawColor(229, 231, 235);
-                        $this->Rect($posX, $thumbY, $thumbW, $thumbH, 'D');
-
-                        $imagePath = $img['path'] ?? null;
-                        if ($imagePath && file_exists($imagePath)) {
-                            try {
-                                $this->Image($imagePath, $posX, $thumbY, $thumbW, $thumbH);
-                            } catch (\Exception $e) {
-                                $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $img['ext'] ?? 'IMG');
-                            }
-                        } else {
-                            $this->drawPlaceholder($posX, $thumbY, $thumbW, $thumbH, $img['ext'] ?? 'IMG');
-                        }
-                    }
-                    $this->setY($thumbY + $thumbH + 4);
-                }
-
-                // PDF FILES
-                if (!empty($doc['pdf_files'])) {
-                    foreach (array_slice($doc['pdf_files'], 0, 5) as $pf) {
-                        $this->checkPageBreak(9);
-                        $ry = $this->GetY();
-
-                        $this->setFillColor(254, 242, 242);
-                        $this->setDrawColor(254, 202, 202);
-                        $this->Rect($cardStartX + 6, $ry, $cardWidth - 12, 8, 'FD');
-
-                        $this->setFillColor(254, 202, 202);
-                        $this->Rect($cardStartX + 10, $ry + 1.5, 14, 5, 'F');
-                        $this->setFont('Helvetica', 'B', 5.5);
-                        $this->setTextColor(185, 28, 28);
-                        $this->setXY($cardStartX + 13, $ry + 2.5);
-                        $this->Cell(8, 4, 'PDF', 0, 0, 'C');
-
-                        $this->setFont('Helvetica', '', 7);
-                        $this->setTextColor(55, 65, 81);
-                        $this->setXY($cardStartX + 28, $ry + 2.5);
-                        $name = strlen($pf['name'] ?? '') > 45 ? substr($pf['name'], 0, 42) . '...' : ($pf['name'] ?? '-');
-                        $this->Cell(80, 4, mb_convert_encoding($name, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                        if (!empty($pf['size_formatted'])) {
-                            $this->setFont('Helvetica', '', 6);
-                            $this->setTextColor(156, 163, 175);
-                            $this->setXY($cardStartX + $cardWidth - 45, $ry + 2.5);
-                            $this->Cell(35, 4, $pf['size_formatted'], 0, 0, 'R');
-                        }
-                        $this->setY($ry + 9);
-                    }
-                }
-
-                // OTHER FILES
-                if (!empty($doc['other_files'])) {
-                    foreach (array_slice($doc['other_files'], 0, 5) as $lf) {
-                        $this->checkPageBreak(9);
-                        $ry = $this->GetY();
-
-                        $this->setFillColor(249, 250, 251);
-                        $this->setDrawColor(243, 244, 246);
-                        $this->Rect($cardStartX + 6, $ry, $cardWidth - 12, 8, 'FD');
-
-                        $this->setFillColor(229, 231, 235);
-                        $this->Rect($cardStartX + 10, $ry + 1.5, 14, 5, 'F');
-                        $this->setFont('Helvetica', 'B', 5.5);
-                        $this->setTextColor(55, 65, 81);
-                        $this->setXY($cardStartX + 13, $ry + 2.5);
-                        $fileExt = strtoupper(substr($lf['ext'] ?? 'FILE', 0, 3));
-                        $this->Cell(8, 4, $fileExt, 0, 0, 'C');
-
-                        $this->setFont('Helvetica', '', 7);
-                        $this->setTextColor(55, 65, 81);
-                        $this->setXY($cardStartX + 28, $ry + 2.5);
-                        $name = strlen($lf['name'] ?? '') > 45 ? substr($lf['name'], 0, 42) . '...' : ($lf['name'] ?? '-');
-                        $this->Cell(80, 4, mb_convert_encoding($name, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-
-                        if (!empty($lf['size_formatted'])) {
-                            $this->setFont('Helvetica', '', 6);
-                            $this->setTextColor(156, 163, 175);
-                            $this->setXY($cardStartX + $cardWidth - 45, $ry + 2.5);
-                            $this->Cell(35, 4, $lf['size_formatted'], 0, 0, 'R');
-                        }
-                        $this->setY($ry + 9);
-                    }
-                }
-
-                $this->Ln(4);
-                $divY = $this->GetY();
-                $this->setDrawColor(243, 244, 246);
-                $this->Line($cardStartX + 6, $divY, $cardStartX + $cardWidth - 6, $divY);
-
-                $totalHeight = $divY - $startY + 6;
-                return $totalHeight;
-            }
-
-            private function urlToLocalPath(string $url): ?string
-            {
-                if (str_contains($url, '/storage/')) {
-                    $relativePath = substr($url, strpos($url, '/storage/') + 9);
-                    $localPath = storage_path('app/public/' . $relativePath);
-                    if (file_exists($localPath)) {
-                        return $localPath;
-                    }
-                }
-                return null;
-            }
-
-            private function drawPlaceholder(float $x, float $y, float $w, float $h, string $ext): void
-            {
-                $this->setFillColor(249, 250, 251);
-                $this->Rect($x, $y, $w, $h, 'F');
-                $this->setFont('Helvetica', 'B', 6);
-                $this->setTextColor(107, 114, 128);
-                $this->setXY($x + 2, $y + ($h / 2) - 3);
-                $this->Cell($w - 4, 4, strtoupper(substr($ext, 0, 3)), 0, 0, 'C');
-            }
-
-            private function heading(string $text): void
-            {
-                $this->checkPageBreak(10);
-                $this->Ln(3);
-                $this->setFont('Helvetica', 'B', 10);
-                $this->setTextColor(31, 41, 55);
-                $this->setDrawColor(209, 213, 219);
-                $this->Cell($this->pageWidth, 6, $text, 'B', 1, 'L');
-                $this->Ln(2);
-            }
-
-            private function getLines(string $text, float $width, string $family, string $style, float $size): int
-            {
-                $this->setFont($family, $style, $size);
-                $encoded = mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8');
-                return ceil($this->GetStringWidth($encoded) / $width) + 1;
-            }
-
-            private function plainText(string $html): string
-            {
-                // Convert HTML to plain text with line breaks
-                $html = preg_replace('/<br\s*\/?>/i', "\n", $html);
-                $html = preg_replace('/<\/p>/i', "\n", $html);
-                $html = preg_replace('/<li[^>]*>/i', '- ', $html);
-                $html = preg_replace('/<\/li>/i', "\n", $html);
-                $html = strip_tags($html);
-                // Decode HTML entities
-                $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                return trim($html);
-            }
-
-            public function Footer(): void
-            {
-                $this->setY(-15);
-                $this->setDrawColor(229, 231, 235);
-                $this->Line($this->leftMargin, $this->GetY(), $this->leftMargin + $this->pageWidth, $this->GetY());
-                $this->Ln(2);
-                $this->setFont('Helvetica', '', 7.5);
-                $this->setTextColor(156, 163, 175);
-
-                // Gunakan ticket code di footer
-                $ticketCode = '-';
-                if (!empty($this->data) && isset($this->data[0]['ticket_code'])) {
-                    $ticketCode = $this->data[0]['ticket_code'];
-                }
-                $leftText = 'Laporan Progress Tiket: ' . $ticketCode;
-
-                $this->Cell($this->pageWidth / 2, 5, mb_convert_encoding($leftText, 'ISO-8859-1', 'UTF-8'), 0, 0, 'L');
-                $this->Cell($this->pageWidth / 2, 5, 'Halaman ' . $this->PageNo(), 0, 0, 'R');
-            }
-        };
-
-        return $pdf->Output('S');
+            return $finalOutput;
+        } catch (\Exception $e) {
+            Log::error('Fatal error during PDF merge', ['error' => $e->getMessage()]);
+            $output = file_get_contents($mainPdfPath);
+            @unlink($mainPdfPath);
+            return $output;
+        }
     }
 
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
+    protected static function replaceImageUrlsWithLocalPaths(string $html): string
+    {
+        $ticketsDir = storage_path('app/public/tickets');
+
+        return preg_replace_callback('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', function ($matches) use ($ticketsDir) {
+            $url = $matches[1];
+            $fileName = basename(parse_url($url, PHP_URL_PATH));
+            $fileName = rawurldecode($fileName);
+
+            if (is_dir($ticketsDir)) {
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($ticketsDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+                );
+                foreach ($iterator as $file) {
+                    if ($file->isFile() && $file->getFilename() === $fileName) {
+                        return str_replace($url, $file->getPathname(), $matches[0]);
+                    }
+                }
+            }
+
+            return $matches[0];
+        }, $html);
+    }
+
+    protected static function addErrorPage($fpdi, array $att): void
+    {
+        $fpdi->AddPage();
+        $fpdi->SetFont('Helvetica', 'B', 11);
+        $fpdi->SetTextColor(185, 28, 28);
+        $fpdi->SetY(120);
+        $fpdi->Cell(0, 8, 'Gagal memuat lampiran:', 0, 1, 'C');
+        $fpdi->SetFont('Helvetica', '', 9);
+        $fpdi->SetTextColor(55, 65, 81);
+        $fpdi->Cell(0, 6, mb_convert_encoding($att['name'] ?? '-', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+    }
 
     protected function defaultFormState(): array
     {
         return [
             'selected_tickets' => null,
-            'date_range' => null,
-            'start_date' => null,
-            'end_date' => null,
-            'client_name' => null,
-            'proposal_id' => null,
-            'enquiry' => null,
-            'proposal_for' => null,
-            'generated_by' => null,
-            'admin_notes' => null,
+            'date_range'       => null,
+            'start_date'       => null,
+            'end_date'         => null,
+            'client_name'      => null,
+            'proposal_id'      => null,
+            'enquiry'          => null,
+            'proposal_for'     => null,
+            'generated_by'     => null,
+            'admin_notes'      => null,
         ];
     }
 
@@ -1743,7 +1041,7 @@ class Report extends Page implements HasForms
         }
 
         return [
-            'total_tickets' => $this->reportSummary['total_tickets'] ?? 0,
+            'total_tickets'   => $this->reportSummary['total_tickets'] ?? 0,
             'total_documents' => $totalDocs,
         ];
     }

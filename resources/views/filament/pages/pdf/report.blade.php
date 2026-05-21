@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Progress Tiket</title>
+    <title>Laporan Progress - {{ $summary['ticket_code'] ?? '-' }}</title>
     <style>
         * {
             margin: 0;
@@ -12,568 +12,850 @@
         }
 
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 12px;
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 11px;
             line-height: 1.5;
             color: #1f2937;
-            padding: 20px;
+            margin: 24px 28px;
+            background: white;
         }
 
-        /* HEADER TABLE */
-        .header-table {
+        /* ===================== HEADER ===================== */
+        .header-wrapper {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        .header-table td {
-            vertical-align: top;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #d1d5db;
-        }
-
-        .info-table td {
-            padding: 6px 10px;
-            border: 1px solid #d1d5db;
-        }
-
-        .bg-gray {
-            background-color: #f3f4f6;
-        }
-
-        /* TYPOGRAPHY */
-        h3 {
-            font-size: 14px;
-            margin-bottom: 12px;
-            margin-top: 16px;
-        }
-
-        h4 {
-            font-size: 13px;
-            margin-bottom: 8px;
-            margin-top: 12px;
-        }
-
-        /* TIMELINE WRAPPER */
-        .tp-wrapper {
             margin-bottom: 24px;
         }
 
-        .tp-header {
+        .header-wrapper td.logo-cell {
+            width: 90px;
+            vertical-align: middle;
+            text-align: center;
+            padding-right: 12px;
+            border: none;
+        }
+
+        .header-wrapper td.info-cell {
+            vertical-align: top;
+            border: none;
+            padding: 0;
+        }
+
+        .header-logo img {
+            width: 80px;
+            height: auto;
+            max-height: 72px;
+        }
+
+        .logo-placeholder {
+            width: 80px;
+            height: 60px;
+            background: #1e3a5f;
+            border-radius: 6px;
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+            padding-top: 14px;
+        }
+
+        .logo-placeholder span {
+            color: white;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .header-company-name {
+            font-size: 9px;
+            color: #6b7280;
+            margin-top: 5px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+        }
+
+        .header-table td {
+            border: 1px solid #d1d5db;
+            padding: 6px 10px;
+            vertical-align: middle;
+            text-align: left;
+        }
+
+        .header-table .label {
+            background-color: #f0f4f8;
+            font-weight: bold;
+            color: #374151;
+            white-space: nowrap;
+            width: 110px;
+        }
+
+        .header-table .val {
+            color: #1f2937;
+        }
+
+        /* ===================== SECTION TITLE ===================== */
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 6px;
+            margin-bottom: 16px;
+            margin-top: 22px;
+            color: #1e3a5f;
+            text-align: left;
+            letter-spacing: 0.2px;
+        }
+
+        /* ===================== BADGE ===================== */
+        .badge-client {
+            background: #f3f4f6;
+            color: #6b7280;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 9.5px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-latest {
+            border: 1.5px solid #1e3a5f;
+            background: transparent;
+            color: #1e3a5f;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 9.5px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-previous {
+            background: #f3f4f6;
+            color: #6b7280;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 9.5px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .date-wrapper {
+            color: #9ca3af;
+            font-size: 10px;
+        }
+
+        /* ===================== CARD SECTIONS ===================== */
+        .client-section {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .client-title {
+            color: #8b5cf6;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 12px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 5px;
+            justify-content: flex-end;
+            width: 92%;
+        }
+
+        .progress-section {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .progress-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            justify-content: flex-end;
+            width: 92%;
+            color: #1f2937;
+        }
+
+        .card {
+            width: 92%;
             margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .tp-header-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .tp-header-count {
-            font-size: 11px;
-            color: #6b7280;
-            background: #f3f4f6;
             border: 1px solid #e5e7eb;
-            border-radius: 999px;
-            padding: 2px 10px;
-        }
-
-        /* TIMELINE */
-        .tp-timeline {
-            position: relative;
-            padding-right: 52px;
-            max-width: 90%;
+            border-radius: 8px;
+            padding: 14px 16px;
+            background: white;
             margin-left: auto;
             margin-right: 0;
         }
 
-        .tp-timeline-line {
-            position: absolute;
-            right: 17px;
-            top: 8px;
-            bottom: 8px;
-            width: 1px;
-            background: #e5e7eb;
-        }
-
-        .tp-entry {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .tp-dot {
-            position: absolute;
-            right: -35px;
-            top: 8px;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #fff;
-            border: 1px solid #d1d5db;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .tp-dot.is-latest {
-            background: transparent;
-            border-color: #374151;
-            color: #374151;
-        }
-
-        .tp-dot svg {
-            width: 10px;
-            height: 10px;
-        }
-
-        .tp-card {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 14px 18px;
-        }
-
-        .tp-card.is-latest {
-            border-right: 3px solid #374151;
-        }
-
-        .tp-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .tp-badge {
-            font-size: 10px;
-            font-weight: 500;
-            border-radius: 999px;
-            padding: 2px 10px;
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .tp-badge.is-latest {
-            background: transparent;
-            color: #1f2937;
-            border: 1px solid #374151;
-        }
-
-        .tp-badge.client {
-            background: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
-        }
-
-        .tp-time {
-            font-size: 10px;
-            color: #9ca3af;
-        }
-
-        .tp-body {
-            font-size: 12px;
-            color: #374151;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        .tp-body p {
-            margin-bottom: 6px;
-        }
-
-        .tp-body ul,
-        .tp-body ol {
-            margin-left: 20px;
-            margin-bottom: 6px;
-        }
-
-        .tp-body li {
-            margin-bottom: 2px;
-        }
-
-        /* THUMBNAILS */
-        .tp-thumbs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-            margin-bottom: 8px;
-        }
-
-        .tp-thumb {
-            width: 80px;
-            height: 60px;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid #e5e7eb;
-            background: #f9fafb;
-        }
-
-        .tp-thumb img {
+        .card-header {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            margin-bottom: 12px;
         }
 
-        /* FILES */
-        .tp-files {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-top: 10px;
+        .card-header table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .tp-file-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 10px;
-            background: #f9fafb;
-            border: 1px solid #f3f4f6;
-            border-radius: 8px;
+        .card-header td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
         }
 
-        .tp-file-row.client {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-        }
-
-        .tp-file-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .tp-file-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            font-weight: 600;
-            background: rgba(55, 65, 81, 0.1);
-            color: #374151;
-        }
-
-        .tp-file-icon.client {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .tp-file-icon.pdf {
-            background: #fecaca;
-            color: #991b1b;
-        }
-
-        .tp-file-name {
+        /* ===================== PROGRESS TEXT ===================== */
+        .progress-text {
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: left;
             font-size: 11px;
+            line-height: 1.6;
             color: #374151;
-            text-decoration: none;
-            word-break: break-all;
         }
 
-        .tp-file-name.client {
-            color: #1e40af;
+        .progress-text h1 {
+            font-size: 15px;
+            font-weight: bold;
+            margin: 14px 0 10px 0;
+            color: #1f2937;
         }
 
-        .tp-file-size {
-            font-size: 10px;
-            color: #9ca3af;
+        .progress-text h2 {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 12px 0 8px 0;
+            color: #1f2937;
+        }
+
+        .progress-text h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 10px 0 6px 0;
+            color: #1f2937;
+        }
+
+        .progress-text p {
+            margin: 6px 0;
+            line-height: 1.6;
+        }
+
+        .progress-text strong,
+        .progress-text b {
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .progress-text em,
+        .progress-text i {
+            font-style: italic;
+        }
+
+        .progress-text ul {
+            margin: 6px 0;
+            padding-left: 22px;
+            list-style-type: disc;
+        }
+
+        .progress-text ol {
+            margin: 6px 0;
+            padding-left: 22px;
+            list-style-type: decimal;
+        }
+
+        .progress-text li {
+            margin: 3px 0;
+            line-height: 1.6;
+        }
+
+        .progress-text blockquote {
+            border-left: 3px solid #e5e7eb;
+            padding-left: 14px;
+            margin: 10px 0;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        /* ===================== FILE LIST ===================== */
+        .file-list {
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .file-item {
+            width: 100%;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            padding: 0;
+        }
+
+        .file-item table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .file-item td {
+            border: none;
+            padding: 5px 8px;
+            vertical-align: middle;
+        }
+
+        .file-ext-badge {
+            font-size: 8px;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 3px;
+            display: inline-block;
             white-space: nowrap;
         }
 
-        /* DIVIDER */
-        .divider {
-            border-bottom: 1px solid #e5e7eb;
-            margin: 8px 0;
+        .file-ext-pdf {
+            background: #fee2e2;
+            color: #b91c1c;
         }
 
-        /* NOTES */
-        .notes-box {
+        .file-ext-other {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .file-name {
+            font-size: 10px;
+            color: #1f2937;
+        }
+
+        .file-size {
+            font-size: 9px;
+            color: #9ca3af;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .thumbnail-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .thumbnail {
+            width: 68px;
+            height: 68px;
+            object-fit: cover;
             border: 1px solid #e5e7eb;
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            background: #fafafa;
+            border-radius: 5px;
         }
 
-        /* FOOTER */
+        /* ===================== LAMPIRAN ===================== */
+        .page-break {
+            page-break-before: always;
+        }
+
+        .lampiran-cover {
+            background: #f9fafb;
+            margin: 0 -28px;
+            padding: 0 28px 0 28px;
+        }
+
+        .lampiran-cover-line {
+            background: #1f2937;
+            height: 2.5px;
+            margin: 0 -28px;
+        }
+
+        .lampiran-cover-body {
+            padding: 18px 0 14px 0;
+            text-align: center;
+        }
+
+        .lampiran-cover-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+            letter-spacing: 0.8px;
+        }
+
+        .lampiran-cover-sub {
+            font-size: 10.5px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        .lampiran-list-area {
+            padding: 20px 0 0 0;
+        }
+
+        .lampiran-list-heading {
+            font-size: 11.5px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .lampiran-row {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+        }
+
+        .lampiran-row td {
+            border: none;
+            padding: 2px 0;
+            vertical-align: middle;
+            font-size: 10.5px;
+            color: #1f2937;
+        }
+
+        .lamp-no-col {
+            width: 32px;
+            color: #374151;
+        }
+
+        .lamp-name-col {
+            color: #1f2937;
+        }
+
+        .lamp-url {
+            font-size: 8.5px;
+            color: #9ca3af;
+            margin-top: 1px;
+            word-break: break-all;
+        }
+
+        .lamp-type-col {
+            width: 70px;
+            text-align: right;
+            font-style: italic;
+            color: #8b5cf6;
+            font-size: 10px;
+        }
+
+        .lamp-ticket-col {
+            width: 130px;
+            text-align: right;
+            color: #9ca3af;
+            font-size: 10px;
+        }
+
+        /* ===================== FOOTER ===================== */
+        @page {
+            margin-bottom: 40px;
+        }
+
         .footer {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
             text-align: center;
-            font-size: 9px;
+            font-size: 9.5px;
             color: #9ca3af;
-            padding: 10px;
             border-top: 1px solid #e5e7eb;
+            padding: 8px 28px 6px 28px;
+            background: white;
         }
 
-        /* PAGE BREAK */
-        .page-break {
-            page-break-before: always;
+        .summary-box {
+            background: #f8fafc;
+            border-left: 3px solid #1e3a5f;
+            border-radius: 0 6px 6px 0;
+            padding: 12px 16px;
+            margin-bottom: 4px;
         }
     </style>
 </head>
 
 <body>
+    @php $attachedPdfs = $attachedPdfs ?? []; @endphp
 
-    {{-- HEADER TABLE WITH LOGO --}}
-    <table class="header-table">
+    <!-- ===== HEADER ===== -->
+    <table class="header-wrapper" style="width:100%; border-collapse:collapse; margin-bottom:24px;">
         <tr>
-            <td style="width: 80px;">
-                @if (file_exists(public_path('images/logo.png')))
-                    <img src="{{ public_path('images/logo.png') }}" style="width: 50px;">
-                @else
-                    <div style="font-weight: bold; color: #9ca3af;">[LOGO]</div>
+            <td class="logo-cell"
+                style="width:90px; vertical-align:middle; text-align:center; padding-right:12px; border:none;">
+                <img src="{{ public_path('storage/meta/01KF044971QVAFZJTQ6V5MKX3T.png') }}" alt="Logo"
+                    style="width:80px; height:auto; max-height:72px;">
+                @if (!empty($summary['company_name']))
+                    <div class="header-company-name">{{ Str::limit($summary['company_name'], 16) }}</div>
                 @endif
             </td>
-            <td>
-                <table class="info-table">
+            <td class="info-cell" style="vertical-align:top; border:none; padding:0;">
+                <table class="header-table">
                     <tr>
-                        <td style="width: 25%; background: #f3f4f6; font-weight: 600;">ID Laporan</td>
-                        <td style="width: 25%;">{{ $summary['proposal_id'] ?? '-' }}</td>
-                        <td style="width: 25%; background: #f3f4f6; font-weight: 600;">Klien</td>
-                        <td style="width: 25%;">{{ $summary['client_name'] ?? '-' }}</td>
+                        <td class="label">ID Laporan</td>
+                        <td class="val">{{ $summary['ticket_code'] ?? '-' }}</td>
+                        <td class="label">Klien</td>
+                        <td class="val">{{ Str::limit($summary['client_name'] ?? '-', 28) }}</td>
                     </tr>
                     <tr>
-                        <td style="background: #f3f4f6; font-weight: 600;">Pekerjaan</td>
-                        <td colspan="3">{{ $summary['proposal_for'] ?? '-' }}</td>
+                        <td class="label">Pekerjaan</td>
+                        <td class="val" colspan="3">{{ Str::limit($summary['proposal_for'] ?? '-', 70) }}</td>
                     </tr>
                     <tr>
-                        <td style="background: #f3f4f6; font-weight: 600;">Dilaporkan oleh</td>
-                        <td>{{ $summary['generated_by'] ?? '-' }}</td>
-                        <td style="background: #f3f4f6; font-weight: 600;">Periode Laporan</td>
-                        <td>{{ $summary['date_range'] ?? '-' }}</td>
+                        <td class="label">Dilaporkan oleh</td>
+                        <td class="val">{{ $summary['generated_by'] ?? '-' }}</td>
+                        <td class="label">Periode Laporan</td>
+                        <td class="val">{{ $summary['date_range'] ?? '-' }}</td>
                     </tr>
                 </table>
             </td>
         </tr>
     </table>
 
-    {{-- NOTES / SUMMARY --}}
+    <!-- ===== SUMMARY / CATATAN ===== -->
     @if (!empty($notes))
-        <div class="notes-box">
-            <strong>Summary / Catatan</strong>
-            <div style="margin-top: 8px;">{!! nl2br(e($notes)) !!}</div>
+        <div class="section-title">Summary / Catatan</div>
+        <div class="summary-box">
+            <div class="progress-text">
+                {!! $notes !!}
+            </div>
         </div>
     @endif
 
-    {{-- DAFTAR TIKET & PROGRESS --}}
-    <h3>Daftar Tiket & Progress</h3>
+    <!-- ===== PROGRES PEKERJAAN ===== -->
+    <div class="section-title">Progres Pekerjaan</div>
 
     @foreach ($data as $ticket)
         @php
-            $clientDocuments = [];
-            $progressDocuments = [];
-            foreach ($ticket['documents'] ?? [] as $doc) {
-                if (isset($doc['is_client_document']) && $doc['is_client_document'] === true) {
-                    $clientDocuments[] = $doc;
+            $docs = $ticket['documents'] ?? [];
+            $hasClientDocs = false;
+            $progressDocs = [];
+            foreach ($docs as $doc) {
+                if ($doc['is_client_document'] ?? false) {
+                    $hasClientDocs = true;
                 } else {
-                    $progressDocuments[] = $doc;
+                    $progressDocs[] = $doc;
                 }
             }
         @endphp
 
-        {{-- ==================== CLIENT DOCUMENTS ==================== --}}
-        @if (!empty($clientDocuments))
-            <div class="tp-wrapper">
-                <div class="tp-header">
-                    <span class="tp-header-title">📎 Dokumen Pendukung Client</span>
-                    <span class="tp-header-count">{{ count($clientDocuments) }} dokumen</span>
-                </div>
-                <div class="tp-timeline">
-                    <div class="tp-timeline-line"></div>
+        <!-- DOKUMEN CLIENT -->
+        @if ($hasClientDocs)
+            <div class="client-section">
+                <div class="client-title">Dokumen Pendukung Client</div>
+                @foreach ($docs as $doc)
+                    @if ($doc['is_client_document'] ?? false)
+                        <div class="card">
+                            <div class="card-header">
+                                <table>
+                                    <tr>
+                                        <td style="text-align:left; border:none; padding:0; vertical-align:middle;">
+                                            <span class="badge-client">Dokumen Client</span>
+                                        </td>
+                                        <td style="text-align:right; border:none; padding:0; vertical-align:middle;">
+                                            <span
+                                                class="date-wrapper">{{ \Carbon\Carbon::parse($doc['timestamp'])->translatedFormat('d F Y, H:i') }}</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
 
-                    @foreach ($clientDocuments as $clientIndex => $clientDoc)
+                            @php
+                                // FILTER CLIENT TEXT: HANYA HAPUS GAMBAR DAN CAPTION, PERTAHANKAN DESKRIPSI
+                                $clientRawText = $doc['text_html'] ?? '';
+                                // Hapus seluruh figure block (gambar + caption)
+                                $clientCleanText = preg_replace(
+                                    '/<figure[^>]*data-trix-attachment[^>]*>.*?<\/figure>/s',
+                                    '',
+                                    $clientRawText,
+                                );
+                                // Hapus sisa tag yang tidak perlu
+                                $clientCleanText = preg_replace(
+                                    '/<div class="attachment-gallery[^>]*">.*?<\/div>/s',
+                                    '',
+                                    $clientCleanText,
+                                );
+                                $clientCleanText = preg_replace(
+                                    '/<figcaption[^>]*>.*?<\/figcaption>/s',
+                                    '',
+                                    $clientCleanText,
+                                );
+                                $clientCleanText = preg_replace('/<img[^>]+>/i', '', $clientCleanText);
+                                $clientCleanText = preg_replace(
+                                    '/<a[^>]*href=["\'][^"\']*\.(jpg|jpeg|png|gif|webp|svg|bmp)["\'][^>]*>.*?<\/a>/is',
+                                    '',
+                                    $clientCleanText,
+                                );
+                                $clientCleanText = preg_replace('/&nbsp;/', ' ', $clientCleanText);
+                                $clientCleanText = trim($clientCleanText);
+                            @endphp
+
+                            @if (!empty($clientCleanText))
+                                <div class="progress-text">
+                                    {!! $clientCleanText !!}
+                                </div>
+                            @endif
+
+                            @if (!empty($doc['other_files']))
+                                <div class="file-list">
+                                    @foreach ($doc['other_files'] as $file)
+                                        @if (in_array(strtolower($file['ext'] ?? ''), ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                                            @php
+                                                $imgSrc = null;
+                                                if (!empty($file['local_path']) && file_exists($file['local_path'])) {
+                                                    $imgSrc = $file['local_path'];
+                                                } elseif (!empty($file['file'])) {
+                                                    $p = storage_path('app/public/' . ltrim($file['file'], '/'));
+                                                    if (file_exists($p)) {
+                                                        $imgSrc = $p;
+                                                    }
+                                                }
+                                            @endphp
+                                            @if ($imgSrc)
+                                                <img src="{{ $imgSrc }}" class="thumbnail">
+                                            @endif
+                                        @else
+                                            <div class="file-item">
+                                                <table style="width:100%;">
+                                                    <tr>
+                                                        <td style="width:36px;">
+                                                            <span
+                                                                class="file-ext-badge {{ strtolower($file['ext'] ?? '') === 'pdf' ? 'file-ext-pdf' : 'file-ext-other' }}">
+                                                                {{ strtoupper(substr($file['ext'] ?? 'FILE', 0, 4)) }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="file-name">{{ $file['name'] }}</td>
+                                                        <td class="file-size">{{ $file['size_formatted'] ?? '' }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        @endif
+
+        <!-- RIWAYAT PROGRESS -->
+        @if (!empty($progressDocs))
+            <div class="progress-section">
+                <div class="progress-title">Riwayat Progress</div>
+                @foreach ($progressDocs as $idx => $doc)
+                    <div class="card">
+                        <div class="card-header">
+                            <table>
+                                <tr>
+                                    <td style="text-align:left; border:none; padding:0; vertical-align:middle;">
+                                        @if ($idx === count($progressDocs) - 1)
+                                            <span class="badge-latest">Terbaru</span>
+                                        @else
+                                            <span class="badge-previous">Sebelumnya</span>
+                                        @endif
+                                    </td>
+                                    <td style="text-align:right; border:none; padding:0; vertical-align:middle;">
+                                        <span
+                                            class="date-wrapper">{{ \Carbon\Carbon::parse($doc['timestamp'])->translatedFormat('d F Y, H:i') }}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
                         @php
-                            $isLatestClient = $clientIndex === count($clientDocuments) - 1;
-                            $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-                            $thumbnailFiles = [];
-                            $otherFiles = [];
-                            foreach ($clientDoc['other_files'] ?? [] as $cf) {
-                                $ext = strtolower($cf['ext'] ?? '');
-                                if (in_array($ext, $imageExt)) {
-                                    $thumbnailFiles[] = $cf;
-                                } else {
-                                    $otherFiles[] = $cf;
+                            // ============================================================
+                            // FILTER PROGRESS TEXT: HANYA HAPUS GAMBAR DAN CAPTION
+                            // PERTAHANKAN SEMUA TEKS DESKRIPSI (proses Pencabutan., list, dll)
+                            // ============================================================
+                            $rawText = $doc['text_html'] ?? '';
+
+                            // HAPUS SELURUH FIGURE BLOCK (gambar + caption) - INI KUNCI UTAMANYA
+                            $cleanText = preg_replace(
+                                '/<figure[^>]*data-trix-attachment[^>]*>.*?<\/figure>/s',
+                                '',
+                                $rawText,
+                            );
+
+                            // BERSIHKAN SISA TAG YANG TIDAK PERLU
+                            $cleanText = preg_replace(
+                                '/<div class="attachment-gallery[^>]*">.*?<\/div>/s',
+                                '',
+                                $cleanText,
+                            );
+                            $cleanText = preg_replace('/<figcaption[^>]*>.*?<\/figcaption>/s', '', $cleanText);
+                            $cleanText = preg_replace('/<img[^>]+>/i', '', $cleanText);
+                            $cleanText = preg_replace(
+                                '/<a[^>]*href=["\'][^"\']*\.(jpg|jpeg|png|gif|webp|svg|bmp)["\'][^>]*>.*?<\/a>/is',
+                                '',
+                                $cleanText,
+                            );
+
+                            // HANYA HAPUS TAG KOSONG, BUKAN TEKS NYA
+                            $cleanText = preg_replace('/<p[^>]*>\s*<\/p>/i', '', $cleanText);
+                            $cleanText = preg_replace('/<div[^>]*>\s*<\/div>/i', '', $cleanText);
+                            $cleanText = preg_replace('/&nbsp;/', ' ', $cleanText);
+                            $cleanText = trim($cleanText);
+                        @endphp
+
+                        @if (!empty($cleanText))
+                            <div class="progress-text">
+                                {!! $cleanText !!}
+                            </div>
+                        @endif
+
+                        @if (!empty($doc['thumbnail_files']) || !empty($doc['embedded_images']))
+                            @php
+                                $allThumbs = [];
+                                foreach ($doc['thumbnail_files'] as $thumb) {
+                                    $imgSrc = null;
+                                    if (!empty($thumb['local_path']) && file_exists($thumb['local_path'])) {
+                                        $imgSrc = $thumb['local_path'];
+                                    } elseif (!empty($thumb['file'])) {
+                                        $p = storage_path('app/public/' . ltrim($thumb['file'], '/'));
+                                        if (file_exists($p)) {
+                                            $imgSrc = $p;
+                                        }
+                                    }
+                                    if ($imgSrc) {
+                                        $allThumbs[] = $imgSrc;
+                                    }
                                 }
-                            }
-                        @endphp
-                        <div class="tp-entry">
-                            <div class="tp-dot {{ $isLatestClient ? 'is-latest' : '' }}">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="12" r="6" />
-                                </svg>
-                            </div>
-                            <div class="tp-card">
-                                <div class="tp-meta">
-                                    <span class="tp-badge client">Dokumen Client</span>
-                                    <span
-                                        class="tp-time">{{ \Carbon\Carbon::parse($clientDoc['timestamp'] ?? now())->translatedFormat('d F Y, H:i') }}</span>
-                                </div>
+                                foreach ($doc['embedded_images'] as $img) {
+                                    if (!empty($img['path']) && file_exists($img['path'])) {
+                                        $allThumbs[] = $img['path'];
+                                    }
+                                }
+                                $perRow = 5;
+                                $chunks = array_chunk($allThumbs, $perRow);
+                            @endphp
+                            @if (!empty($allThumbs))
+                                <table
+                                    style="width:100%; border-collapse:collapse; margin-top:10px; margin-bottom:4px;">
+                                    @foreach ($chunks as $row)
+                                        <tr>
+                                            @foreach ($row as $imgSrc)
+                                                <td
+                                                    style="padding:2px; border:none; width:{{ floor(100 / $perRow) }}%;">
+                                                    <img src="{{ $imgSrc }}"
+                                                        style="width:100%; height:72px; object-fit:cover; border:1px solid #e5e7eb; border-radius:4px; display:block;">
+                                                </td>
+                                            @endforeach
+                                            @for ($pad = count($row); $pad < $perRow; $pad++)
+                                                <td style="border:none; width:{{ floor(100 / $perRow) }}%;"></td>
+                                            @endfor
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            @endif
+                        @endif
 
-                                {{-- Thumbnails --}}
-                                @if (!empty($thumbnailFiles))
-                                    <div class="tp-thumbs">
-                                        @foreach ($thumbnailFiles as $thumb)
-                                            <div class="tp-thumb">
-                                                <img src="{{ $thumb['url'] }}" alt="thumbnail">
-                                            </div>
-                                        @endforeach
+                        @if (!empty($doc['pdf_files']) || !empty($doc['other_files']))
+                            <div class="file-list">
+                                @foreach ($doc['pdf_files'] as $pdf)
+                                    <div class="file-item">
+                                        <table style="width:100%;">
+                                            <tr>
+                                                <td style="width:36px;">
+                                                    <span class="file-ext-badge file-ext-pdf">PDF</span>
+                                                </td>
+                                                <td class="file-name">{{ $pdf['name'] }}</td>
+                                                <td class="file-size">{{ $pdf['size_formatted'] ?? '' }}</td>
+                                            </tr>
+                                        </table>
                                     </div>
-                                @endif
-
-                                {{-- Other files --}}
-                                @if (!empty($otherFiles))
-                                    <div class="tp-files">
-                                        @foreach ($otherFiles as $cf)
-                                            <div class="tp-file-row client">
-                                                <div class="tp-file-left">
-                                                    <div class="tp-file-icon client">
-                                                        {{ strtoupper(substr($cf['ext'], 0, 3)) ?: 'DOC' }}</div>
-                                                    <span class="tp-file-name client">{{ $cf['name'] }}</span>
-                                                </div>
-                                                @if (!empty($cf['size_formatted']))
-                                                    <span class="tp-file-size">{{ $cf['size_formatted'] }}</span>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
+                                @endforeach
+                                @foreach ($doc['other_files'] as $file)
+                                    @if (!in_array(strtolower($file['ext'] ?? ''), ['jpg', 'jpeg', 'png', 'gif', 'webp']))
+                                        <div class="file-item">
+                                            <table style="width:100%;">
+                                                <tr>
+                                                    <td style="width:36px;">
+                                                        <span
+                                                            class="file-ext-badge file-ext-other">{{ strtoupper(substr($file['ext'] ?? 'FILE', 0, 4)) }}</span>
+                                                    </td>
+                                                    <td class="file-name">{{ $file['name'] }}</td>
+                                                    <td class="file-size">{{ $file['size_formatted'] ?? '' }}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    @endif
+                                @endforeach
                             </div>
-                        </div>
-                    @endforeach
-                </div>
+                        @endif
+                    </div>
+                @endforeach
             </div>
         @endif
 
-        {{-- ==================== PROGRESS DOCUMENTS ==================== --}}
-        @if (!empty($progressDocuments))
-            <div class="tp-wrapper">
-                <div class="tp-header">
-                    <span class="tp-header-title">Riwayat Progress</span>
-                    <span class="tp-header-count">{{ count($progressDocuments) }} entri</span>
-                </div>
-                <div class="tp-timeline">
-                    <div class="tp-timeline-line"></div>
-
-                    @foreach ($progressDocuments as $index => $doc)
-                        @php
-                            $isLatest = $index === count($progressDocuments) - 1;
-                            $htmlContent = $doc['text'] ?? '';
-                            $thumbnailFiles = $doc['thumbnail_files'] ?? [];
-                            $embeddedImages = $doc['embedded_images'] ?? [];
-                            $otherFiles = $doc['other_files'] ?? [];
-                            $pdfFiles = $doc['pdf_files'] ?? [];
-                        @endphp
-                        <div class="tp-entry">
-                            <div class="tp-dot {{ $isLatest ? 'is-latest' : '' }}">
-                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                    <circle cx="12" cy="12" r="6" />
-                                </svg>
-                            </div>
-                            <div class="tp-card {{ $isLatest ? 'is-latest' : '' }}">
-                                <div class="tp-meta">
-                                    <span
-                                        class="tp-badge {{ $isLatest ? 'is-latest' : '' }}">{{ $isLatest ? 'Terbaru' : 'Sebelumnya' }}</span>
-                                    <span
-                                        class="tp-time">{{ \Carbon\Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i') }}</span>
-                                </div>
-
-                                {{-- HTML content --}}
-                                @if (!empty($htmlContent))
-                                    <div class="tp-body">
-                                        {!! $htmlContent !!}
-                                    </div>
-                                @endif
-
-                                {{-- Thumbnail files --}}
-                                @if (!empty($thumbnailFiles))
-                                    <div class="tp-thumbs">
-                                        @foreach ($thumbnailFiles as $thumbUrl)
-                                            <div class="tp-thumb">
-                                                <img src="{{ is_array($thumbUrl) ? $thumbUrl['url'] ?? '#' : $thumbUrl }}"
-                                                    alt="thumbnail">
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                {{-- Embedded images --}}
-                                @if (!empty($embeddedImages))
-                                    <div class="tp-thumbs">
-                                        @foreach ($embeddedImages as $imgUrl)
-                                            <div class="tp-thumb">
-                                                <img src="{{ is_array($imgUrl) ? $imgUrl['url'] ?? '#' : $imgUrl }}"
-                                                    alt="image">
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                {{-- PDF files --}}
-                                @if (!empty($pdfFiles))
-                                    <div class="tp-files">
-                                        @foreach ($pdfFiles as $pf)
-                                            <div class="tp-file-row">
-                                                <div class="tp-file-left">
-                                                    <div class="tp-file-icon pdf">PDF</div>
-                                                    <span
-                                                        class="tp-file-name">{{ $pf['name'] ?? 'Document.pdf' }}</span>
-                                                </div>
-                                                @if (!empty($pf['size_formatted']))
-                                                    <span class="tp-file-size">{{ $pf['size_formatted'] }}</span>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                {{-- Other files --}}
-                                @if (!empty($otherFiles))
-                                    <div class="tp-files">
-                                        @foreach ($otherFiles as $lf)
-                                            <div class="tp-file-row">
-                                                <div class="tp-file-left">
-                                                    <div class="tp-file-icon">
-                                                        {{ strtoupper(substr($lf['ext'] ?? 'FILE', 0, 3)) ?: 'FIL' }}
-                                                    </div>
-                                                    <span class="tp-file-name">{{ $lf['name'] ?? 'File' }}</span>
-                                                </div>
-                                                @if (!empty($lf['size_formatted']))
-                                                    <span class="tp-file-size">{{ $lf['size_formatted'] }}</span>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        {{-- Separator antar tiket --}}
-        <div class="divider"></div>
     @endforeach
 
+    {{-- ===== DAFTAR LAMPIRAN ===== --}}
+    @if (!empty($attachedPdfs))
+        <div class="page-break"></div>
+
+        <div class="lampiran-cover">
+            <div class="lampiran-cover-line"></div>
+            <div class="lampiran-cover-body">
+                <div class="lampiran-cover-title">LAMPIRAN PDF</div>
+                <div class="lampiran-cover-sub">Dokumen PDF yang dilampirkan pada laporan ini</div>
+            </div>
+            <div class="lampiran-cover-line"></div>
+        </div>
+
+        <div class="lampiran-list-area">
+            <div class="lampiran-list-heading">Daftar Lampiran:</div>
+
+            @foreach ($attachedPdfs as $i => $lamp)
+                <table class="lampiran-row">
+                    <tr>
+                        <td class="lamp-no-col">{{ $i + 1 }}.</td>
+                        <td class="lamp-name-col">
+                            {{ $lamp['name'] }}
+                            @if (!empty($lamp['url']))
+                                <div class="lamp-url">{{ $lamp['url'] }}</div>
+                            @elseif (!empty($lamp['path']))
+                                <div class="lamp-url">{{ $lamp['path'] }}</div>
+                            @endif
+                        </td>
+                        <td class="lamp-type-col">
+                            {{ $lamp['type'] === 'client_document' ? 'Client' : 'Progress' }}
+                        </td>
+                        <td class="lamp-ticket-col">[{{ $lamp['ticket_code'] }}]</td>
+                    </tr>
+                </table>
+            @endforeach
+        </div>
+    @endif
+
     <div class="footer">
-        Laporan Progress Tiket {{ !empty($summary['client_name']) ? ' - ' . $summary['client_name'] : '' }}
+        <table style="width:100%; border-collapse:collapse;">
+            <tr>
+                <td style="text-align:left; border:none; padding:0; color:#9ca3af; font-size:9.5px;">
+                    Laporan Progress Tiket: {{ $summary['ticket_code'] ?? '-' }}
+                </td>
+                <td style="text-align:right; border:none; padding:0; color:#9ca3af; font-size:9.5px;">
+                    Halaman <span class="pagenum"></span>
+                </td>
+            </tr>
+        </table>
     </div>
+
+    <script type="text/php">
+        if (isset($pdf)) {
+            $text = "Halaman " . $pdf->get_page_number() . " dari " . $pdf->get_page_count();
+            $font = $fontMetrics->get_font("DejaVu Sans", "normal");
+            $size = 8;
+            $color = [0.6, 0.6, 0.6];
+            $width = $pdf->get_width();
+            $height = $pdf->get_height();
+            $textWidth = $fontMetrics->get_text_width($text, $font, $size);
+            $pdf->text($width - $textWidth - 28, $height - 22, $text, $font, $size, $color);
+        }
+    </script>
 
 </body>
 

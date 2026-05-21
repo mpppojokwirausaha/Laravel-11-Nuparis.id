@@ -9,6 +9,7 @@ use App\Models\Letter;
 use App\Models\LetterCategory;
 use App\Models\Order;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,6 +47,12 @@ class ListLetters extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+            Action::make('visit_website')
+                ->label('Visit ')
+                ->icon('heroicon-o-globe-alt')
+                ->url(env('DOMAIN_LETTERS'))
+                ->openUrlInNewTab()
+                ->color('success'),
         ];
     }
 }

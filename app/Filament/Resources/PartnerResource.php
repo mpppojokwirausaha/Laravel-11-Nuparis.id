@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Exports\PartnersExport;
 use App\Filament\Resources\PartnerResource\Pages;
 use App\Models\Info;
 use App\Models\Partner;
@@ -9,6 +10,7 @@ use Filament\Forms\Components\Card;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
@@ -27,6 +29,7 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PartnerResource extends Resource
 {
@@ -49,7 +52,16 @@ class PartnerResource extends Resource
                                 TextInput::make('partner_slug')
                                     ->required()
                                     ->placeholder('Auto Generated'),
-                            ])->columns(2),
+                                Select::make('partner_type')
+                                    ->label('Partner Type')
+                                    ->placeholder('Pilih minimal 1 opsi')
+                                    ->multiple()
+                                    ->options([
+                                        'Client' => 'Client',
+                                        'Supplier' => 'Supplier',
+                                    ])
+                                    ->required(),
+                            ])->columns(3),
                         Group::make()
                             ->schema([
                                 TextInput::make('partner_phone')
@@ -92,26 +104,16 @@ class PartnerResource extends Resource
                                     ->required()
                                     ->rule(function ($record) {
                                         return function ($_, $value, $fail) use ($record) {
-
                                             if ($value === 'Active') {
-
-                                                // 🔒 Rule 1: partner_status harus Active dulu
-                                                // ambil dari record (edit) atau dari request (create)
                                                 $partnerStatus = $record->partner_status ?? request('partner_status');
-
                                                 if ($partnerStatus !== 'Active') {
                                                     $fail('Partner harus Active terlebih dahulu.');
                                                     return;
                                                 }
-
-                                                // 🔒 Rule 2: maksimal 6 yang Active
                                                 $query = Partner::where('partner_footer_status', 'Active');
-
-                                                // exclude current record saat edit
                                                 if ($record) {
                                                     $query->where('uuid', '!=', $record->uuid);
                                                 }
-
                                                 if ($query->count() >= 6) {
                                                     $fail('Maksimal hanya 6 data yang boleh Active.');
                                                 }
@@ -132,16 +134,11 @@ class PartnerResource extends Resource
                                         '1:1',
                                     ])
                                     ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
-                                        // ambil title dari form input
                                         $name = 'partner_' . $get('partner_name') ?: 'partner';
-
-                                        // buat slug + ganti spasi dengan _
                                         $slug = Str::of($name)
                                             ->lower()
                                             ->replace(' ', '_')
                                             ->slug('_');
-
-                                        // tambah timestamp supaya unik
                                         return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
                                     }),
                             ])->columns(2),
@@ -154,16 +151,11 @@ class PartnerResource extends Resource
                                     ->downloadable()
                                     ->dehydrated()
                                     ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
-                                        // ambil title dari form input
                                         $name = 'partner_NIB_' . $get('partner_name') ?: 'partner_NIB';
-
-                                        // buat slug + ganti spasi dengan _
                                         $slug = Str::of($name)
                                             ->lower()
                                             ->replace(' ', '_')
                                             ->slug('_');
-
-                                        // tambah timestamp supaya unik
                                         return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
                                     }),
                                 FileUpload::make('partner_NPWP')
@@ -173,16 +165,11 @@ class PartnerResource extends Resource
                                     ->downloadable()
                                     ->dehydrated()
                                     ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file, $get): string {
-                                        // ambil title dari form input
                                         $name = 'partner_NPWP_' . $get('partner_name') ?: 'partner_NPWP';
-
-                                        // buat slug + ganti spasi dengan _
                                         $slug = Str::of($name)
                                             ->lower()
                                             ->replace(' ', '_')
                                             ->slug('_');
-
-                                        // tambah timestamp supaya unik
                                         return $slug . '_' . time() . '.' . $file->getClientOriginalExtension();
                                     }),
                             ])->columns(2),
@@ -217,6 +204,14 @@ class PartnerResource extends Resource
     {
         return $table
             ->headerActions([
+                Action::make('exportExcel')
+                    ->label('Export Excel')
+                    ->color('success')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->action(function () {
+                        $partners = Partner::orderBy('created_at', 'desc')->get();
+                        return Excel::download(new PartnersExport($partners, 1), 'partners_export_' . date('Y-m-d_H-i-s') . '.xlsx');
+                    }),
                 Action::make('uploadPanduanMitra')
                     ->label(function () {
                         $info = Info::first();
@@ -242,7 +237,6 @@ class PartnerResource extends Resource
                                 ->directory('panduan-mitra')
                                 ->storeFiles()
                                 ->preserveFilenames()
-                                // Tampilkan file yang sudah ada di FilePond
                                 ->default($hasFile ? [$info->partner_guide] : [])
                                 ->dehydrated()
                                 ->getUploadedFileNameForStorageUsing(
@@ -271,13 +265,11 @@ class PartnerResource extends Resource
                                 ]);
                             }
 
-                            // Hapus file lama jika ada
                             $oldFile = $info->partner_guide;
                             if ($oldFile && Storage::disk('public')->exists($oldFile)) {
                                 Storage::disk('public')->delete($oldFile);
                             }
 
-                            // Update database
                             $info->update(['partner_guide' => $data['partner_guide']]);
 
                             \Filament\Notifications\Notification::make()
@@ -306,15 +298,10 @@ class PartnerResource extends Resource
                                     $info = Info::first();
                                     if ($info && $info->partner_guide) {
                                         $filename = basename($info->partner_guide);
-
-                                        // Hapus dari storage
                                         if (Storage::disk('public')->exists($info->partner_guide)) {
                                             Storage::disk('public')->delete($info->partner_guide);
                                         }
-
-                                        // Hapus dari database
                                         $info->update(['partner_guide' => null]);
-
                                         \Filament\Notifications\Notification::make()
                                             ->title('✅ Berhasil!')
                                             ->body('File ' . $filename . ' telah dihapus')
@@ -333,24 +320,46 @@ class PartnerResource extends Resource
                     ]),
             ])
             ->columns([
+                TextColumn::make('no')
+                    ->label('NO')
+                    ->state(function ($rowLoop): string {
+                        return (string) $rowLoop->iteration;
+                    })
+                    ->sortable(false)
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->width('50px')
+                    ->alignment('center'),
+
                 ImageColumn::make('partner_image')
                     ->label('IMAGE')
                     ->circular()
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('partner_name')
                     ->label('NAME')
                     ->searchable()
                     ->sortable()
                     ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('partner_phone')
                     ->label('PHONE')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('partner_email')
                     ->label('EMAIL')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('partner_type')
+                    ->label('TYPE')
+                    ->badge()
+                    ->colors(['primary' => 'Client', 'danger' => 'Supplier'])
+                    ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
                 IconColumn::make('partner_status')
                     ->label('STATUS')
                     ->icon(fn(string $state): string => match ($state) {
@@ -361,8 +370,10 @@ class PartnerResource extends Resource
                     ->color(fn(string $state): string => match ($state) {
                         'Active' => 'success',
                         'Inactive' => 'danger',
-                    })->sortable()
+                    })
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 IconColumn::make('partner_footer_status')
                     ->label('SHOW FOOTER')
                     ->icon(fn(string $state): string => match ($state) {
@@ -373,8 +384,10 @@ class PartnerResource extends Resource
                     ->color(fn(string $state): string => match ($state) {
                         'Active' => 'success',
                         'Inactive' => 'danger',
-                    })->sortable()
+                    })
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 TextColumn::make('created_at')
                     ->label('LOG')
                     ->dateTime()
@@ -382,21 +395,51 @@ class PartnerResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->actions([
+                Action::make('view_npwp')
+                    ->label('NPWP')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->url(fn($record) => $record->partner_NPWP ? Storage::url($record->partner_NPWP) : null)
+                    ->openUrlInNewTab()
+                    ->disabled(fn($record) => empty($record->partner_NPWP)),
+
+                Action::make('view_nib')
+                    ->label('NIB')
+                    ->icon('heroicon-o-document-text')
+                    ->color('success')
+                    ->url(fn($record) => $record->partner_NIB ? Storage::url($record->partner_NIB) : null)
+                    ->openUrlInNewTab()
+                    ->disabled(fn($record) => empty($record->partner_NIB)),
+
                 Action::make('visit')
                     ->icon('heroicon-o-link')
                     ->url(fn($record) => $record->partner_url)
                     ->openUrlInNewTab()
-                    ->disabled(fn($record) => empty($record->partner_url)), // disables button if URL is null
+                    ->disabled(fn($record) => empty($record->partner_url)),
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
+                    Action::make('exportSelected')
+                        ->label('Export Selected')
+                        ->icon('heroicon-o-document-arrow-down')
+                        ->color('success')
+                        ->action(function ($livewire) {
+                            $partners = $livewire->getSelectedTableRecords();
+
+                            // Hitung nomor awal berdasarkan urutan data di database
+                            $allPartners = Partner::orderBy('created_at', 'desc')->pluck('id')->toArray();
+                            $selectedIds = $partners->pluck('id')->toArray();
+
+                            $firstSelectedIndex = array_search($selectedIds[0], $allPartners);
+                            $startNumber = $firstSelectedIndex + 1;
+
+                            return Excel::download(new PartnersExport($partners, $startNumber), 'selected_partners_export_' . date('Y-m-d_H-i-s') . '.xlsx');
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ])
@@ -411,9 +454,7 @@ class PartnerResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array

@@ -14,7 +14,10 @@ class Partner extends Model
     public $incrementing = false;
     protected $table = 'partners';
     protected $primaryKey = 'uuid';
-    protected $casts = ['id' => 'string'];
+    protected $casts = [
+        'id' => 'string',
+        'partner_type' => 'array'
+    ];
     protected $keyType = 'string';
     protected $fillable = [
         'uuid',
@@ -25,6 +28,7 @@ class Partner extends Model
         'partner_NIB',
         'partner_NPWP',
         'partner_email',
+        'partner_type',
         'partner_description',
         'partner_image',
         'partner_address',
@@ -87,14 +91,25 @@ class Partner extends Model
 
     public function getPartner()
     {
-        $partners = Partner::all();
+        $partners = Partner::where('partner_status', 'Active')->get();
 
         $layers = 2;
-        $partnerLayers = array_fill(0, $layers, collect());
+        $partnerLayers = [collect(), collect()];
 
         foreach ($partners as $index => $partner) {
-            $partnerLayers[$index % $layers]->push($partner);
+            $layerKey = $index % $layers;
+            $partnerLayers[$layerKey]->push($partner);
         }
+
+        // DEBUG: Cek jumlah tiap layer
+        \Log::info('Layer 0 count: ' . $partnerLayers[0]->count());
+        \Log::info('Layer 1 count: ' . $partnerLayers[1]->count());
+
+        // DEBUG: Cek apakah ada partner yang sama di kedua layer
+        $layer0Ids = $partnerLayers[0]->pluck('id')->toArray();
+        $layer1Ids = $partnerLayers[1]->pluck('id')->toArray();
+        $duplicate = array_intersect($layer0Ids, $layer1Ids);
+        \Log::info('Duplicate IDs: ' . json_encode($duplicate));
 
         return collect($partnerLayers);
     }

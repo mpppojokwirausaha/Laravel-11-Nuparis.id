@@ -227,7 +227,7 @@
                                     <i class="fas fa-video text-red-600 text-sm sm:text-base"></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="text-xs sm:text-sm text-gray-500 truncate">Platform</div>
+                                    <div class="text-xs sm:text-sm text-gray-500 truncate">Platform/Lokasi</div>
                                     <div class="font-medium text-sm sm:text-base truncate">
                                         {{ $event->event_location }}
                                     </div>
@@ -391,7 +391,7 @@
                         </div>
 
                         <!-- What You'll Learn -->
-                        <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+                        {{-- <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
                             <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Apa yang akan anda
                                 dapatkan?</h2>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -408,10 +408,10 @@
                                     </div>
                                 @endforeach
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Benefits -->
-                        <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+                        {{-- <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
                             <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Manfaat yang didapat
                             </h2>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
@@ -427,14 +427,16 @@
                                     </div>
                                 @endforeach
                             </div>
-                        </div>
+                        </div> --}}
                     </div>
 
                     <!-- Rundown Tab -->
                     <div id="rundown-content" class="hidden space-y-4 sm:space-y-6">
                         <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
-                            <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Rundown Kegiatan</h2>
-                            <div class="space-y-3 sm:space-y-4">
+                            <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Rundown Kegiatan <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-800">Beta</span>
+                            </h2>
+                            {{-- <div class="space-y-3 sm:space-y-4">
                                 @foreach ([['session' => 'Session 1: Digital Marketing Fundamentals', 'time' => '09:00 - 10:30 WIB', 'items' => ['Pengenalan digital marketing untuk UMKM', 'Analisis target market dan kompetitor', 'Membangun value proposition yang kuat']], ['session' => 'Session 2: Social Media Strategy', 'time' => '10:45 - 12:15 WIB', 'items' => ['Strategi content untuk Instagram & TikTok', 'Teknik engagement dan community building', 'Optimasi profil sosial media untuk konversi']], ['session' => 'Session 3: Content Creation Workshop', 'time' => '13:00 - 14:30 WIB', 'items' => ['Membuat konten video yang engaging', 'Copywriting untuk media sosial', 'Tools gratis untuk content creation']]] as $index => $session)
                                     <div class="border border-gray-200 rounded-lg overflow-hidden">
                                         <button onclick="toggleAccordion('session-{{ $index }}')"
@@ -462,15 +464,17 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
 
                     <!-- Mentor Tab -->
                     <div id="mentor-content" class="hidden">
                         <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
-                            <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Mentor Workshop</h2>
-                            <div class="flex flex-col sm:grid sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                            <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Mentor Workshop<span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-800">Beta</span>
+                            </h2>
+                            {{-- <div class="flex flex-col sm:grid sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                                 @foreach ([['name' => 'Budi Santoso', 'role' => 'Digital Marketing Director', 'desc' => '15+ tahun pengalaman di digital marketing, konsultan Kemenkop UKM untuk program digitalisasi UMKM.', 'skills' => ['Facebook Ads', 'SEO', 'Analytics']], ['name' => 'Sari Wijaya', 'role' => 'Social Media Expert', 'desc' => 'Spesialis TikTok & Instagram Marketing, telah membantu 100+ UMKM meningkatkan penjualan melalui program pemerintah.', 'skills' => ['Instagram', 'TikTok', 'Content']]] as $mentor)
                                     <div class="flex gap-3 sm:gap-4">
                                         <div class="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0">
@@ -494,7 +498,7 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
 
@@ -502,8 +506,10 @@
                     <div id="faq-content" class="hidden">
                         <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
                             <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Pertanyaan yang Sering
-                                Ditanyakan</h2>
-                            <div class="space-y-3 sm:space-y-4">
+                                Ditanyakan <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-800">Beta</span>
+                            </h2>
+                            {{-- <div class="space-y-3 sm:space-y-4">
                                 @foreach ([['question' => 'Apakah workshop ini benar-benar gratis?', 'answer' => 'Ya, workshop ini 100% gratis tanpa biaya pendaftaran maupun biaya tersembunyi. Didukung oleh program CSR NUPARIS UKM RI.'], ['question' => 'Bagaimana cara mendapatkan sertifikat?', 'answer' => 'Sertifikat digital akan dikirim via email 1-2 hari kerja setelah workshop selesai kepada peserta yang mengikuti minimal 80% sesi.']] as $index => $faq)
                                     <div class="border border-gray-200 rounded-lg overflow-hidden">
                                         <button onclick="toggleFAQ('faq-{{ $index }}')"
@@ -520,7 +526,7 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
                 </div>
@@ -832,7 +838,7 @@
                                                 class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors duration-300"
                                                 required>
                                             <p class="text-xs text-gray-500 mt-1 sm:mt-2">
-                                                Nama yang akan tercantum di sertifikat
+                                                ⁠Nama yang akan tercantum sebagai peserta kegiatan
                                             </p>
                                         </div>
 
@@ -847,7 +853,8 @@
                                                 class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors duration-300"
                                                 required>
                                             <p class="text-xs text-gray-500 mt-1 sm:mt-2">
-                                                E-sertifikat dan materi akan dikirim ke email ini
+                                                Informasi kegiatan akan dikirim ke email ini
+
                                             </p>
                                         </div>
 
@@ -867,19 +874,19 @@
                                                     required>
                                             </div>
                                             <p class="text-xs text-gray-500 mt-1 sm:mt-2">
-                                                Konfirmasi dan link Zoom akan dikirim ke nomor ini
+                                                Konfirmasi melalui pesan WhtasApp akan dikirim ke nomor ini
                                             </p>
                                         </div>
 
                                         <!-- Company/Business (Optional) -->
                                         <div>
                                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                                Nama Perusahaan/Bisnis
+                                                Nama Instansi/Institusi/Bisnis
                                                 <span class="text-gray-400 text-xs font-normal">(Opsional)</span>
                                             </label>
                                             <input type="text" 
                                                 id="companyName"
-                                                placeholder="Nama perusahaan atau bisnis Anda"
+                                                placeholder="Nama Instansi/Institusi/Bisnis"
                                                 class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors duration-300">
                                         </div>
 
@@ -891,11 +898,12 @@
                                             <select id="sourceInfo"
                                                 class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors duration-300">
                                                 <option value="">Pilih salah satu</option>
+                                                <option>LinkedIn</option>
                                                 <option>Instagram</option>
                                                 <option>Facebook</option>
                                                 <option>Email Newsletter</option>
                                                 <option>WhatsApp Group</option>
-                                                <option>Rekomendasi Teman</option>
+                                                <option>Rekomendasi Instansi/Institusi/Bisnis</option>
                                                 <option>Lainnya</option>
                                             </select>
                                         </div>
@@ -925,7 +933,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="space-y-3 sm:space-y-4">
+                                            <!--  <div class="space-y-3 sm:space-y-4"> -->
                                                 ${isFreeEvent ? `
                                                         <!-- Free Event Display -->
                                                         <div class="flex justify-between items-center pb-3 sm:pb-4 border-b border-gray-200">
@@ -944,10 +952,10 @@
                                                             </div>
                                                             <div class="font-medium text-gray-900 text-sm sm:text-base">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
                                                         </div>
-                                                    `}
+                                                            `}
 
                                                 <!-- Benefits Included -->
-                                                <div class="mb-4 sm:mb-6">
+                                                <!-- <div class="mb-4 sm:mb-6">
                                                     <h5 class="font-bold text-gray-900 mb-1.5 sm:mb-2 text-sm sm:text-base">Yang Anda dapatkan:</h5>
                                                     <div class="space-y-1.5 sm:space-y-2">
                                                         <div class="flex items-center gap-1.5 sm:gap-2">
@@ -963,36 +971,36 @@
                                                             <span class="text-xs sm:text-sm">Akses recording sesi</span>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </div>-->
 
                                                 ${isFreeEvent ? `
-                                                            <!-- Free Price Display -->
-                                                            <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                <div class="flex justify-between items-center">
-                                                                    <div>
-                                                                        <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                        <div class="text-xs sm:text-sm text-gray-600">Workshop ini gratis sepenuhnya</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
-                                                                        <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ` : `
-                                                            <!-- Total for Paid Event -->
-                                                            <div class="pt-3 sm:pt-4 border-t border-gray-200">
-                                                                <div class="flex justify-between items-center">
-                                                                    <div>
-                                                                        <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
-                                                                        <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        `}
+                                                <!-- Free Price Display -->
+                                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                                    <div class="flex justify-between items-center">
+                                                        <div>
+                                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                                            <div class="text-xs sm:text-sm text-gray-600">Kegiatan ini gratis sepenuhnya</div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="font-bold text-primary text-2xl sm:text-3xl text-right">GRATIS</div>
+                                                            <div class="text-xs sm:text-sm text-gray-500 text-right">Didukung oleh NUPARIS</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ` : `
+                                                <!-- Total for Paid Event -->
+                                                <div class="pt-3 sm:pt-4 border-t border-gray-200">
+                                                    <div class="flex justify-between items-center">
+                                                        <div>
+                                                            <div class="font-bold text-gray-900 text-base sm:text-lg">Total Pembayaran</div>
+                                                            <div class="text-xs sm:text-sm text-gray-600">Sudah termasuk sertifikat</div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="font-bold text-primary text-xl sm:text-2xl">Rp {{ number_format($event->event_price, 0, ',', '.') }}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `}
                                             </div>
                                         </div>
 
@@ -1004,20 +1012,19 @@
                                                 </div>
                                                 <div class="text-xs sm:text-sm text-gray-700">
                                                     <p class="font-medium mb-0.5 sm:mb-1">Penting!</p>
-                                                    <p>Link Zoom Meeting akan dikirim ke email dan WhatsApp Anda 1 hari sebelum workshop berlangsung. Pastikan data yang Anda isi benar.</p>
+                                                    <p>Konfirmasi kegiatan akan dikirim ke email dan WhatsApp Anda 1 hari sebelum kegiatan berlangsung. Pastikan data yang Anda isi benar.</p>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Action Buttons -->
-                                        <div class="flex gap-3 sm:gap-4 pt-3 sm:pt-4">
+                                        <div class="px-3 sm:pt-4">
                                             <button onclick="${isFreeEvent ? 'claimFreeTicket()' : 'processPaidRegistration()'}"
-                                                class="flex-1 bg-primary hover:bg-primary-hover text-white font-bold py-3 sm:py-4 rounded-xl shadow-lg transition-colors duration-300 text-sm sm:text-base lg:text-lg flex items-center justify-center">
+                                                class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 rounded-xl shadow-md transition-all duration-300 text-base sm:text-lg tracking-wide">
                                                 <i class="${isFreeEvent ? 'fas fa-gift' : 'fas fa-shopping-cart'} mr-2"></i>
                                                 ${isFreeEvent ? 'Claim Tiket Gratis' : 'Lanjut ke Pembayaran'}
                                             </button>
                                         </div>
-
                                         <!-- Security Info -->
                                         <div class="text-center pt-3 sm:pt-4">
                                             <div class="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-500">
@@ -1213,11 +1220,11 @@
                         </div>
                         
                         ${ticketCode ? `
-                                                                                <div class="bg-primary/10 p-3 sm:p-4 rounded-lg mb-4">
-                                                                                    <p class="text-xs text-gray-600 mb-1">Kode Tiket Anda:</p>
-                                                                                    <p class="font-mono font-bold text-primary text-lg sm:text-xl">${ticketCode}</p>
-                                                                                </div>
-                                                                                ` : ''}
+                                                                                                                                                                                                                                <div class="bg-primary/10 p-3 sm:p-4 rounded-lg mb-4">
+                                                                                                                                                                                                                                    <p class="text-xs text-gray-600 mb-1">Kode Tiket Anda:</p>
+                                                                                                                                                                                                                                    <p class="font-mono font-bold text-primary text-lg sm:text-xl">${ticketCode}</p>
+                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                ` : ''}
                         
                         <div class="bg-red-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-left">
                             <h4 class="font-bold text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Info Penting:</h4>

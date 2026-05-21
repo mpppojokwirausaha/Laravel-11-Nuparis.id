@@ -24,8 +24,6 @@
 
         {{-- SUMMARY CARDS --}}
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
-
-            {{-- Periode --}}
             <div
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex items-center gap-3">
                 <div
@@ -41,8 +39,6 @@
                         {{ $summary['date_range'] ?? '-' }}</p>
                 </div>
             </div>
-
-            {{-- Dibuat oleh --}}
             <div
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex items-center gap-3">
                 <div
@@ -58,8 +54,6 @@
                         {{ $summary['generated_by'] ?? '-' }}</p>
                 </div>
             </div>
-
-            {{-- Digenerate --}}
             <div
                 class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex items-center gap-3">
                 <div
@@ -75,7 +69,6 @@
                         {{ $summary['generated_at'] ?? '-' }}</p>
                 </div>
             </div>
-
         </div>
 
         {{-- TICKET LIST --}}
@@ -87,14 +80,12 @@
                 </svg>
                 Daftar Tiket
                 <span
-                    class="ml-1 text-xs font-normal bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full">
-                    {{ count($data) }} tiket
-                </span>
+                    class="ml-1 text-xs font-normal bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full">{{ count($data) }}
+                    tiket</span>
             </h2>
 
             @foreach ($data as $ticket)
                 @php
-                    // ── STATUS BADGE ────────────────────────────────────────────
                     $statusColor = match ($ticket['status'] ?? '') {
                         'open' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
                         'in_progress' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
@@ -132,23 +123,17 @@
 
                 <div x-data="{ open: false }"
                     class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-
-                    {{-- ── TICKET HEADER ──────────────────────────────────────── --}}
                     <button type="button" @click="open = !open"
                         class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors text-left">
                         <div class="flex items-center gap-3 min-w-0">
                             <span
-                                class="shrink-0 text-xs font-mono font-bold bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2.5 py-1 rounded-lg">
-                                {{ $ticket['ticket_code'] ?? '-' }}
-                            </span>
-                            <span class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
-                                {{ $ticket['ticket_title'] ?? '-' }}
-                            </span>
+                                class="shrink-0 text-xs font-mono font-bold bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2.5 py-1 rounded-lg">{{ $ticket['ticket_code'] ?? '-' }}</span>
+                            <span
+                                class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ $ticket['ticket_title'] ?? '-' }}</span>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 ml-3">
-                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full {{ $statusColor }}">
-                                {{ $statusLabel }}
-                            </span>
+                            <span
+                                class="text-xs font-semibold px-2.5 py-1 rounded-full {{ $statusColor }}">{{ $statusLabel }}</span>
                             @if (($ticket['documents_count'] ?? 0) > 0)
                                 <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +152,6 @@
                         </div>
                     </button>
 
-                    {{-- ── TICKET DETAIL ──────────────────────────────────────── --}}
                     <div x-show="open" x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 -translate-y-1"
                         x-transition:enter-end="opacity-100 translate-y-0"
@@ -176,44 +160,30 @@
                         x-transition:leave-end="opacity-0 -translate-y-1"
                         class="border-t border-gray-100 dark:border-gray-700/60 px-8 pt-6 pb-6">
 
-                        {{-- ══════════════════════════════════════════════════════
-                            SECTION 1 — DOKUMEN PENDUKUNG CLIENT
-                        ══════════════════════════════════════════════════════ --}}
+                        {{-- DOKUMEN PENDUKUNG CLIENT --}}
                         @if (!empty($clientDocuments))
                             <div class="tp-wrapper"
                                 style="font-family: inherit; padding: 0.5rem 1.25rem; margin-bottom: 2rem;">
-
-                                {{-- Header --}}
                                 <div class="tp-header"
                                     style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #e5e7eb;">
                                     <span class="tp-header-title"
-                                        style="font-size:15px; font-weight:500; color:#111827;">
-                                        Dokumen Pendukung Client
-                                    </span>
+                                        style="font-size:15px; font-weight:500; color:#111827;">Dokumen Pendukung
+                                        Client</span>
                                     <span class="tp-header-count"
-                                        style="font-size:11px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 10px;">
-                                        {{ count($clientDocuments) }} dokumen
-                                    </span>
+                                        style="font-size:11px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 10px;">{{ count($clientDocuments) }}
+                                        dokumen</span>
                                 </div>
-
-                                {{-- Timeline untuk client documents --}}
                                 <div class="tp-timeline"
                                     style="position:relative; padding-left:0; padding-right:52px; max-width:90%; margin-left:auto; margin-right:0;">
-
-                                    {{-- Garis vertikal --}}
                                     <div class="tp-timeline-line"
                                         style="position:absolute; right:17px; left:auto; top:8px; bottom:8px; width:1px; background:#e5e7eb;">
                                     </div>
-
                                     @foreach ($clientDocuments as $clientIndex => $clientDoc)
                                         @php
                                             $isLatestClient = $clientIndex === count($clientDocuments) - 1;
-
-                                            // PISAHKAN FILE BERDASARKAN TIPE
                                             $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
-                                            $thumbnailFiles = []; // untuk gambar (akan ditampilkan sebagai thumbnail)
-                                            $otherFiles = []; // untuk file non-gambar (PDF, DOC, dll)
-
+                                            $thumbnailFiles = [];
+                                            $otherFiles = [];
                                             foreach ($clientDoc['other_files'] ?? [] as $cf) {
                                                 if (is_array($cf)) {
                                                     $fileUrl = $cf['url'] ?? ($cf[0] ?? '');
@@ -221,16 +191,12 @@
                                                     $fileExt = strtolower(
                                                         $cf['ext'] ?? pathinfo($fileName, PATHINFO_EXTENSION),
                                                     );
-
                                                     $fileItem = [
                                                         'url' => $fileUrl,
                                                         'name' => $fileName,
                                                         'ext' => $fileExt,
                                                         'size_formatted' => $cf['size_formatted'] ?? '',
-                                                        'file' => $cf['file'] ?? '',
                                                     ];
-
-                                                    // Pisahkan berdasarkan ekstensi
                                                     if (in_array($fileExt, $imageExt)) {
                                                         $thumbnailFiles[] = $fileItem;
                                                     } else {
@@ -243,9 +209,7 @@
                                                         'name' => basename($cf),
                                                         'ext' => $fileExt,
                                                         'size_formatted' => '',
-                                                        'file' => $cf,
                                                     ];
-
                                                     if (in_array($fileExt, $imageExt)) {
                                                         $thumbnailFiles[] = $fileItem;
                                                     } else {
@@ -254,10 +218,7 @@
                                                 }
                                             }
                                         @endphp
-
                                         <div class="tp-entry" style="position:relative; margin-bottom:1.25rem;">
-
-                                            {{-- Dot --}}
                                             <div class="tp-dot {{ $isLatestClient ? 'is-latest' : '' }}"
                                                 style="position:absolute; right:-35px; left:auto; top:12px; width:36px; height:36px; border-radius:50%; background:#fff; border:1px solid #d1d5db; display:flex; align-items:center; justify-content:center; flex-shrink:0; {{ $isLatestClient ? 'background:transparent; border-color:#374151; color:#374151;' : 'color:#d1d5db;' }}">
                                                 <svg width="10" height="10" viewBox="0 0 24 24"
@@ -265,36 +226,25 @@
                                                     <circle cx="12" cy="12" r="6" />
                                                 </svg>
                                             </div>
-
-                                            {{-- Card --}}
                                             <div class="tp-card"
                                                 style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.25rem; {{ $isLatestClient ? 'border-right:3px solid #374151;' : '' }}">
-
-                                                {{-- Meta --}}
                                                 <div class="tp-meta"
                                                     style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                                                     <span class="tp-badge"
-                                                        style="font-size:11px; font-weight:500; border-radius:999px; padding:2px 10px; background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;">
-                                                        Dokumen Client
-                                                    </span>
+                                                        style="font-size:11px; font-weight:500; border-radius:999px; padding:2px 10px; background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;">Dokumen
+                                                        Client</span>
                                                     @if (!empty($clientDoc['uploaded_at'] ?? ($clientDoc['timestamp'] ?? null)))
                                                         <span class="tp-time"
-                                                            style="font-size:11px; color:#9ca3af; text-align:right;">
-                                                            {{ \Carbon\Carbon::parse($clientDoc['uploaded_at'] ?? $clientDoc['timestamp'])->translatedFormat('d F Y, H:i') }}
-                                                        </span>
+                                                            style="font-size:11px; color:#9ca3af; text-align:right;">{{ \Carbon\Carbon::parse($clientDoc['uploaded_at'] ?? $clientDoc['timestamp'])->translatedFormat('d F Y, H:i') }}</span>
                                                     @endif
                                                 </div>
-
-                                                {{-- ===================================================== --}}
-                                                {{-- THUMBNAIL FILES (GAMBAR) - TAMPIL SEBAGAI THUMBNAIL --}}
-                                                {{-- ===================================================== --}}
                                                 @if (!empty($thumbnailFiles))
-                                                    <div class="tp-thumbs"
-                                                        style="display:flex; flex-wrap:wrap; gap:8px; margin-top:0.75rem; margin-bottom:0.75rem;">
+                                                    <div class="tp-thumb-grid"
+                                                        style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 100px)); gap:8px; margin-top:8px;">
                                                         @foreach ($thumbnailFiles as $thumb)
-                                                            <div class="tp-thumb"
+                                                            <div class="tp-thumb-item"
                                                                 onclick="tpOpenLb('{{ $thumb['url'] }}', 'image')"
-                                                                style="width:100px; height:80px; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid #e5e7eb; flex-shrink:0; background:#f9fafb;">
+                                                                style="width:100px; height:80px; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid #e5e7eb; background:#f9fafb;">
                                                                 <img src="{{ $thumb['url'] }}" alt="Thumbnail"
                                                                     loading="lazy"
                                                                     style="width:100%; height:100%; object-fit:cover; display:block;">
@@ -302,10 +252,6 @@
                                                         @endforeach
                                                     </div>
                                                 @endif
-
-                                                {{-- ===================================================== --}}
-                                                {{-- OTHER FILES (NON-GAMBAR: PDF, DOC, XLS, dll) --}}
-                                                {{-- ===================================================== --}}
                                                 @if (!empty($otherFiles))
                                                     <div class="tp-files"
                                                         style="display:flex; flex-direction:column; gap:6px; margin-top:0.75rem;">
@@ -320,53 +266,36 @@
                                                                     </div>
                                                                     <a href="{{ $cf['url'] }}" target="_blank"
                                                                         class="tp-file-name"
-                                                                        style="font-size:13px; color:#1e40af; text-decoration:none;">
-                                                                        {{ $cf['name'] }}
-                                                                    </a>
+                                                                        style="font-size:13px; color:#1e40af; text-decoration:none;">{{ $cf['name'] }}</a>
                                                                 </div>
                                                                 @if (!empty($cf['size_formatted']))
                                                                     <span class="tp-file-size"
-                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">
-                                                                        {{ $cf['size_formatted'] }}
-                                                                    </span>
+                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">{{ $cf['size_formatted'] }}</span>
                                                                 @endif
                                                             </div>
                                                         @endforeach
                                                     </div>
                                                 @endif
-
-                                            </div>{{-- /tp-card --}}
-                                        </div>{{-- /tp-entry --}}
+                                            </div>
+                                        </div>
                                     @endforeach
-
-                                </div>{{-- /tp-timeline --}}
-                            </div>{{-- /tp-wrapper --}}
+                                </div>
+                            </div>
                         @endif
 
-                        {{-- ══════════════════════════════════════════════════════
-                            SECTION 2 — RIWAYAT PROGRESS
-                        ══════════════════════════════════════════════════════ --}}
+                        {{-- RIWAYAT PROGRESS --}}
                         @if (!empty($progressDocuments))
                             <div class="tp-wrapper" style="font-family: inherit; padding: 0.5rem 1.25rem;">
-
-                                {{-- Header --}}
                                 <div class="tp-header"
                                     style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #e5e7eb;">
                                     <span class="tp-header-title"
-                                        style="font-size:15px; font-weight:500; color:#111827;">
-                                        Riwayat Progress
-                                    </span>
+                                        style="font-size:15px; font-weight:500; color:#111827;">Riwayat Progress</span>
                                     <span class="tp-header-count"
-                                        style="font-size:11px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 10px;">
-                                        {{ count($progressDocuments) }} entri
-                                    </span>
+                                        style="font-size:11px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; padding:2px 10px;">{{ count($progressDocuments) }}
+                                        entri</span>
                                 </div>
-
-                                {{-- Timeline --}}
                                 <div class="tp-timeline"
                                     style="position:relative; padding-left:0; padding-right:52px; max-width:90%; margin-left:auto; margin-right:0;">
-
-                                    {{-- Garis vertikal --}}
                                     <div class="tp-timeline-line"
                                         style="position:absolute; right:17px; left:auto; top:8px; bottom:8px; width:1px; background:#e5e7eb;">
                                     </div>
@@ -374,8 +303,6 @@
                                     @foreach ($progressDocuments as $index => $doc)
                                         @php
                                             $isLatest = $index === count($progressDocuments) - 1;
-
-                                            // ── TEXT / HTML CONTENT ──────────────────────────
                                             $rawText = $doc['text'] ?? '';
                                             if (is_array($rawText)) {
                                                 $htmlContent = implode(' ', $rawText);
@@ -385,7 +312,47 @@
                                                 $htmlContent = (string) $rawText;
                                             }
 
-                                            // ── THUMBNAIL FILES ──────────────────────────────
+                                            // HAPUS CAPTION GAMBAR
+                                            $htmlContent = preg_replace(
+                                                '/<figure[^>]*data-trix-attachment[^>]*>.*?<\/figure>/s',
+                                                '',
+                                                $htmlContent,
+                                            );
+                                            $htmlContent = preg_replace(
+                                                '/<figcaption[^>]*>.*?<\/figcaption>/s',
+                                                '',
+                                                $htmlContent,
+                                            );
+                                            $htmlContent = preg_replace(
+                                                '/<div class="attachment-gallery[^>]*">.*?<\/div>/s',
+                                                '',
+                                                $htmlContent,
+                                            );
+
+                                            // EKSTRAK GAMBAR DARI RICH EDITOR
+                                            $inlineImages = [];
+                                            $htmlContent = preg_replace_callback(
+                                                '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i',
+                                                function ($matches) use (&$inlineImages) {
+                                                    $inlineImages[] = $matches[1];
+                                                    return '';
+                                                },
+                                                $htmlContent,
+                                            );
+
+                                            // EKSTRAK DARI data-trix-attachment
+                                            preg_match_all(
+                                                '/data-trix-attachment="[^"]*"href="([^"]+)"/i',
+                                                $rawText,
+                                                $trixMatches,
+                                            );
+                                            foreach ($trixMatches[1] ?? [] as $url) {
+                                                if (!in_array($url, $inlineImages)) {
+                                                    $inlineImages[] = $url;
+                                                }
+                                            }
+
+                                            // THUMBNAIL FILES dari thumbnail_files
                                             $thumbnailFiles = [];
                                             foreach ($doc['thumbnail_files'] ?? [] as $tf) {
                                                 if (is_array($tf)) {
@@ -398,7 +365,29 @@
                                                 }
                                             }
 
-                                            // ── EMBEDDED IMAGES ──────────────────────────────
+                                            // GAMBAR DARI FILE LANGSUNG (lampiran progress)
+                                            $fileImages = [];
+                                            foreach ($doc['file'] ?? [] as $file) {
+                                                if (is_string($file) && $file !== '') {
+                                                    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                                                    if (
+                                                        in_array($ext, [
+                                                            'jpg',
+                                                            'jpeg',
+                                                            'png',
+                                                            'gif',
+                                                            'webp',
+                                                            'svg',
+                                                            'bmp',
+                                                        ])
+                                                    ) {
+                                                        $fileUrl = asset('storage/' . $file);
+                                                        $fileImages[] = $fileUrl;
+                                                    }
+                                                }
+                                            }
+
+                                            // EMBEDDED IMAGES
                                             $embeddedImages = [];
                                             foreach ($doc['embedded_images'] ?? [] as $img) {
                                                 if (is_array($img)) {
@@ -411,7 +400,46 @@
                                                 }
                                             }
 
-                                            // ── OTHER FILES (non-PDF, non-image) ─────────────
+                                            // GABUNG SEMUA GAMBAR
+                                            $allThumbnails = array_unique(
+                                                array_merge(
+                                                    $inlineImages,
+                                                    $thumbnailFiles,
+                                                    $fileImages,
+                                                    $embeddedImages,
+                                                ),
+                                            );
+
+                                            // BERSIHKAN HTML
+                                            $cleanHtml = preg_replace('/<img[^>]+>/i', '', $htmlContent);
+                                            $cleanHtml = preg_replace(
+                                                '/<a[^>]*href=["\'][^"\']*\.(jpg|jpeg|png|gif|webp|svg|bmp)["\'][^>]*>.*?<\/a>/is',
+                                                '',
+                                                $cleanHtml,
+                                            );
+                                            $cleanHtml = preg_replace('/<p[^>]*>\s*<\/p>/i', '', $cleanHtml);
+                                            $cleanHtml = preg_replace('/<div[^>]*>\s*<\/div>/i', '', $cleanHtml);
+                                            $cleanHtml = trim($cleanHtml);
+
+                                            // PDF FILES
+                                            $pdfFiles = [];
+                                            foreach ($doc['pdf_files'] ?? [] as $pf) {
+                                                if (is_array($pf)) {
+                                                    $pdfFiles[] = [
+                                                        'url' => $pf['url'] ?? '#',
+                                                        'name' => $pf['name'] ?? 'Document.pdf',
+                                                        'size_formatted' => $pf['size_formatted'] ?? '',
+                                                    ];
+                                                } elseif (is_string($pf) && $pf !== '') {
+                                                    $pdfFiles[] = [
+                                                        'url' => $pf,
+                                                        'name' => basename($pf),
+                                                        'size_formatted' => '',
+                                                    ];
+                                                }
+                                            }
+
+                                            // OTHER FILES
                                             $otherFiles = [];
                                             foreach ($doc['other_files'] ?? [] as $lf) {
                                                 if (is_array($lf)) {
@@ -432,31 +460,9 @@
                                                     ];
                                                 }
                                             }
-
-                                            // ── PDF FILES ────────────────────────────────────
-                                            $pdfFiles = [];
-                                            foreach ($doc['pdf_files'] ?? [] as $pf) {
-                                                if (is_array($pf)) {
-                                                    $pdfFiles[] = [
-                                                        'url' => $pf['url'] ?? '#',
-                                                        'name' => $pf['name'] ?? 'Document.pdf',
-                                                        'ext' => 'pdf',
-                                                        'size_formatted' => $pf['size_formatted'] ?? '',
-                                                    ];
-                                                } elseif (is_string($pf) && $pf !== '') {
-                                                    $pdfFiles[] = [
-                                                        'url' => $pf,
-                                                        'name' => basename($pf),
-                                                        'ext' => 'pdf',
-                                                        'size_formatted' => '',
-                                                    ];
-                                                }
-                                            }
                                         @endphp
 
                                         <div class="tp-entry" style="position:relative; margin-bottom:1.25rem;">
-
-                                            {{-- Dot --}}
                                             <div class="tp-dot {{ $isLatest ? 'is-latest' : '' }}"
                                                 style="position:absolute; right:-35px; left:auto; top:12px; width:36px; height:36px; border-radius:50%; background:#fff; border:1px solid #d1d5db; display:flex; align-items:center; justify-content:center; flex-shrink:0; {{ $isLatest ? 'background:transparent; border-color:#374151; color:#374151;' : 'color:#d1d5db;' }}">
                                                 <svg width="10" height="10" viewBox="0 0 24 24"
@@ -464,12 +470,8 @@
                                                     <circle cx="12" cy="12" r="6" />
                                                 </svg>
                                             </div>
-
-                                            {{-- Card --}}
                                             <div class="tp-card"
                                                 style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.25rem; {{ $isLatest ? 'border-right:3px solid #374151;' : '' }}">
-
-                                                {{-- Meta --}}
                                                 <div class="tp-meta"
                                                     style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                                                     <span class="tp-badge {{ $isLatest ? 'is-latest' : '' }}"
@@ -477,27 +479,25 @@
                                                         {{ $isLatest ? 'Terbaru' : 'Sebelumnya' }}
                                                     </span>
                                                     <span class="tp-time"
-                                                        style="font-size:11px; color:#9ca3af; text-align:right;">
-                                                        {{ \Carbon\Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i') }}
-                                                    </span>
+                                                        style="font-size:11px; color:#9ca3af; text-align:right;">{{ \Carbon\Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i') }}</span>
                                                 </div>
 
-                                                {{-- HTML content --}}
-                                                @if (!empty($htmlContent))
+                                                {{-- HTML CONTENT --}}
+                                                @if (!empty($cleanHtml))
                                                     <div class="tp-body"
-                                                        style="font-size:14px; color:#374151; line-height:1.65; margin-bottom:0.75rem;">
-                                                        {!! $htmlContent !!}
+                                                        style="font-size:14px; color:#374151; line-height:1.65; margin:0.75rem 0;">
+                                                        {!! $cleanHtml !!}
                                                     </div>
                                                 @endif
 
-                                                {{-- Thumbnail files --}}
-                                                @if (!empty($thumbnailFiles))
-                                                    <div class="tp-thumbs"
-                                                        style="display:flex; flex-wrap:wrap; gap:8px; margin-top:0.5rem;">
-                                                        @foreach ($thumbnailFiles as $thumbUrl)
-                                                            <div class="tp-thumb"
+                                                {{-- THUMBNAIL GRID - SEMUA GAMBAR TAMPIL DALAM GRID --}}
+                                                @if (!empty($allThumbnails))
+                                                    <div class="tp-thumb-grid"
+                                                        style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 100px)); gap:8px; margin-top:12px;">
+                                                        @foreach ($allThumbnails as $thumbUrl)
+                                                            <div class="tp-thumb-item"
                                                                 onclick="tpOpenLb('{{ $thumbUrl }}', 'image')"
-                                                                style="width:100px; height:80px; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid #e5e7eb; flex-shrink:0; background:#f9fafb;">
+                                                                style="width:100px; height:80px; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid #e5e7eb; background:#f9fafb; transition:transform 0.2s ease;">
                                                                 <img src="{{ $thumbUrl }}" alt="Thumbnail"
                                                                     loading="lazy"
                                                                     style="width:100%; height:100%; object-fit:cover; display:block;">
@@ -506,23 +506,7 @@
                                                     </div>
                                                 @endif
 
-                                                {{-- Embedded images --}}
-                                                @if (!empty($embeddedImages))
-                                                    <div class="tp-thumbs"
-                                                        style="display:flex; flex-wrap:wrap; gap:8px; margin-top:0.5rem;">
-                                                        @foreach ($embeddedImages as $imgUrl)
-                                                            <div class="tp-thumb"
-                                                                onclick="tpOpenLb('{{ $imgUrl }}', 'image')"
-                                                                style="width:100px; height:80px; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid #e5e7eb; flex-shrink:0; background:#f9fafb;">
-                                                                <img src="{{ $imgUrl }}" alt="Gambar"
-                                                                    loading="lazy"
-                                                                    style="width:100%; height:100%; object-fit:cover; display:block;">
-                                                            </div>
-                                                        @endforeach
-                                                    </div>
-                                                @endif
-
-                                                {{-- PDF files --}}
+                                                {{-- PDF FILES --}}
                                                 @if (!empty($pdfFiles))
                                                     <div class="tp-files"
                                                         style="display:flex; flex-direction:column; gap:6px; margin-top:0.75rem;">
@@ -533,26 +517,21 @@
                                                                     style="display:flex; align-items:center; gap:10px;">
                                                                     <div class="tp-file-icon"
                                                                         style="width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; flex-shrink:0; background:#fecaca; color:#991b1b;">
-                                                                        PDF
-                                                                    </div>
+                                                                        PDF</div>
                                                                     <a href="{{ $pf['url'] }}" target="_blank"
                                                                         class="tp-file-name"
-                                                                        style="font-size:13px; color:#374151; text-decoration:none;">
-                                                                        {{ $pf['name'] }}
-                                                                    </a>
+                                                                        style="font-size:13px; color:#374151; text-decoration:none;">{{ $pf['name'] }}</a>
                                                                 </div>
                                                                 @if (!empty($pf['size_formatted']))
                                                                     <span class="tp-file-size"
-                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">
-                                                                        {{ $pf['size_formatted'] }}
-                                                                    </span>
+                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">{{ $pf['size_formatted'] }}</span>
                                                                 @endif
                                                             </div>
                                                         @endforeach
                                                     </div>
                                                 @endif
 
-                                                {{-- Other files --}}
+                                                {{-- OTHER FILES --}}
                                                 @if (!empty($otherFiles))
                                                     <div class="tp-files"
                                                         style="display:flex; flex-direction:column; gap:6px; margin-top:0.75rem;">
@@ -567,33 +546,27 @@
                                                                     </div>
                                                                     <a href="{{ $lf['url'] }}" target="_blank"
                                                                         class="tp-file-name"
-                                                                        style="font-size:13px; color:#374151; text-decoration:none;">
-                                                                        {{ $lf['name'] }}
-                                                                    </a>
+                                                                        style="font-size:13px; color:#374151; text-decoration:none;">{{ $lf['name'] }}</a>
                                                                 </div>
                                                                 @if (!empty($lf['size_formatted']))
                                                                     <span class="tp-file-size"
-                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">
-                                                                        {{ $lf['size_formatted'] }}
-                                                                    </span>
+                                                                        style="font-size:11px; color:#9ca3af; white-space:nowrap;">{{ $lf['size_formatted'] }}</span>
                                                                 @endif
                                                             </div>
                                                         @endforeach
                                                     </div>
                                                 @endif
-
-                                            </div>{{-- /tp-card --}}
-                                        </div>{{-- /tp-entry --}}
+                                            </div>
+                                        </div>
                                     @endforeach
-
-                                </div>{{-- /tp-timeline --}}
-                            </div>{{-- /tp-wrapper --}}
+                                </div>
+                            </div>
                         @else
                             <p class="text-sm text-gray-400 dark:text-gray-500 italic">Belum ada progress.</p>
                         @endif
 
-                    </div>{{-- /ticket detail --}}
-                </div>{{-- /ticket card --}}
+                    </div>
+                </div>
             @endforeach
         </div>
     @else
@@ -606,14 +579,13 @@
                     </svg>
                 </div>
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Belum ada laporan</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Atur filter di atas lalu klik <strong>Lihat Progress</strong>
-                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Atur filter di atas lalu klik <strong>Lihat
+                        Progress</strong></p>
             </div>
         @endif
     @endif
 
-    {{-- ── LIGHTBOX ──────────────────────────────────────────────────────── --}}
+    {{-- LIGHTBOX --}}
     <div id="tp-lightbox" onclick="if(event.target===this)tpCloseLb()"
         style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; padding:1rem;">
         <div class="tp-lb-inner" style="position:relative; max-width:90vw; max-height:90vh;">
@@ -635,7 +607,7 @@
 
 @push('styles')
     <style>
-        /* ── DARK MODE OVERRIDES ─────────────────────────────────────────── */
+        /* DARK MODE */
         .dark .tp-header {
             border-bottom-color: #27272a !important;
         }
@@ -690,7 +662,7 @@
             color: #e4e4e7 !important;
         }
 
-        .dark .tp-thumb {
+        .dark .tp-thumb-item {
             border-color: #3f3f46 !important;
             background: #18181b !important;
         }
@@ -717,7 +689,19 @@
             color: #71717a !important;
         }
 
-        /* ── BODY CONTENT TYPOGRAPHY ─────────────────────────────────────── */
+        /* THUMBNAIL GRID */
+        .tp-thumb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 100px));
+            gap: 8px;
+        }
+
+        .tp-thumb-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* BODY STYLE */
         .tp-body a {
             color: #2563eb;
             text-decoration: underline;
@@ -737,11 +721,8 @@
             margin-bottom: 0.75rem;
         }
 
-        .tp-body img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 0.5rem 0;
+        .tp-body li {
+            margin-bottom: 0.25rem;
         }
     </style>
 @endpush
@@ -774,11 +755,9 @@
             lb.style.display = 'none';
             document.body.style.overflow = '';
         }
-
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') tpCloseLb();
         });
-
         document.addEventListener('livewire:init', function() {
             Livewire.on('open-download-url', function(data) {
                 var url = data.url || (data[0]?.url);

@@ -73,6 +73,10 @@ class EventController extends Controller
             abort(404, 'Event tidak ditemukan');
         }
 
+        if ($event->event_description) { // ganti nama kolom sesuai dengan kolom deskripsi event Anda
+            $event->event_description = $this->cleanTrixContent($event->event_description);
+        }
+
         // Data dari withCount akan tersedia di $event->participants_count
         $registeredCount = $event->participants_count ?? 0;
 
@@ -98,5 +102,34 @@ class EventController extends Controller
             'canRegister' => $canRegister,
             'isRegistrationActive' => $isRegistrationActive,
         ]);
+    }
+
+    private function cleanTrixContent($content)
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        // Pattern 1: Hapus <figure> dan <a> wrapper, sisakan <img> saja
+        $pattern1 = '/<figure[^>]*data-trix-attachment[^>]*>.*?<a[^>]*>(<img[^>]*>).*?<\/a>.*?<\/figure>/is';
+        $content = preg_replace($pattern1, '$1', $content);
+
+        // Pattern 2: Hapus semua <figcaption> dan isinya
+        $pattern2 = '/<figcaption[^>]*>.*?<\/figcaption>/is';
+        $content = preg_replace($pattern2, '', $content);
+
+        // Pattern 3: Hapus semua atribut data-trix-*
+        $pattern3 = '/\sdata-trix-[\w-]+="[^"]*"/i';
+        $content = preg_replace($pattern3, '', $content);
+
+        // Pattern 4: Hapus <figure> kosong yang mungkin tersisa (tanpa data-trix-attachment)
+        $pattern4 = '/<figure[^>]*>\s*<\/figure>/is';
+        $content = preg_replace($pattern4, '', $content);
+
+        // Pattern 5: Hapus class attachment__caption dan sejenisnya (opsional)
+        $pattern5 = '/\sclass="attachment__[^"]*"/i';
+        $content = preg_replace($pattern5, '', $content);
+
+        return $content;
     }
 }

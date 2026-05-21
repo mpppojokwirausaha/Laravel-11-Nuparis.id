@@ -2,9 +2,11 @@
 
 namespace App\Filament\Clusters\Events\Resources;
 
+use \App\Filament\Clusters\Events\Resources\EventResource\RelationManagers\ParticipantsRelationManager;
 use App\Filament\Clusters\Events;
 use App\Filament\Clusters\Events\Resources\EventResource\Pages;
 use App\Models\Event;
+use Carbon\Carbon;
 use Filament\Forms\Components\Card;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -27,7 +29,6 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -316,12 +317,10 @@ class EventResource extends Resource
                 //
             ])
             ->actions([
-                ViewAction::make()
-                    ->label(''),
                 EditAction::make()
-                    ->label(''),
+                    ->label('Edit'),
                 DeleteAction::make()
-                    ->label(''),
+                    ->label('Delete'),
                 Action::make('visit_event')
                     ->label('Visit')
                     ->icon('heroicon-o-globe-alt')
@@ -347,7 +346,7 @@ class EventResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ParticipantsRelationManager::class,
         ];
     }
 
@@ -356,6 +355,7 @@ class EventResource extends Resource
         return [
             'index' => Pages\ListEvents::route('/'),
             'create' => Pages\CreateEvent::route('/create'),
+            'view' => Pages\ViewEvent::route('/{record}'),
             'edit' => Pages\EditEvent::route('/{record}/edit'),
         ];
     }

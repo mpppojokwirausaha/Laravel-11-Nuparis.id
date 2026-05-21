@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Letter;
-use App\Models\Order;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Midtrans\Config;
