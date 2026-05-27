@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Ticket\Resources;
 use \App\Models\TicketStatus;
 use \Illuminate\Support\Facades\Auth;
 use \Illuminate\Support\Facades\Hash;
+use App\Exports\TicketsExport;
 use App\Filament\Clusters\Ticket;
 use App\Filament\Clusters\Ticket\Resources\TicketResource\Pages;
 use App\Models\Ticket as TicketModel;
@@ -17,10 +18,13 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\View;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TicketResource extends Resource
 {
@@ -31,7 +35,7 @@ class TicketResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false; // Cluster hilang dari sidebar
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -73,8 +77,8 @@ class TicketResource extends Resource
                     ->downloadable()
                     ->previewable()
                     ->preserveFilenames()
-                    ->disabled() // tidak bisa diganti
-                    ->dehydrated(false) // supaya tidak disimpan ulang
+                    ->disabled()
+                    ->dehydrated(false)
                     ->columnSpanFull(),
                 Select::make('consultant_specialization_uuid')
                     ->label('Spesialisasi')
@@ -82,7 +86,6 @@ class TicketResource extends Resource
                     ->required()
                     ->preload()
                     ->disabled(),
-
                 Select::make('ticket_status_uuid')
                     ->label('Status')
                     ->relationship('ticketStatus', 'ticket_status_name')
@@ -94,24 +97,18 @@ class TicketResource extends Resource
                     ->columnSpanFull()
                     ->hidden(fn(callable $get) =>
                     optional(TicketStatus::find($get('ticket_status_uuid')))->ticket_status_name !== 'open'),
-
                 Group::make([
                     RichEditor::make('progress')
                         ->label('Progress')
                         ->placeholder('Tulis progress terbaru...')
                         ->fileAttachmentsDirectory(function ($get, $record) {
-                            // Cara 1: Dari record (edit mode)
                             if ($record && $record->ticket_code) {
                                 return 'tickets/' . $record->ticket_code;
                             }
-
-                            // Cara 2: Dari form state (create mode)
                             $ticketCode = $get('ticket_code');
                             if ($ticketCode) {
                                 return 'tickets/' . $ticketCode;
                             }
-
-                            // Cara 3: Fallback
                             return 'tickets/temp_' . auth()->id();
                         })
                         ->fileAttachmentsDisk('public')
@@ -143,37 +140,76 @@ class TicketResource extends Resource
             ->columns([
                 TextColumn::make('ticket_code')
                     ->label('Code')
-                    ->searchable(),
-
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Kode tiket disalin'),
                 TextColumn::make('ticket_title')
                     ->label('Title')
                     ->sortable()
                     ->limit(50)
                     ->searchable(),
-
                 TextColumn::make('ticket_name_client')
                     ->label('Client')
                     ->sortable()
                     ->limit(50)
                     ->searchable(),
-
                 TextColumn::make('consultantSpecialization.consultant_specialization_name')
                     ->label('Spesialisasi')
                     ->sortable()
                     ->searchable()
                     ->limit(50),
-
                 TextColumn::make('ticketStatus.ticket_status_name')
                     ->label('Status')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'open' => 'success',
+                        'close' => 'danger',
+                        default => 'gray',
+                    })
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                //
+                \Filament\Tables\Filters\Filter::make('kategori_status')
+                    ->label('Filter Status')
+                    ->form([
+                        \Filament\Forms\Components\CheckboxList::make('status')
+                            ->label('Pilih Status')
+                            ->options([
+                                'open'    => 'Open',
+                                'pending' => 'Pending',
+                                'close'   => 'Close',
+                            ])
+                            ->live(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['status'])) {
+                            $statusUuids = TicketStatus::whereIn('ticket_status_name', $data['status'])
+                                ->pluck('uuid')
+                                ->toArray();
+                            $query->whereIn('ticket_status_uuid', $statusUuids);
+                        }
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if (!empty($data['status'])) {
+                            $indicators['status'] = 'Status: ' . implode(', ', $data['status']);
+                        }
+                        return $indicators;
+                    }),
+                SelectFilter::make('consultant_specialization_uuid')
+                    ->label('Filter Spesialisasi')
+                    ->relationship('consultantSpecialization', 'consultant_specialization_name')
+                    ->placeholder('Semua Spesialisasi')
+                    ->preload()
+                    ->searchable(),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modalWidth('7xl')
+                    ->slideOver(),
                 DeleteAction::make()
                     ->requiresConfirmation()
                     ->modalHeading('Hapus Data')
@@ -197,7 +233,52 @@ class TicketResource extends Resource
                     ->action(function (array $data, $record) {
                         $record->delete();
                     }),
-            ]);
+            ])
+            ->headerActions([
+                // EXPORT EXCEL - VERSI SEDERHANA
+                Action::make('exportExcel')
+                    ->label('Export List Ticket')
+                    ->color('success')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->action(function ($livewire) {
+                        // Ambil data sesuai filter
+                        $query = $livewire->getFilteredTableQuery()
+                            ->with(['ticketStatus', 'consultantSpecialization']);
+
+                        if ($query->count() == 0) {
+                            \Filament\Notifications\Notification::make()
+                                ->warning()
+                                ->title('Tidak ada data untuk diexport')
+                                ->send();
+                            return;
+                        }
+
+                        // Buat teks filter untuk ditampilkan
+                        $filters = $livewire->tableFilters;
+                        $filterText = 'Semua Data';
+
+                        if (isset($filters['kategori_status']['status']) && !empty($filters['kategori_status']['status'])) {
+                            $statusList = $filters['kategori_status']['status'];
+                            $filterText = 'Status: ' . implode(' + ', $statusList);
+                        }
+
+                        // Nama file
+                        $date = now()->format('d_m_Y_H-i');
+                        $fileName = 'nuparis.id_export_ticket_' . $date . '.xlsx';
+
+                        // Notifikasi sukses dikirim SEBELUM return download
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Export Berhasil')
+                            ->body("File {$fileName} berhasil diunduh.")
+                            ->send();
+
+                        return Excel::download(new TicketsExport($query, $filterText, false), $fileName);
+                    }),
+            ])
+            ->striped()
+            ->searchable()
+            ->paginated([10, 25, 50, 100, 'all']);
     }
 
     public static function getRelations(): array
@@ -218,6 +299,7 @@ class TicketResource extends Resource
     {
         return false;
     }
+
     public static function canDelete($record): bool
     {
         return true;

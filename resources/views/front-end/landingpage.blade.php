@@ -39,6 +39,59 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <style>
+        .hero-pagination {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            bottom: 20px !important;
+        }
+
+        .hero-pagination .swiper-pagination-bullet {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 1;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-pagination .swiper-pagination-bullet-active {
+            width: 40px;
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Progress bar di dalam dot aktif */
+        .hero-pagination .swiper-pagination-bullet-active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: white;
+            border-radius: 999px;
+            animation: bulletProgress 4s linear forwards;
+        }
+
+        .hero-pagination .swiper-pagination-bullet-active.reset-anim::after {
+            animation: none;
+        }
+
+        @keyframes bulletProgress {
+            from {
+                width: 0%;
+            }
+
+            to {
+                width: 100%;
+            }
+        }
+    </style>
+
     <script src="{{ asset('assets/front-end/js/configtailwind.js') }}"></script>
 </head>
 
@@ -105,39 +158,111 @@
         </div>
     </nav>
 
+    @php
+        $heroAssets = $heroes;
+        $isVideo = is_array($heroAssets) && isset($heroAssets['url']);
+        $isSlider = !$isVideo && (is_object($heroAssets) || is_array($heroAssets)) && count((array) $heroAssets) > 0;
+    @endphp
+
     <!-- Main Content -->
     <div class="min-h-screen">
-        <!-- VIDEO SECTION -->
         <section class="hidden lg:block relative w-full overflow-hidden pt-0">
-            <div id="videoContainer" class="relative w-full max-h-[calc(100vh-200px)] aspect-video bg-black">
+            @if ($isVideo)
+                <div id="videoContainer" class="relative w-full max-h-[calc(100vh-200px)] aspect-video bg-black">
+                    <video id="videoPlayer" class="w-full h-full object-cover" autoplay muted loop playsinline>
+                        <source src="{{ $heroAssets['url'] }}" type="video/mp4">
+                        Browser Anda tidak mendukung tag video.
+                    </video>
 
-                <video id="videoPlayer" class="w-full h-full object-cover" autoplay muted loop playsinline>
-                    <source src="https://www.nuparis.id/storage/assets_hero/video_nuparis.mp4" type="video/mp4">
-                    Browser Anda tidak mendukung tag video.
-                </video>
+                    {{-- Overlay --}}
+                    <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none">
+                    </div>
 
-                <!-- Overlay -->
-                <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none"></div>
+                    {{-- Fullscreen Button --}}
+                    <button id="fullscreenBtn"
+                        class="absolute bottom-5 right-5 bg-black/60 hover:bg-black/80 text-white px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105 z-10">
+                        <svg id="expandIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                        </svg>
+                        <svg id="collapseIcon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <path
+                                d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                        </svg>
+                    </button>
+                </div>
+            @elseif ($isSlider)
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
-                <!-- Fullscreen Button -->
-                <button id="fullscreenBtn"
-                    class="absolute bottom-5 right-5 bg-black/60 hover:bg-black/80 text-white px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105 z-10">
+                <div class="relative w-full max-h-[calc(100vh-200px)] aspect-video bg-black">
+                    <div class="swiper hero-swiper w-full h-full">
+                        <div class="swiper-wrapper">
+                            @foreach ($heroAssets as $imageUrl)
+                                <div class="swiper-slide">
+                                    <img src="{{ $imageUrl }}" alt="Hero Image"
+                                        class="w-full h-full object-cover">
+                                </div>
+                            @endforeach
+                        </div>
 
-                    <!-- Expand Icon -->
-                    <svg id="expandIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path
-                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                    </svg>
+                        {{-- Pagination dots --}}
+                        <div class="swiper-pagination hero-pagination"></div>
 
-                    <!-- Collapse Icon -->
-                    <svg id="collapseIcon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                    </svg>
-                </button>
-            </div>
+                        {{-- Navigation arrows --}}
+                        <div class="swiper-button-prev !text-white !w-10 !h-10 after:!text-sm"></div>
+                        <div class="swiper-button-next !text-white !w-10 !h-10 after:!text-sm"></div>
+                    </div>
+
+                    {{-- Overlay --}}
+                    <div
+                        class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none z-10">
+                    </div>
+                </div>
+
+                {{-- Swiper JS --}}
+                <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+                <script>
+                    const heroSwiper = new Swiper('.hero-swiper', {
+                        loop: true,
+                        autoplay: {
+                            delay: 4000,
+                            disableOnInteraction: false,
+                        },
+                        effect: 'fade',
+                        fadeEffect: {
+                            crossFade: true
+                        },
+                        navigation: {
+                            nextEl: '.swiper-button-next',
+                            prevEl: '.swiper-button-prev',
+                        },
+                        pagination: {
+                            el: '.hero-pagination',
+                            clickable: true,
+                        },
+                    });
+
+                    heroSwiper.on('slideChange', function() {
+                        const activeBullet = document.querySelector('.hero-pagination .swiper-pagination-bullet-active');
+                        if (!activeBullet) return;
+                        activeBullet.classList.add('reset-anim');
+
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                activeBullet.classList.remove('reset-anim');
+                            });
+                        });
+                    });
+                </script>
+            @else
+                <div
+                    class="relative w-full max-h-[calc(100vh-200px)] aspect-video bg-gray-900 flex items-center justify-center">
+                    <p class="text-white/50 text-sm">Tidak ada media tersedia</p>
+                </div>
+            @endif
+
         </section>
 
         <!-- Main Content Area -->

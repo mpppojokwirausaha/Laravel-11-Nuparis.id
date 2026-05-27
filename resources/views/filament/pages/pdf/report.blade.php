@@ -486,8 +486,8 @@
         <tr>
             <td class="logo-cell"
                 style="width:90px; vertical-align:middle; text-align:center; padding-right:12px; border:none;">
-                <img src="{{ public_path('storage/meta/01KF044971QVAFZJTQ6V5MKX3T.png') }}" alt="Logo"
-                    style="width:80px; height:auto; max-height:72px;">
+                <img src="{{ public_path('storage/meta/01KR3WGPNR9GAJGRV9YEEH7WB7_1.png') }}" alt="Logo"
+                    style="width:100px; height:auto; max-height:80px;">
                 @if (!empty($summary['company_name']))
                     <div class="header-company-name">{{ Str::limit($summary['company_name'], 16) }}</div>
                 @endif

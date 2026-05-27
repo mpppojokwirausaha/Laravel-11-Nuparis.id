@@ -1,5 +1,3 @@
-event-more
-
 <!DOCTYPE html>
 <html lang="id">
 
@@ -58,6 +56,15 @@ event-more
 
     <!-- Tailwind Configuration -->
     <script src="{{ asset('assets/front-end/js/configtailwind.js') }}"></script>
+
+    <style>
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
 </head>
 
 <body class="font-sans text-gray-800 bg-gray-50 h-full overflow-x-hidden">
@@ -228,12 +235,12 @@ event-more
                             <h4 class="font-medium text-gray-800 mb-3 text-sm">Urutkan Berdasarkan</h4>
                             <div class="space-y-2">
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="sortBy" value="date_asc" class="mr-2 h-4 w-4"
-                                        checked>
+                                    <input type="radio" name="sortBy" value="date_asc" class="mr-2 h-4 w-4">
                                     <span class="text-gray-700 text-sm">Tanggal Terdekat</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="radio" name="sortBy" value="date_desc" class="mr-2 h-4 w-4">
+                                    <input type="radio" name="sortBy" value="date_desc" class="mr-2 h-4 w-4"
+                                        checked>
                                     <span class="text-gray-700 text-sm">Tanggal Terjauh</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
@@ -373,7 +380,7 @@ event-more
                 priceRange: 'all',
                 searchQuery: ''
             };
-            let currentSort = 'date_asc';
+            let currentSort = 'date_desc'; // Default: tanggal terjauh/terbaru di atas (sesuai controller)
             let allEvents = [];
 
             // DOM Elements
@@ -428,9 +435,9 @@ event-more
                         }
                     });
 
-                    // ← Ubah dari response.eventMore ke response.eventData
                     if (response.success && response.eventData) {
                         allEvents = response.eventData;
+                        console.log('Events loaded:', allEvents.length);
                         updateEventCounts(allEvents);
                         renderEvents();
                     } else {
@@ -641,6 +648,7 @@ event-more
                 const sortRadio = $('input[name="sortBy"]:checked');
                 if (sortRadio.length) {
                     currentSort = sortRadio.val();
+                    console.log('Sorting changed to:', currentSort);
                 }
 
                 // Get view type
@@ -655,26 +663,32 @@ event-more
                 // Close sort panel
                 sortPanel.addClass('hidden');
 
+                // Reset to page 1
+                currentPage = 1;
+
                 // Render events with new sort
                 renderEvents();
             }
 
             function getFilteredEvents() {
-                let filteredEvents = $.extend(true, [], allEvents);
+                if (!allEvents.length) return [];
+
+                let filteredEvents = [...allEvents]; // Gunakan spread operator
 
                 // Apply search filter
                 if (currentFilters.searchQuery) {
                     const query = currentFilters.searchQuery.toLowerCase();
-                    filteredEvents = $.grep(filteredEvents, function(event) {
-                        return event.event_title.toLowerCase().includes(query) ||
-                            event.event_description.toLowerCase().includes(query) ||
-                            event.event_location.toLowerCase().includes(query);
+                    filteredEvents = filteredEvents.filter(function(event) {
+                        return (event.event_title && event.event_title.toLowerCase().includes(query)) ||
+                            (event.event_description && event.event_description.toLowerCase().includes(
+                                query)) ||
+                            (event.event_location && event.event_location.toLowerCase().includes(query));
                     });
                 }
 
                 // Apply status filter
                 if (currentFilters.status.length > 0) {
-                    filteredEvents = $.grep(filteredEvents, function(event) {
+                    filteredEvents = filteredEvents.filter(function(event) {
                         const now = new Date();
                         const start = new Date(event.event_date_start);
                         const end = new Date(event.event_date_end);
@@ -686,49 +700,57 @@ event-more
                             status = 'ended';
                         }
 
-                        return $.inArray(status, currentFilters.status) !== -1;
+                        return currentFilters.status.includes(status);
                     });
                 }
 
                 // Apply category filter
                 if (currentFilters.category.length > 0) {
-                    filteredEvents = $.grep(filteredEvents, function(event) {
+                    filteredEvents = filteredEvents.filter(function(event) {
                         const category = getEventCategory(event);
-                        return $.inArray(category, currentFilters.category) !== -1;
+                        return currentFilters.category.includes(category);
                     });
                 }
 
                 // Apply price filter
                 if (currentFilters.priceRange !== 'all') {
-                    filteredEvents = $.grep(filteredEvents, function(event) {
+                    filteredEvents = filteredEvents.filter(function(event) {
                         if (currentFilters.priceRange === 'free') {
                             return event.event_price === '0' || event.event_price === 0;
                         } else if (currentFilters.priceRange === 'paid') {
-                            return event.event_price !== '0' && event.event_price !== 0;
+                            return event.event_price !== '0' && event.event_price !== 0 && event
+                                .event_price;
                         }
                         return true;
                     });
                 }
 
                 // Apply sorting
-                filteredEvents.sort((a, b) => {
-                    if (currentSort === 'date_asc') {
+                console.log('Sorting with method:', currentSort);
+
+                if (currentSort === 'date_asc') {
+                    filteredEvents.sort(function(a, b) {
                         return new Date(a.event_date_start) - new Date(b.event_date_start);
-                    } else if (currentSort === 'date_desc') {
+                    });
+                } else if (currentSort === 'date_desc') {
+                    filteredEvents.sort(function(a, b) {
                         return new Date(b.event_date_start) - new Date(a.event_date_start);
-                    } else if (currentSort === 'title_asc') {
-                        return a.event_title.localeCompare(b.event_title);
-                    } else if (currentSort === 'title_desc') {
-                        return b.event_title.localeCompare(a.event_title);
-                    }
-                    return 0;
-                });
+                    });
+                } else if (currentSort === 'title_asc') {
+                    filteredEvents.sort(function(a, b) {
+                        return (a.event_title || '').localeCompare(b.event_title || '');
+                    });
+                } else if (currentSort === 'title_desc') {
+                    filteredEvents.sort(function(a, b) {
+                        return (b.event_title || '').localeCompare(a.event_title || '');
+                    });
+                }
 
                 return filteredEvents;
             }
 
             function getEventCategory(event) {
-                const title = event.event_title.toLowerCase();
+                const title = (event.event_title || '').toLowerCase();
                 if (title.includes('seminar') || title.includes('workshop')) {
                     return 'seminar';
                 } else if (title.includes('pelatihan') || title.includes('training')) {
@@ -742,13 +764,13 @@ event-more
             function renderEvents() {
                 showLoading();
 
-                setTimeout(() => {
+                setTimeout(function() {
                     const filteredEvents = getFilteredEvents();
                     const totalEventsCount = filteredEvents.length;
 
                     // Update events count
                     if (eventsCount.length) {
-                        eventsCount.text(`${totalEventsCount} Event`);
+                        eventsCount.text(totalEventsCount + ' Event');
                     }
 
                     // Show/hide no results message
@@ -797,7 +819,7 @@ event-more
 
                 // Determine status
                 const now = new Date();
-                const start = new Date(event.event_date_start);
+                const start = new Date(event.);
                 const end = new Date(event.event_date_end);
                 let statusClass = '';
                 let statusText = '';
@@ -819,7 +841,7 @@ event-more
 
                 // Determine if event is free or paid
                 const isFree = event.event_price === '0' || event.event_price === 0;
-                const priceText = isFree ? 'GRATIS' : `Rp ${parseInt(event.event_price).toLocaleString('id-ID')}`;
+                const priceText = isFree ? 'GRATIS' : 'Rp ' + parseInt(event.event_price).toLocaleString('id-ID');
 
                 // Get category
                 const category = getEventCategory(event);
@@ -831,16 +853,16 @@ event-more
                     description;
 
                 // Quota and progress (dynamic from event data)
-                const rawQuota = parseInt(event.event_quota ?? event.quota, 10);
-                const rawRegistered = parseInt(event.participants_count ?? event.registeredCount ?? event
-                    .event_registered ?? event.registered ?? 0, 10);
+                const rawQuota = parseInt(event.event_quota || event.quota, 10);
+                const rawRegistered = parseInt(event.participants_count || event.registeredCount || event
+                    .event_registered || event.registered || 0, 10);
                 const hasQuota = Number.isFinite(rawQuota) && rawQuota > 0;
                 const safeRegistered = Number.isFinite(rawRegistered) && rawRegistered >= 0 ? rawRegistered : 0;
                 const quota = hasQuota ? rawQuota : Math.max(safeRegistered, 20);
                 const registered = Math.min(safeRegistered, quota);
                 const quotaPercentage = Math.round((registered / quota) * 100);
                 const remainingQuota = quota - registered;
-                const quotaText = remainingQuota > 0 ? `Tersisa ${remainingQuota}` : 'Habis';
+                const quotaText = remainingQuota > 0 ? 'Tersisa ' + remainingQuota : 'Habis';
                 const quotaClass = remainingQuota > 0 ? 'bg-blue-50 text-blue-700 border-blue-100' :
                     'bg-gray-100 text-gray-400 border-gray-200';
 
@@ -852,103 +874,91 @@ event-more
                     progressBarColor = 'bg-yellow-500';
                 }
 
-                const card = $(`
-                    <article class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-row h-full lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
-                        <!-- GAMBAR DI SAMPING KIRI -->
-                        <div class="relative w-1/3 min-w-[140px] h-auto overflow-hidden">
-                            <img src="{{ asset('storage/') }}/${event.event_image}" alt="${event.event_title}" 
-                                class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
-                                onerror="this.src='https://via.placeholder.com/400x300?text=Event+Image'">
-                            
-                            <!-- Logo Overlay -->
-                            <div class="absolute top-2 left-2 z-10 opacity-50">
-                                <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                                    <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo" class="w-6 h-6">
-                                </div>
-                            </div>
-                            
-                            <!-- Status Badge -->
-                            <div class="absolute bottom-2 left-2 z-10 ${statusClass} text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">
-                                ${statusText}
-                            </div>
-                        </div>
-                        
-                        <!-- KONTEN DI KANAN -->
-                        <div class="p-5 w-2/3 flex flex-col h-full">
-                            <div class="flex-grow">
-                                <span class="text-xs font-bold text-primary uppercase tracking-wider mb-1">
-                                    ${categoryLabel}
-                                </span>
-                                <h3 class="font-bold text-gray-800 text-lg mb-1 lg:group-hover:text-primary transition">
-                                    ${event.event_title}
-                                </h3>
-                                
-                                <!-- Event Date -->
-                                <div class="flex items-center gap-2 text-gray-500 text-xs mb-2">
-                                    <i class="far fa-calendar-check"></i>
-                                    <span>${formattedDate}</span>
-                                </div>
-
-                                <!-- Price Badge -->
-                                <div class="mb-2">
-                                    <span class="inline-block ${isFree ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'} text-xs font-bold px-2 py-1 rounded">
-                                        ${priceText}
-                                    </span>
-                                </div>
-
-                                <!-- Progress Bar and Quota Info -->
-                                <div class="mb-3">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <span class="text-xs font-medium text-gray-700">Kuota Terisi:</span>
-                                        <span class="text-xs font-bold ${quotaPercentage >= 90 ? 'text-red-600' : quotaPercentage >= 70 ? 'text-yellow-600' : 'text-green-600'}">
-                                            ${quotaPercentage}%
-                                        </span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
-                                        <div class="${progressBarColor} h-2 rounded-full" style="width: ${quotaPercentage}%"></div>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <div class="text-xs text-gray-600">
-                                            <i class="fas fa-users mr-1"></i>
-                                            ${registered}/${quota} peserta
-                                        </div>
-                                        <div class="${quotaClass} text-[10px] font-bold px-2 py-1 rounded border">
-                                            ${quotaText}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Description -->
-                                <p class="text-gray-500 text-sm line-clamp-2">
-                                    ${shortDescription}
-                                </p>
-                            </div>
-
-                            <!-- TOMBOL - SELALU ADA "Lihat Detail" -->
-                            <div class="flex gap-3 mt-4">
-                                <a href="/event/${event.event_slug}"
-                                    class="flex-1 flex items-center justify-center bg-red-500 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700">
-                                    Lihat Detail
-                                </a>
-                                ${canRegister ? 
-                                    `<a href="#" class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">
-                                                                                <i class="fas fa-shopping-cart text-sm"></i>
-                                                                            </a>` 
-                                    : `<button disabled
-                                                                                class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">
-                                                                                <i class="fas fa-shopping-cart text-sm"></i>
-                                                                            </button>`
-                                }
-                            </div>
-                        </div>
-                    </article>
-                `);
+                var card = $('\
+                            <article class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-row h-full lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">\
+                                <div class="relative w-1/3 min-w-[140px] h-auto overflow-hidden">\
+                                    <img src="{{ asset('storage/') }}/' + event.event_image + '" alt="' + event
+                    .event_title + '" \
+                                        class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"\
+                                        onerror="this.src=\'https://via.placeholder.com/400x300?text=Event+Image\'">\
+                                    <div class="absolute top-2 left-2 z-10 opacity-50">\
+                                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">\
+                                            <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo" class="w-6 h-6">\
+                                        </div>\
+                                    </div>\
+                                    <div class="absolute bottom-2 left-2 z-10 ' + statusClass + ' text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">\
+                                        ' + statusText + '\
+                                    </div>\
+                                </div>\
+                                <div class="p-5 w-2/3 flex flex-col h-full">\
+                                    <div class="flex-grow">\
+                                        <span class="text-xs font-bold text-primary uppercase tracking-wider mb-1">\
+                                            ' + categoryLabel + '\
+                                        </span>\
+                                        <h3 class="font-bold text-gray-800 text-lg mb-1 lg:group-hover:text-primary transition">\
+                                            ' + event.event_title + '\
+                                        </h3>\
+                                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2">\
+                                            <i class="far fa-calendar-check"></i>\
+                                            <span>' + formattedDate + '</span>\
+                                        </div>\
+                                        <div class="mb-2">\
+                                            <span class="inline-block ' + (isFree ? 'bg-green-100 text-green-800' :
+                        'bg-blue-100 text-blue-800') + ' text-xs font-bold px-2 py-1 rounded">\
+                                                ' + priceText + '\
+                                            </span>\
+                                        </div>\
+                                        <div class="mb-3">\
+                                            <div class="flex justify-between items-center mb-1">\
+                                                <span class="text-xs font-medium text-gray-700">Kuota Terisi:</span>\
+                                                <span class="text-xs font-bold ' + (quotaPercentage >= 90 ?
+                        'text-red-600' :
+                        quotaPercentage >= 70 ? 'text-yellow-600' : 'text-green-600') + '">\
+                                                    ' + quotaPercentage + '%\
+                                                </span>\
+                                            </div>\
+                                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">\
+                                                <div class="' + progressBarColor + ' h-2 rounded-full" style="width: ' +
+                    quotaPercentage + '%"></div>\
+                                            </div>\
+                                            <div class="flex justify-between items-center">\
+                                                <div class="text-xs text-gray-600">\
+                                                    <i class="fas fa-users mr-1"></i>\
+                                                    ' + registered + '/' + quota + ' peserta\
+                                                </div>\
+                                                <div class="' + quotaClass + ' text-[10px] font-bold px-2 py-1 rounded border">\
+                                                    ' + quotaText + '\
+                                                </div>\
+                                            </div>\
+                                        </div>\
+                                        <p class="text-gray-500 text-sm line-clamp-2">\
+                                            ' + shortDescription + '\
+                                        </p>\
+                                    </div>\
+                                    <div class="flex gap-3 mt-4">\
+                                        <a href="/event/' + event.event_slug + '"\
+                                            class="flex-1 flex items-center justify-center bg-red-500 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700">\
+                                            Lihat Detail\
+                                        </a>\
+                                        ' + (canRegister ?
+                        '<a href="#" class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">\
+                                                <i class="fas fa-shopping-cart text-sm"></i>\
+                                            </a>' :
+                        '<button disabled\
+                                                class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">\
+                                                <i class="fas fa-shopping-cart text-sm"></i>\
+                                            </button>'
+                    ) + '\
+                                    </div>\
+                                </div>\
+                            </article>\
+                        ');
 
                 // Add click event for whole card
                 card.on('click', function(e) {
                     // Don't navigate if clicking on buttons or links
                     if (!$(e.target).closest('a').length && !$(e.target).closest('button').length) {
-                        window.location.href = `/event/${event.event_slug}`;
+                        window.location.href = '/event/' + event.event_slug;
                     }
                 });
 
@@ -956,8 +966,10 @@ event-more
             }
 
             function stripHtmlTags(html) {
-                const div = $('<div>').html(html);
-                return div.text() || div.html() || '';
+                if (!html) return '';
+                var div = document.createElement('div');
+                div.innerHTML = html;
+                return div.textContent || div.innerText || '';
             }
 
             function getCategoryLabel(category) {
@@ -980,7 +992,7 @@ event-more
                 pagination.removeClass('hidden');
 
                 // Update range display
-                if (currentRange.length) currentRange.text(`${startIndex + 1}-${endIndex}`);
+                if (currentRange.length) currentRange.text((startIndex + 1) + '-' + endIndex);
                 if (totalEvents.length) totalEvents.text(totalEventsCount);
 
                 // Update page numbers
@@ -988,14 +1000,16 @@ event-more
                 if (pageNumbersContainer.length) {
                     pageNumbersContainer.empty();
 
-                    for (let i = 1; i <= totalPages; i++) {
-                        const pageButton = $(
-                            `<button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 lg:hover:bg-gray-50 transition-colors ${currentPage === i ? 'bg-primary text-white' : ''}">${i}</button>`
-                        );
-                        pageButton.on('click', function() {
-                            currentPage = i;
-                            renderEvents();
-                        });
+                    for (var i = 1; i <= totalPages; i++) {
+                        var pageButton = $(
+                            '<button class="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 lg:hover:bg-gray-50 transition-colors ' +
+                            (currentPage === i ? 'bg-primary text-white' : '') + '">' + i + '</button>');
+                        pageButton.on('click', function(page) {
+                            return function() {
+                                currentPage = page;
+                                renderEvents();
+                            };
+                        }(i));
                         pageNumbersContainer.append(pageButton);
                     }
                 }
@@ -1036,7 +1050,7 @@ event-more
                 $('input[name="status"]').prop('checked', false);
                 $('input[name="category"]').prop('checked', false);
                 $('input[name="priceRange"][value="all"]').prop('checked', true);
-                $('input[name="sortBy"][value="date_asc"]').prop('checked', true);
+                $('input[name="sortBy"][value="date_desc"]').prop('checked', true);
                 $('input[name="viewType"][value="grid"]').prop('checked', true);
 
                 // Reset filter state
@@ -1049,7 +1063,7 @@ event-more
 
                 // Reset view
                 currentView = 'grid';
-                currentSort = 'date_asc';
+                currentSort = 'date_desc';
                 updateViewButtons();
 
                 // Hide panels

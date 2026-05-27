@@ -2,16 +2,17 @@
 
 namespace App\Filament\Pages;
 
-use \setasign\Fpdi\Fpdi;
+use App\Jobs\SendReportEmailJob;
+use App\Mail\ReportExportMail;
 use App\Models\Ticket;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Forms\Components\Actions;
-use Filament\Forms\Components\Actions\Action;
+use Filament\Actions\Action as PageAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -20,7 +21,9 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class Report extends Page implements HasForms
 {
@@ -38,6 +41,17 @@ class Report extends Page implements HasForms
     public bool $isLoading = false;
     public array $debugInfo = [];
 
+    // Properties untuk modal
+    public bool $showEmailModal = false;
+    public string $emailTo = '';
+    public string $emailCc = '';
+    public string $emailSubject = '';
+    public string $emailBody = '';
+
+    // Properties untuk mencegah double sending
+    public bool $isSendingEmail = false;
+    public bool $isGeneratingReport = false;
+
     private string $cacheKey;
 
     public function boot(): void
@@ -50,6 +64,9 @@ class Report extends Page implements HasForms
         $this->hasReport = false;
         $this->reportSummary = [];
         $this->debugInfo = [];
+        $this->showEmailModal = false;
+        $this->isSendingEmail = false;
+        $this->isGeneratingReport = false;
         $this->form->fill($this->defaultFormState());
     }
 
@@ -58,11 +75,302 @@ class Report extends Page implements HasForms
         $reportData = $this->hasReport ? cache()->get($this->cacheKey, []) : [];
 
         return [
-            'reportData'    => $reportData,
+            'reportData' => $reportData,
             'reportSummary' => $this->reportSummary,
-            'debugInfo'     => $this->debugInfo,
+            'debugInfo' => $this->debugInfo,
+            'isSendingEmail' => $this->isSendingEmail,
+            'isGeneratingReport' => $this->isGeneratingReport,
         ];
     }
+
+    // ============================================================
+    // HEADER ACTIONS
+    // ============================================================
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            PageAction::make('generateReport')
+                ->label('Lihat Progress')
+                ->color('primary')
+                ->icon('heroicon-o-document-chart-bar')
+                ->action('generateReport')
+                ->requiresConfirmation()
+                ->modalHeading('Lihat Progress')
+                ->modalDescription('Apakah Anda yakin ingin membuat laporan berdasarkan filter yang dipilih?')
+                ->modalSubmitActionLabel('Ya, Tampilkan')
+                ->modalCancelActionLabel('Batal')
+                ->visible(fn() => !empty($this->data['selected_tickets']) && !empty($this->data['date_range'])),
+
+            PageAction::make('exportReport')
+                ->label('Export PDF')
+                ->color('success')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->action(fn() => $this->openEmailModal())
+                ->visible(fn() => $this->hasReport),
+
+            PageAction::make('resetFilters')
+                ->label('⟳ Reset Filter')
+                ->color('gray')
+                ->icon('heroicon-o-arrow-path')
+                ->action('resetFilters')
+                ->visible(fn() => !empty($this->data['selected_tickets'])),
+        ];
+    }
+
+    // ============================================================
+    // MULTIPLE CC METHODS
+    // ============================================================
+
+    /**
+     * Get default CC list dynamically
+     */
+    protected function getDefaultCcList(): string
+    {
+        $ccList = [];
+
+        // 1. CC ke tim internal (statis)
+        $ccList[] = 'markom@nuparis.id';
+        $ccList[] = 'support@nuparis.id';
+        $ccList[] = 'admin@nuparis.id';
+
+        // 2. CC ke user yang sedang login (pembuat laporan)
+        if (auth()->check() && auth()->user()->email) {
+            $ccList[] = auth()->user()->email;
+        }
+
+        // 4. Remove duplicate dan email kosong
+        $ccList = array_filter(array_unique($ccList));
+
+        return implode(', ', $ccList);
+    }
+
+    /**
+     * Validate CC list
+     */
+    protected function validateCcList(string $ccString): array
+    {
+        $emails = array_filter(array_map('trim', explode(',', $ccString)));
+        $validEmails = [];
+        $invalidEmails = [];
+
+        foreach ($emails as $email) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $validEmails[] = $email;
+            } else {
+                $invalidEmails[] = $email;
+            }
+        }
+
+        if (!empty($invalidEmails)) {
+            Log::warning('Invalid CC emails detected', ['invalid' => $invalidEmails]);
+        }
+
+        return $validEmails;
+    }
+
+    // ============================================================
+    // MODAL METHODS
+    // ============================================================
+
+    public function openEmailModal(): void
+    {
+        Log::info('=== MEMBUKA MODAL EMAIL ===');
+
+        if (!$this->hasReport) {
+            Log::warning('Tidak ada data report saat membuka modal');
+            Notification::make()->title('Informasi')
+                ->body('Tidak ada data untuk diexport. Tampilkan laporan terlebih dahulu.')
+                ->warning()->send();
+            return;
+        }
+
+        $reportData = cache()->get($this->cacheKey, []);
+        Log::info('Data dari cache saat buka modal', [
+            'cache_key' => $this->cacheKey,
+            'has_report_data' => !empty($reportData),
+            'report_data_keys' => array_keys($reportData),
+        ]);
+
+        if (empty($reportData)) {
+            Log::warning('Sesi laporan habis', ['cache_key' => $this->cacheKey]);
+            Notification::make()->title('Informasi')
+                ->body('Sesi laporan telah habis. Silakan tampilkan laporan kembali.')
+                ->warning()->send();
+            return;
+        }
+
+        // Simpan ke cache
+        cache()->put($this->cacheKey . '_summary', $reportData['summary'] ?? [], now()->addMinutes(30));
+        cache()->put($this->cacheKey . '_data', $reportData['data'] ?? [], now()->addMinutes(30));
+        cache()->put($this->cacheKey . '_notes', $this->data['admin_notes'] ?? '', now()->addMinutes(30));
+
+        Log::info('Data disimpan ke cache terpisah', [
+            'summary_size' => count($reportData['summary'] ?? []),
+            'data_size' => count($reportData['data'] ?? []),
+            'notes' => strlen($this->data['admin_notes'] ?? ''),
+        ]);
+
+        // Set default values untuk modal
+        $summary = $reportData['summary'] ?? [];
+        $ticketCode = $summary['ticket_code'] ?? '-';
+        $ticketTitle = $summary['ticket_title'] ?? '-';
+        $clientName = $summary['client_name'] ?? '-';
+        $dateRange = $summary['date_range'] ?? '-';
+        $ticketEmail = $this->getTicketEmail();
+
+        Log::info('Data untuk email', [
+            'ticket_code' => $ticketCode,
+            'client_name' => $clientName,
+            'date_range' => $dateRange,
+            'ticket_title' => $summary['ticket_title'] ?? '-',
+            'ticket_email' => $ticketEmail,
+        ]);
+
+        $this->emailTo = $ticketEmail;
+
+        // SET DEFAULT CC DINAMIS (MULTIPLE CC)
+        $this->emailCc = $this->getDefaultCcList();
+
+        $this->emailSubject = "Progress Report – {$ticketCode} - {$ticketTitle} | {$clientName}";
+        $this->emailBody = "Yth. Tim / Klien,\n\n";
+        $this->emailBody .= "Terlampir progress report untuk:\n";
+        $this->emailBody .= "• Tiket    : {$ticketCode} - {$ticketTitle}\n";
+        $this->emailBody .= "• Klien    : {$clientName}\n";
+        $this->emailBody .= "• Periode  : {$dateRange}\n\n";
+        $this->emailBody .= "Silakan hubungi kami jika ada pertanyaan.\n\n";
+        $this->emailBody .= "Hormat kami,\n";
+        $this->emailBody .= 'Tim Support Nuparis.id';
+
+        // Buka modal
+        $this->showEmailModal = true;
+
+        Log::info('Modal email berhasil dibuka', [
+            'to' => $this->emailTo,
+            'cc' => $this->emailCc,
+            'subject' => $this->emailSubject
+        ]);
+    }
+
+    public function closeEmailModal(): void
+    {
+        $this->showEmailModal = false;
+        $this->isSendingEmail = false;
+    }
+
+    public function sendEmail(): void
+    {
+        if ($this->isSendingEmail) {
+            return;
+        }
+
+        Log::info('=== MEMULAI PROSES PENGIRIMAN EMAIL ===');
+        $this->isSendingEmail = true;
+
+        try {
+            $summary = cache()->get($this->cacheKey . '_summary', []);
+            $data = cache()->get($this->cacheKey . '_data', []);
+            $notes = cache()->get($this->cacheKey . '_notes', '');
+
+            if (empty($data)) {
+                throw new \Exception('Data laporan tidak ditemukan');
+            }
+
+            // Generate PDF
+            $pdfContent = self::renderPdfStatic($summary, $data, $notes);
+
+            // Siapkan data email
+            $to = trim($this->emailTo);
+            $ccRaw = trim($this->emailCc);
+            $subject = trim($this->emailSubject);
+            $body = trim($this->emailBody);
+            $validCcList = $this->validateCcList($ccRaw);
+
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                throw new \Exception("Invalid recipient email: {$to}");
+            }
+
+            $ticketCode = $summary['ticket_code'] ?? 'report';
+            $fileName = 'Progress_Report_' . $ticketCode . '_' . now()->format('Ymd_His') . '.pdf';
+
+            // Kirim email
+            Mail::to($to)
+                ->cc($validCcList)
+                ->send(new ReportExportMail($subject, $body, $pdfContent, $fileName));
+
+            Log::info('Email langsung terkirim');
+
+            Notification::make()
+                ->title('✅ Email Berhasil Terkirim!')
+                ->success()
+                ->send();
+
+            $this->closeEmailModal();
+        } catch (\Exception $e) {
+            Log::error('❌ Gagal Mengirim Email', ['error' => $e->getMessage()]);
+
+            Notification::make()
+                ->title('❌ Gagal Mengirim Email')
+                ->body('Error: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        } finally {
+            $this->isSendingEmail = false;
+            Log::info('=== SELESAI PROSES PENGIRIMAN EMAIL ===');
+        }
+    }
+
+    public function downloadPdf(): void
+    {
+        if ($this->isLoading) {
+            Notification::make()
+                ->title('Proses Berjalan')
+                ->body('Harap tunggu, sedang memproses...')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $this->isLoading = true;
+
+        try {
+            $reportData = cache()->get($this->cacheKey, []);
+
+            if (empty($reportData)) {
+                Notification::make()->title('Sesi Habis')
+                    ->body('Silakan tampilkan laporan terlebih dahulu.')
+                    ->warning()->send();
+                return;
+            }
+
+            cache()->put($this->cacheKey . '_summary', $reportData['summary'] ?? [], now()->addMinutes(5));
+            cache()->put($this->cacheKey . '_data', $reportData['data'] ?? [], now()->addMinutes(5));
+            cache()->put($this->cacheKey . '_notes', $this->data['admin_notes'] ?? '', now()->addMinutes(5));
+
+            $this->closeEmailModal();
+
+            $this->dispatch('open-download-url', url: route('report.download', [
+                'key' => $this->cacheKey,
+            ]));
+        } finally {
+            $this->isLoading = false;
+        }
+    }
+
+    protected function getTicketEmail(): string
+    {
+        $uuid = $this->data['selected_tickets'] ?? null;
+        if (empty($uuid)) return '';
+
+        $ticket = Ticket::where('uuid', $uuid)->first();
+        if (!$ticket) return '';
+
+        return $ticket->ticket_email ?? $ticket->email ?? $ticket->client_email ?? '';
+    }
+
+    // ============================================================
+    // MAIN FORM
+    // ============================================================
 
     public function form(Form $form): Form
     {
@@ -76,8 +384,14 @@ class Report extends Page implements HasForms
                                 Select::make('selected_tickets')
                                     ->label('Pilih Tiket')
                                     ->placeholder('Pilih tiket terlebih dahulu...')
-                                    ->options(fn() => $this->getTicketOptions())
+                                    ->options(function () {
+                                        $result = $this->getTicketOptions();
+                                        \Log::info('Ticket options count: ' . count($result));
+                                        return $result;
+                                    })
+                                    ->optionsLimit(1000)
                                     ->searchable()
+                                    ->getSearchResultsUsing(fn(?string $search) => $this->getTicketOptions($search))
                                     ->live()
                                     ->columnSpan(fn($get) => !empty($get('selected_tickets')) ? 1 : 2)
                                     ->afterStateUpdated(function () {
@@ -87,15 +401,15 @@ class Report extends Page implements HasForms
                                 Select::make('date_range')
                                     ->label('Periode Laporan')
                                     ->options([
-                                        'today'      => 'Hari Ini',
-                                        'yesterday'  => 'Kemarin',
-                                        'this_week'  => 'Minggu Ini',
-                                        'last_week'  => 'Minggu Lalu',
+                                        'today' => 'Hari Ini',
+                                        'yesterday' => 'Kemarin',
+                                        'this_week' => 'Minggu Ini',
+                                        'last_week' => 'Minggu Lalu',
                                         'this_month' => 'Bulan Ini',
                                         'last_month' => 'Bulan Lalu',
-                                        'this_year'  => 'Tahun Ini',
-                                        'last_year'  => 'Tahun Lalu',
-                                        'custom'     => 'Kustom',
+                                        'this_year' => 'Tahun Ini',
+                                        'last_year' => 'Tahun Lalu',
+                                        'custom' => 'Kustom',
                                     ])
                                     ->default(null)
                                     ->live()
@@ -139,7 +453,7 @@ class Report extends Page implements HasForms
                                         if (!empty($originalName)) {
                                             return 'Nama client dari database: ' . $originalName;
                                         }
-                                        return 'Data client kosong, silakan isi manual';
+                                        return '⚠️ Data client kosong, silakan isi manual';
                                     })
                                     ->default(function ($get) {
                                         return $this->getOriginalClientName($get('selected_tickets'));
@@ -173,34 +487,6 @@ class Report extends Page implements HasForms
                             ->placeholder('Nama pembuat laporan...')
                             ->columnSpanFull()
                             ->visible(fn($get) => !empty($get('selected_tickets')) && !empty($get('date_range'))),
-
-                        Actions::make([
-                            Action::make('generateReport')
-                                ->label('Lihat Progress')
-                                ->color('primary')
-                                ->icon('heroicon-o-document-chart-bar')
-                                ->action('generateReport')
-                                ->requiresConfirmation()
-                                ->modalHeading('Lihat Progress')
-                                ->modalDescription('Apakah Anda yakin ingin membuat laporan berdasarkan filter yang dipilih?')
-                                ->modalSubmitActionLabel('Ya, Tampilkan')
-                                ->modalCancelActionLabel('Batal')
-                                ->visible(fn($get) => !empty($get('selected_tickets')) && !empty($get('date_range'))),
-
-                            Action::make('exportReport')
-                                ->label('Export PDF')
-                                ->color('success')
-                                ->icon('heroicon-o-arrow-down-tray')
-                                ->action('exportReport')
-                                ->visible(fn() => $this->hasReport),
-
-                            Action::make('resetFilters')
-                                ->label('⟳ Reset Filter')
-                                ->color('gray')
-                                ->icon('heroicon-o-arrow-path')
-                                ->action('resetFilters')
-                                ->visible(fn($get) => !empty($get('selected_tickets'))),
-                        ])->columnSpanFull(),
                     ])->columns(2),
 
                 Section::make('Summary')
@@ -233,6 +519,93 @@ class Report extends Page implements HasForms
             ->statePath('data');
     }
 
+    // ============================================================
+    // REPORT GENERATION METHODS
+    // ============================================================
+
+    public function generateReport(): void
+    {
+        if ($this->isGeneratingReport) {
+            Log::warning('⚠️ GENERATE REPORT SEDANG BERLANGSUNG - Request ditolak');
+            Notification::make()
+                ->title('⏳ Proses Berjalan')
+                ->body('Sedang membuat laporan, harap tunggu...')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $this->isGeneratingReport = true;
+        $this->isLoading = true;
+
+        try {
+            Log::info('=== GENERATE REPORT START ===');
+
+            $tickets = $this->getFilteredTickets();
+
+            if ($tickets->isEmpty()) {
+                Notification::make()->title('Informasi')
+                    ->body('Tidak ada data tiket yang sesuai dengan filter yang dipilih.')
+                    ->warning()->send();
+                return;
+            }
+
+            $reportData = $this->buildReport($tickets);
+
+            if (empty($reportData['data'])) {
+                Notification::make()->title('Informasi')
+                    ->body('Tidak ada progress tiket dalam periode yang dipilih.')
+                    ->warning()->send();
+                return;
+            }
+
+            cache()->put($this->cacheKey, $reportData, now()->addHours(2));
+            $this->reportSummary = $reportData['summary'];
+            $this->hasReport = true;
+
+            Notification::make()->title('Sukses')
+                ->body("Laporan berhasil ditampilkan. Total tiket: {$tickets->count()}")
+                ->success()->send();
+
+            Log::info('=== GENERATE REPORT SUCCESS ===', [
+                'total_tickets' => $tickets->count(),
+                'total_progress' => count($reportData['data']),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error generating report', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Notification::make()->title('Error')
+                ->body('Gagal menampilkan laporan: ' . $e->getMessage())
+                ->danger()->send();
+        } finally {
+            $this->isGeneratingReport = false;
+            $this->isLoading = false;
+        }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->form->fill($this->defaultFormState());
+        $this->clearReport();
+
+        Notification::make()->title('Filter Direset')
+            ->body('Semua filter telah dikembalikan ke pengaturan awal.')
+            ->info()->send();
+    }
+
+    protected function clearReport(): void
+    {
+        $this->hasReport = false;
+        $this->reportSummary = [];
+        $this->debugInfo = [];
+        cache()->forget($this->cacheKey);
+
+        $pdfCacheKeys = cache()->get($this->cacheKey . '_pdf_keys', []);
+        foreach ($pdfCacheKeys as $key) {
+            cache()->forget($key);
+        }
+        cache()->forget($this->cacheKey . '_pdf_keys');
+    }
+
     protected function getOriginalClientName(?string $uuid): ?string
     {
         if (empty($uuid)) return null;
@@ -244,7 +617,7 @@ class Report extends Page implements HasForms
     {
         if (empty($uuid)) {
             $this->form->fill(array_merge($this->data ?? [], [
-                'client_name'  => null,
+                'client_name' => null,
                 'proposal_for' => null,
             ]));
             return;
@@ -254,63 +627,9 @@ class Report extends Page implements HasForms
         if (!$ticket) return;
 
         $this->form->fill(array_merge($this->data ?? [], [
-            'client_name'  => $ticket->ticket_name_client ?? '',
+            'client_name' => $ticket->ticket_name_client ?? '',
             'proposal_for' => $ticket->ticket_title ?? '-',
         ]));
-    }
-
-    public function generateReport(): void
-    {
-        $this->isLoading = true;
-
-        try {
-            Log::info('=== GENERATE REPORT START ===');
-
-            $tickets = $this->getFilteredTickets();
-
-            if ($tickets->isEmpty()) {
-                Log::warning('No tickets found');
-                Notification::make()->title('Informasi')
-                    ->body('Tidak ada data tiket yang sesuai dengan filter yang dipilih.')
-                    ->warning()->send();
-                return;
-            }
-
-            Log::info('Tickets found', ['count' => $tickets->count()]);
-
-            $reportData = $this->buildReport($tickets);
-
-            if (empty($reportData['data'])) {
-                Log::warning('No progress data in selected period');
-                Notification::make()->title('Informasi')
-                    ->body('Tidak ada progress tiket dalam periode yang dipilih.')
-                    ->warning()->send();
-                return;
-            }
-
-            cache()->put($this->cacheKey, $reportData, now()->addHours(2));
-            $this->reportSummary = $reportData['summary'];
-            $this->hasReport = true;
-
-            Log::info('=== GENERATE REPORT SUCCESS ===', [
-                'total_tickets' => $tickets->count(),
-                'cache_key' => $this->cacheKey
-            ]);
-
-            Notification::make()->title('Sukses')
-                ->body("Laporan berhasil ditampilkan. Total tiket: {$tickets->count()}")
-                ->success()->send();
-        } catch (\Exception $e) {
-            Log::error('Error generating report', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            Notification::make()->title('Error')
-                ->body('Gagal menampilkan laporan: ' . $e->getMessage())
-                ->danger()->send();
-        } finally {
-            $this->isLoading = false;
-        }
     }
 
     protected function getFilteredTickets(): Collection
@@ -320,7 +639,6 @@ class Report extends Page implements HasForms
 
         if (!empty($state['selected_tickets'])) {
             $query->where('uuid', $state['selected_tickets']);
-            Log::info('Filtering by ticket UUID', ['uuid' => $state['selected_tickets']]);
         }
 
         $query->whereNotNull('ticket_progress')
@@ -333,11 +651,6 @@ class Report extends Page implements HasForms
     protected function filterProgressesByDate(array $progresses, array $state): array
     {
         [$startDate, $endDate] = $this->resolveDateRange($state);
-        Log::info('Filtering progress by date range', [
-            'start' => $startDate->toDateTimeString(),
-            'end' => $endDate->toDateTimeString(),
-            'total_progress' => count($progresses)
-        ]);
 
         return array_values(array_filter($progresses, function ($p) use ($startDate, $endDate) {
             if (empty($p['timestamp'])) return false;
@@ -351,24 +664,18 @@ class Report extends Page implements HasForms
 
         if ($range !== 'custom') {
             [$start, $end] = match ($range) {
-                'today'      => [Carbon::today(), Carbon::today()],
-                'yesterday'  => [Carbon::yesterday(), Carbon::yesterday()],
-                'this_week'  => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
-                'last_week'  => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
+                'today' => [Carbon::today(), Carbon::today()],
+                'yesterday' => [Carbon::yesterday(), Carbon::yesterday()],
+                'this_week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+                'last_week' => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
                 'this_month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
                 'last_month' => [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()],
-                'this_year'  => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
-                'last_year'  => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
-                default      => [Carbon::now()->startOfMonth(), Carbon::now()],
+                'this_year' => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
+                'last_year' => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
+                default => [Carbon::now()->startOfMonth(), Carbon::now()],
             };
-            Log::info('Date range resolved (preset)', ['range' => $range]);
             return [$start->startOfDay(), $end->endOfDay()];
         }
-
-        Log::info('Date range resolved (custom)', [
-            'start' => $state['start_date'] ?? now()->startOfMonth(),
-            'end' => $state['end_date'] ?? now()
-        ]);
 
         return [
             Carbon::parse($state['start_date'] ?? now()->startOfMonth())->startOfDay(),
@@ -381,53 +688,54 @@ class Report extends Page implements HasForms
         if ($range === null || $range === 'custom') return;
 
         [$startDate, $endDate] = match ($range) {
-            'today'      => [Carbon::today(), Carbon::today()],
-            'yesterday'  => [Carbon::yesterday(), Carbon::yesterday()],
-            'this_week'  => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
-            'last_week'  => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
+            'today' => [Carbon::today(), Carbon::today()],
+            'yesterday' => [Carbon::yesterday(), Carbon::yesterday()],
+            'this_week' => [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()],
+            'last_week' => [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()],
             'this_month' => [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()],
             'last_month' => [Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth()],
-            'this_year'  => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
-            'last_year'  => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
-            default      => [Carbon::now()->startOfMonth(), Carbon::now()],
+            'this_year' => [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()],
+            'last_year' => [Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear()],
+            default => [Carbon::now()->startOfMonth(), Carbon::now()],
         };
 
         $this->form->fill(array_merge($this->data, [
             'start_date' => $startDate->format('Y-m-d'),
-            'end_date'   => $endDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
         ]));
     }
 
     protected function buildReport(Collection $tickets): array
     {
         $state = $this->form->getState();
-        $data  = $this->groupByTicket($tickets);
+        $data = $this->groupByTicket($tickets);
 
         $ticketCode = '-';
         if (!empty($data) && isset($data[0]['ticket_code'])) {
             $ticketCode = $data[0]['ticket_code'];
         }
 
-        $generatedByName          = $state['generated_by'] ?? auth()->user()?->name ?? 'System';
-        $generatedAt              = Carbon::now();
+        $generatedByName = $state['generated_by'] ?? auth()->user()?->name ?? 'System';
+        $generatedAt = Carbon::now();
         $generatedByWithTimestamp = $generatedByName . '; ' . $generatedAt->translatedFormat('d F Y H:i');
 
         return [
             'summary' => [
-                'total_tickets'       => count($data),
-                'ticket_code'         => $ticketCode,
-                'date_range'          => (function () use ($state) {
+                'total_tickets' => count($data),
+                'ticket_code' => $ticketCode,
+                'date_range' => (function () use ($state) {
                     [$start, $end] = $this->resolveDateRange($state);
                     return $start->translatedFormat('d M Y') . ' s/d ' . $end->translatedFormat('d M Y');
                 })(),
-                'generated_at'        => $generatedAt->translatedFormat('d M Y H:i:s'),
-                'generated_by'        => $generatedByWithTimestamp,
-                'generated_by_name'   => $generatedByName,
+                'generated_at' => $generatedAt->translatedFormat('d M Y H:i:s'),
+                'generated_by' => $generatedByWithTimestamp,
+                'generated_by_name' => $generatedByName,
                 'generated_timestamp' => $generatedAt->translatedFormat('d F Y H:i'),
-                'client_name'         => $state['client_name'] ?? '-',
-                'proposal_id'         => $state['proposal_id'] ?? '-',
-                'enquiry'             => $state['enquiry'] ?? '-',
-                'proposal_for'        => $state['proposal_for'] ?? '-',
+                'client_name' => $state['client_name'] ?? '-',
+                'ticket_title' => $data[0]['ticket_title'] ?? '-',
+                'proposal_id' => $state['proposal_id'] ?? '-',
+                'enquiry' => $state['enquiry'] ?? '-',
+                'proposal_for' => $state['proposal_for'] ?? '-',
             ],
             'data' => $data,
         ];
@@ -439,59 +747,47 @@ class Report extends Page implements HasForms
 
         return $tickets
             ->map(function (Ticket $ticket) use ($state) {
-                Log::info('Processing ticket', [
-                    'ticket_code' => $ticket->ticket_code,
-                    'uuid' => $ticket->uuid
-                ]);
-
-                $allProgresses      = $this->parseProgresses($ticket->ticket_progress);
+                $allProgresses = $this->parseProgresses($ticket->ticket_progress);
                 $filteredProgresses = $this->filterProgressesByDate($allProgresses, $state);
-                $clientFiles        = $this->extractClientFiles($ticket);
+                $clientFiles = $this->extractClientFiles($ticket);
 
-                // 🔥 KIRIM ticket_code KE resolveProgressDocument
                 $progressDocuments = array_map(function ($p) use ($ticket) {
                     return $this->resolveProgressDocument($p, $ticket->ticket_code);
                 }, $filteredProgresses);
-
-                Log::info('Ticket files summary', [
-                    'ticket_code' => $ticket->ticket_code,
-                    'client_files_count' => count($clientFiles),
-                    'progress_documents_count' => count($progressDocuments)
-                ]);
 
                 $documents = [];
 
                 if (!empty($clientFiles)) {
                     $documents[] = [
-                        'text'               => '',
-                        'text_html'          => '',
-                        'embedded_images'    => [],
-                        'thumbnail_files'    => [],
-                        'other_files'        => $clientFiles,
-                        'pdf_files'          => [],
-                        'timestamp'          => $ticket->created_at?->toISOString() ?? now()->toISOString(),
+                        'text' => '',
+                        'text_html' => '',
+                        'embedded_images' => [],
+                        'thumbnail_files' => [],
+                        'other_files' => $clientFiles,
+                        'pdf_files' => [],
+                        'timestamp' => $ticket->created_at?->toISOString() ?? now()->toISOString(),
                         'is_client_document' => true,
-                        'is_progress'        => false,
+                        'is_progress' => false,
                     ];
                 }
 
                 foreach ($progressDocuments as $progressDoc) {
-                    $progressDoc['is_progress']        = true;
+                    $progressDoc['is_progress'] = true;
                     $progressDoc['is_client_document'] = false;
-                    $progressDoc['text']               = $progressDoc['text_html'];
+                    $progressDoc['text'] = $progressDoc['text_html'];
                     $documents[] = $progressDoc;
                 }
 
                 if (empty($documents)) return null;
 
                 return [
-                    'ticket_code'      => $ticket->ticket_code,
-                    'ticket_title'     => $ticket->ticket_title,
-                    'status'           => $ticket->status ?? '',
-                    'created_at'       => $ticket->created_at?->format('d/m/Y H:i') ?? '-',
-                    'documents_count'  => count($progressDocuments),
+                    'ticket_code' => $ticket->ticket_code,
+                    'ticket_title' => $ticket->ticket_title,
+                    'status' => $ticket->status ?? '',
+                    'created_at' => $ticket->created_at?->format('d/m/Y H:i') ?? '-',
+                    'documents_count' => count($progressDocuments),
                     'has_client_files' => !empty($clientFiles),
-                    'documents'        => $documents,
+                    'documents' => $documents,
                 ];
             })
             ->filter()
@@ -499,9 +795,6 @@ class Report extends Page implements HasForms
             ->toArray();
     }
 
-    /**
-     * Extract client files - langsung pakai ticket_code
-     */
     protected function extractClientFiles(Ticket $ticket): array
     {
         $clientFiles = [];
@@ -529,7 +822,6 @@ class Report extends Page implements HasForms
             if (empty($cf)) continue;
 
             $fileName = '';
-
             if (is_string($cf)) {
                 $fileName = basename($cf);
             } elseif (is_array($cf)) {
@@ -541,21 +833,19 @@ class Report extends Page implements HasForms
 
             $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
             $fileExists = file_exists($localPath);
-
-            $encodedFileName = rawurlencode($fileName);
-            $url = asset("storage/tickets/{$ticketCode}/{$encodedFileName}");
-
+            $encodedName = rawurlencode($fileName);
+            $url = asset("storage/tickets/{$ticketCode}/{$encodedName}");
             $fileSize = $fileExists ? filesize($localPath) : 0;
 
             $clientFiles[] = [
-                'url'            => $url,
-                'name'           => $fileName,
-                'ext'            => strtolower(pathinfo($fileName, PATHINFO_EXTENSION)),
+                'url' => $url,
+                'name' => $fileName,
+                'ext' => strtolower(pathinfo($fileName, PATHINFO_EXTENSION)),
                 'size_formatted' => $fileSize > 0 ? self::formatFileSize($fileSize) : '',
-                'local_path'     => $fileExists ? $localPath : null,
-                'type'           => 'client',
-                'file'           => $fileName,
-                'ticket_code'    => $ticketCode,
+                'local_path' => $fileExists ? $localPath : null,
+                'type' => 'client',
+                'file' => $fileName,
+                'ticket_code' => $ticketCode,
             ];
         }
 
@@ -571,31 +861,28 @@ class Report extends Page implements HasForms
         $imageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
 
         $thumbnailFiles = [];
-        $otherFiles     = [];
-        $pdfFiles       = [];
+        $otherFiles = [];
+        $pdfFiles = [];
 
         foreach ($allFiles as $file) {
             if (empty($file)) continue;
 
             $fileName = basename($file);
             $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
             $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
             $fileExists = file_exists($localPath);
             $fileSize = $fileExists ? filesize($localPath) : 0;
-
-            $encodedFileName = rawurlencode($fileName);
-            $url = asset("storage/tickets/{$ticketCode}/{$encodedFileName}");
+            $url = asset("storage/tickets/{$ticketCode}/" . rawurlencode($fileName));
 
             $meta = [
-                'file'           => $file,
-                'url'            => $url,
-                'name'           => $fileName,
-                'ext'            => $ext,
-                'size_bytes'     => $fileSize,
+                'file' => $file,
+                'url' => $url,
+                'name' => $fileName,
+                'ext' => $ext,
+                'size_bytes' => $fileSize,
                 'size_formatted' => $fileSize > 0 ? self::formatFileSize($fileSize) : '',
-                'local_path'     => $fileExists ? $localPath : null,
-                'type'           => 'internal',
+                'local_path' => $fileExists ? $localPath : null,
+                'type' => 'internal',
             ];
 
             if ($ext === 'pdf') {
@@ -607,139 +894,108 @@ class Report extends Page implements HasForms
             }
         }
 
-        // Extract embedded images dari HTML
         preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $rawHtml, $matches);
         $embeddedImages = [];
-        foreach ($matches[1] ?? [] as $url) {
-            $fileName = basename(parse_url($url, PHP_URL_PATH));
-            $fileName = rawurldecode($fileName);
-
-            // 🔥 LANGSUNG PAKAI ticket_code untuk gambar
-            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
-            if (file_exists($localPath)) {
+        foreach ($matches[1] ?? [] as $imgUrl) {
+            $imgName = rawurldecode(basename(parse_url($imgUrl, PHP_URL_PATH)));
+            $imgLocal = storage_path("app/public/tickets/{$ticketCode}/{$imgName}");
+            if (file_exists($imgLocal)) {
                 $embeddedImages[] = [
-                    'url'  => $url,
-                    'path' => $localPath,
-                    'name' => basename($localPath),
-                    'ext'  => strtolower(pathinfo($localPath, PATHINFO_EXTENSION)),
+                    'url' => $imgUrl,
+                    'path' => $imgLocal,
+                    'name' => basename($imgLocal),
+                    'ext' => strtolower(pathinfo($imgLocal, PATHINFO_EXTENSION)),
                 ];
             }
         }
 
         return [
-            'text'            => $rawHtml,
-            'text_html'       => $rawHtml,
+            'text' => $rawHtml,
+            'text_html' => $rawHtml,
             'embedded_images' => $embeddedImages,
             'thumbnail_files' => $thumbnailFiles,
-            'other_files'     => $otherFiles,
-            'pdf_files'       => $pdfFiles,
-            'timestamp'       => $p['timestamp'] ?? null,
+            'other_files' => $otherFiles,
+            'pdf_files' => $pdfFiles,
+            'timestamp' => $p['timestamp'] ?? null,
         ];
     }
 
-    public function resetFilters(): void
+    protected function parseProgresses(mixed $raw): array
     {
-        $this->form->fill($this->defaultFormState());
-        $this->clearReport();
-
-        Notification::make()->title('Filter Direset')
-            ->body('Semua filter telah dikembalikan ke pengaturan awal.')
-            ->info()->send();
+        if (is_array($raw)) return $raw;
+        if (is_string($raw)) return json_decode($raw, true) ?? [];
+        return [];
     }
 
-    protected function clearReport(): void
+    protected function getTicketOptions(?string $search = null): array
     {
-        $this->hasReport     = false;
-        $this->reportSummary = [];
-        $this->debugInfo     = [];
-        cache()->forget($this->cacheKey);
+        try {
+            $query = Ticket::select('uuid', 'ticket_code', 'ticket_title', 'ticket_name_client', 'created_at')
+                ->whereNotNull('uuid')
+                ->whereNotNull('ticket_code');
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('ticket_code', 'like', "%{$search}%")
+                        ->orWhere('ticket_title', 'like', "%{$search}%")
+                        ->orWhere('ticket_name_client', 'like', "%{$search}%");
+                });
+            }
+
+            $tickets = $query->orderBy('ticket_code')
+                ->limit(100)
+                ->get();
+
+            $duplicateCodes = $tickets
+                ->groupBy('ticket_code')
+                ->filter(fn($group) => $group->count() > 1)
+                ->keys()
+                ->toArray();
+
+            return $tickets
+                ->mapWithKeys(function ($t) use ($duplicateCodes) {
+                    $label = $t->ticket_code . ' - ' . $t->ticket_title;
+
+                    if (!empty(trim($t->ticket_name_client ?? ''))) {
+                        $label .= ' | ' . trim($t->ticket_name_client);
+                    }
+
+                    if (in_array($t->ticket_code, $duplicateCodes)) {
+                        // ✅ Ganti id dengan uuid
+                        $label .= ' (' . ($t->created_at?->format('d/m/Y H:i') ?? '-') . ' #' . $t->uuid . ')';
+                    }
+
+                    return [$t->uuid => $label];
+                })
+                ->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error loading ticket options', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 
-    public function exportReport(): void
+    protected function defaultFormState(): array
     {
-        if (!$this->hasReport) {
-            Notification::make()->title('Informasi')
-                ->body('Tidak ada data untuk diexport. Tampilkan laporan terlebih dahulu.')
-                ->warning()->send();
-            return;
-        }
-
-        $reportData = cache()->get($this->cacheKey, []);
-
-        if (empty($reportData)) {
-            Notification::make()->title('Informasi')
-                ->body('Sesi laporan telah habis. Silakan tampilkan laporan kembali.')
-                ->warning()->send();
-            return;
-        }
-
-        Log::info('Exporting report', [
-            'cache_key' => $this->cacheKey,
-            'summary' => $reportData['summary'] ?? null,
-            'data_count' => count($reportData['data'] ?? [])
-        ]);
-
-        cache()->put($this->cacheKey . '_summary', $reportData['summary'] ?? [], now()->addMinutes(5));
-        cache()->put($this->cacheKey . '_data',    $reportData['data'] ?? [],    now()->addMinutes(5));
-        cache()->put($this->cacheKey . '_notes',   $this->data['admin_notes'] ?? '', now()->addMinutes(5));
-
-        $this->dispatch('open-download-url', url: route('report.download', [
-            'key' => $this->cacheKey,
-        ]));
+        return [
+            'selected_tickets' => null,
+            'date_range' => null,
+            'start_date' => null,
+            'end_date' => null,
+            'client_name' => null,
+            'proposal_id' => null,
+            'enquiry' => null,
+            'proposal_for' => null,
+            'generated_by' => null,
+            'admin_notes' => null,
+        ];
     }
 
-    protected static function convertPdfWithGhostscript(string $inputPath, ?string $outputPath = null): ?string
-    {
-        if (!file_exists($inputPath)) {
-            Log::error('PDF file not found for conversion', ['path' => $inputPath]);
-            return null;
-        }
+    // ============================================================
+    // PDF RENDER METHODS
+    // ============================================================
 
-        if (empty($outputPath)) {
-            $outputPath = sys_get_temp_dir() . '/gs_converted_' . uniqid() . '.pdf';
-        }
-
-        $command = sprintf(
-            'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNOPROMPT '
-                . '-sDEVICE=pdfwrite '
-                . '-dCompatibilityLevel=1.4 '
-                . '-sOutputFile=%s %s 2>&1',
-            escapeshellarg($outputPath),
-            escapeshellarg($inputPath)
-        );
-
-        Log::info('Running Ghostscript conversion', [
-            'input' => $inputPath,
-            'output' => $outputPath,
-        ]);
-
-        exec($command, $output, $returnCode);
-
-        if ($returnCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0) {
-            Log::info('Ghostscript conversion successful', [
-                'input' => $inputPath,
-                'output' => $outputPath,
-                'size' => filesize($outputPath)
-            ]);
-            return $outputPath;
-        }
-
-        Log::error('Ghostscript conversion failed', [
-            'input' => $inputPath,
-            'return_code' => $returnCode,
-            'output' => $output
-        ]);
-
-        return null;
-    }
-
-    /**
-     * Render PDF dengan merge lampiran
-     */
     public static function renderPdfStatic(array $summary, array $data, ?string $notes): string
     {
-        Log::info('=== RENDER PDF STATIC START ===');
-
         $attachedPdfs = [];
 
         foreach ($data as $ticket) {
@@ -751,23 +1007,20 @@ class Report extends Page implements HasForms
                 if ($isClientDoc) {
                     foreach ($doc['other_files'] ?? [] as $cf) {
                         if (strtolower($cf['ext'] ?? '') !== 'pdf') continue;
-
                         $localPath = $cf['local_path'] ?? null;
-
                         if (!$localPath || !file_exists($localPath)) {
                             $fileName = $cf['name'] ?? '';
-                            if ($ticketCode && $fileName) {
-                                $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
-                            }
+                            $localPath = $ticketCode && $fileName
+                                ? storage_path("app/public/tickets/{$ticketCode}/{$fileName}")
+                                : null;
                         }
-
                         if ($localPath && file_exists($localPath)) {
                             $attachedPdfs[] = [
-                                'name'           => $cf['name'] ?? basename($localPath),
-                                'path'           => $localPath,
-                                'url'            => $cf['url'] ?? '',
-                                'ticket_code'    => $ticketCode,
-                                'type'           => 'client_document',
+                                'name' => $cf['name'] ?? basename($localPath),
+                                'path' => $localPath,
+                                'url' => $cf['url'] ?? '',
+                                'ticket_code' => $ticketCode,
+                                'type' => 'client_document',
                                 'size_formatted' => $cf['size_formatted'] ?? '',
                             ];
                         }
@@ -777,21 +1030,19 @@ class Report extends Page implements HasForms
 
                 foreach ($doc['pdf_files'] ?? [] as $pf) {
                     $localPath = $pf['local_path'] ?? null;
-
                     if (!$localPath || !file_exists($localPath)) {
                         $fileName = $pf['name'] ?? '';
-                        if ($ticketCode && $fileName) {
-                            $localPath = storage_path("app/public/tickets/{$ticketCode}/{$fileName}");
-                        }
+                        $localPath = $ticketCode && $fileName
+                            ? storage_path("app/public/tickets/{$ticketCode}/{$fileName}")
+                            : null;
                     }
-
                     if ($localPath && file_exists($localPath)) {
                         $attachedPdfs[] = [
-                            'name'           => $pf['name'] ?? basename($localPath),
-                            'path'           => $localPath,
-                            'url'            => $pf['url'] ?? asset("storage/tickets/{$ticketCode}/" . rawurlencode($pf['name'] ?? '')),
-                            'ticket_code'    => $ticketCode,
-                            'type'           => 'progress_document',
+                            'name' => $pf['name'] ?? basename($localPath),
+                            'path' => $localPath,
+                            'url' => $pf['url'] ?? '',
+                            'ticket_code' => $ticketCode,
+                            'type' => 'progress_document',
                             'size_formatted' => $pf['size_formatted'] ?? '',
                         ];
                     }
@@ -799,31 +1050,21 @@ class Report extends Page implements HasForms
             }
         }
 
-        // Hapus duplikat
         $uniquePdfs = [];
         foreach ($attachedPdfs as $pdf) {
-            $key = $pdf['path'];
-            if (!isset($uniquePdfs[$key])) {
-                $uniquePdfs[$key] = $pdf;
+            if (!isset($uniquePdfs[$pdf['path']])) {
+                $uniquePdfs[$pdf['path']] = $pdf;
             }
         }
         $attachedPdfs = array_values($uniquePdfs);
 
-        Log::info('Total unique PDFs to process', ['count' => count($attachedPdfs)]);
-
-        // Konversi PDF dengan Ghostscript
         $convertedPdfPaths = [];
         foreach ($attachedPdfs as $index => $pdfData) {
-            $convertedPath = self::convertPdfWithGhostscript($pdfData['path']);
-            if ($convertedPath) {
-                $convertedPdfPaths[] = $convertedPath;
-                $attachedPdfs[$index]['converted_path'] = $convertedPath;
-            } else {
-                $attachedPdfs[$index]['converted_path'] = $pdfData['path'];
-            }
+            $converted = self::convertPdfWithGhostscript($pdfData['path']);
+            $attachedPdfs[$index]['converted_path'] = $converted ?? $pdfData['path'];
+            if ($converted) $convertedPdfPaths[] = $converted;
         }
 
-        // Generate HTML
         $html = view('filament.pages.pdf.report', compact('summary', 'data', 'notes', 'attachedPdfs'))->render();
         $html = self::replaceImageUrlsWithLocalPaths($html);
 
@@ -835,14 +1076,7 @@ class Report extends Page implements HasForms
         $mainPdfPath = tempnam(sys_get_temp_dir(), 'report_main_') . '.pdf';
         file_put_contents($mainPdfPath, $pdf->output());
 
-        // Cek ada PDF valid
-        $hasValidPdfs = false;
-        foreach ($attachedPdfs as $pdf) {
-            if (file_exists($pdf['converted_path'])) {
-                $hasValidPdfs = true;
-                break;
-            }
-        }
+        $hasValidPdfs = !empty(array_filter($attachedPdfs, fn($p) => file_exists($p['converted_path'])));
 
         if (!$hasValidPdfs) {
             $output = file_get_contents($mainPdfPath);
@@ -851,9 +1085,9 @@ class Report extends Page implements HasForms
         }
 
         try {
-            $fpdi = new Fpdi();
-
+            $fpdi = new \setasign\Fpdi\Fpdi();
             $mainPageCount = $fpdi->setSourceFile($mainPdfPath);
+
             for ($i = 1; $i <= $mainPageCount; $i++) {
                 $tpl = $fpdi->importPage($i);
                 $size = $fpdi->getTemplateSize($tpl);
@@ -878,7 +1112,6 @@ class Report extends Page implements HasForms
 
                         $fpdi->AddPage($orientation);
 
-                        // Header
                         $fpdi->SetFillColor(243, 244, 246);
                         $fpdi->Rect(0, 0, $pageW, 13, 'F');
                         $fpdi->SetDrawColor(209, 213, 219);
@@ -932,14 +1165,37 @@ class Report extends Page implements HasForms
         }
     }
 
+    protected static function convertPdfWithGhostscript(string $inputPath, ?string $outputPath = null): ?string
+    {
+        if (!file_exists($inputPath)) return null;
+
+        if (empty($outputPath)) {
+            $outputPath = sys_get_temp_dir() . '/gs_converted_' . uniqid() . '.pdf';
+        }
+
+        $command = sprintf(
+            'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNOPROMPT -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=%s %s 2>&1',
+            escapeshellarg($outputPath),
+            escapeshellarg($inputPath)
+        );
+
+        exec($command, $output, $returnCode);
+
+        if ($returnCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0) {
+            return $outputPath;
+        }
+
+        Log::error('Ghostscript conversion failed', ['input' => $inputPath, 'return_code' => $returnCode]);
+        return null;
+    }
+
     protected static function replaceImageUrlsWithLocalPaths(string $html): string
     {
         $ticketsDir = storage_path('app/public/tickets');
 
         return preg_replace_callback('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', function ($matches) use ($ticketsDir) {
             $url = $matches[1];
-            $fileName = basename(parse_url($url, PHP_URL_PATH));
-            $fileName = rawurldecode($fileName);
+            $fileName = rawurldecode(basename(parse_url($url, PHP_URL_PATH)));
 
             if (is_dir($ticketsDir)) {
                 $iterator = new \RecursiveIteratorIterator(
@@ -968,59 +1224,6 @@ class Report extends Page implements HasForms
         $fpdi->Cell(0, 6, mb_convert_encoding($att['name'] ?? '-', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
     }
 
-    protected function defaultFormState(): array
-    {
-        return [
-            'selected_tickets' => null,
-            'date_range'       => null,
-            'start_date'       => null,
-            'end_date'         => null,
-            'client_name'      => null,
-            'proposal_id'      => null,
-            'enquiry'          => null,
-            'proposal_for'     => null,
-            'generated_by'     => null,
-            'admin_notes'      => null,
-        ];
-    }
-
-    protected function parseProgresses(mixed $raw): array
-    {
-        if (is_array($raw)) return $raw;
-        if (is_string($raw)) return json_decode($raw, true) ?? [];
-        return [];
-    }
-
-    protected function getTicketOptions(): array
-    {
-        try {
-            $tickets = Ticket::select('uuid', 'ticket_code', 'ticket_title', 'created_at')
-                ->whereNotNull('uuid')
-                ->whereNotNull('ticket_code')
-                ->orderBy('ticket_code')
-                ->get();
-
-            $duplicateCodes = $tickets
-                ->groupBy('ticket_code')
-                ->filter(fn($group) => $group->count() > 1)
-                ->keys()
-                ->toArray();
-
-            return $tickets
-                ->mapWithKeys(function ($t) use ($duplicateCodes) {
-                    $label = $t->ticket_code . ' - ' . $t->ticket_title;
-                    if (in_array($t->ticket_code, $duplicateCodes)) {
-                        $label .= ' (' . ($t->created_at?->format('d/m/Y H:i') ?? '-') . ' #' . $t->id . ')';
-                    }
-                    return [$t->uuid => $label];
-                })
-                ->toArray();
-        } catch (\Exception $e) {
-            Log::error('Error loading ticket options', ['error' => $e->getMessage()]);
-            return [];
-        }
-    }
-
     public static function formatFileSize(int $bytes): string
     {
         if ($bytes === 0) return '0 B';
@@ -1041,7 +1244,7 @@ class Report extends Page implements HasForms
         }
 
         return [
-            'total_tickets'   => $this->reportSummary['total_tickets'] ?? 0,
+            'total_tickets' => $this->reportSummary['total_tickets'] ?? 0,
             'total_documents' => $totalDocs,
         ];
     }

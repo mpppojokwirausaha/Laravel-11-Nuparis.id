@@ -1,5 +1,4 @@
 <x-filament-panels::page>
-
     <div class="space-y-6">
         <form wire:submit.prevent>
             {{ $this->form }}
@@ -312,7 +311,6 @@
                                                 $htmlContent = (string) $rawText;
                                             }
 
-                                            // HAPUS CAPTION GAMBAR
                                             $htmlContent = preg_replace(
                                                 '/<figure[^>]*data-trix-attachment[^>]*>.*?<\/figure>/s',
                                                 '',
@@ -329,7 +327,6 @@
                                                 $htmlContent,
                                             );
 
-                                            // EKSTRAK GAMBAR DARI RICH EDITOR
                                             $inlineImages = [];
                                             $htmlContent = preg_replace_callback(
                                                 '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i',
@@ -340,7 +337,6 @@
                                                 $htmlContent,
                                             );
 
-                                            // EKSTRAK DARI data-trix-attachment
                                             preg_match_all(
                                                 '/data-trix-attachment="[^"]*"href="([^"]+)"/i',
                                                 $rawText,
@@ -352,7 +348,6 @@
                                                 }
                                             }
 
-                                            // THUMBNAIL FILES dari thumbnail_files
                                             $thumbnailFiles = [];
                                             foreach ($doc['thumbnail_files'] ?? [] as $tf) {
                                                 if (is_array($tf)) {
@@ -365,7 +360,6 @@
                                                 }
                                             }
 
-                                            // GAMBAR DARI FILE LANGSUNG (lampiran progress)
                                             $fileImages = [];
                                             foreach ($doc['file'] ?? [] as $file) {
                                                 if (is_string($file) && $file !== '') {
@@ -387,7 +381,6 @@
                                                 }
                                             }
 
-                                            // EMBEDDED IMAGES
                                             $embeddedImages = [];
                                             foreach ($doc['embedded_images'] ?? [] as $img) {
                                                 if (is_array($img)) {
@@ -400,7 +393,6 @@
                                                 }
                                             }
 
-                                            // GABUNG SEMUA GAMBAR
                                             $allThumbnails = array_unique(
                                                 array_merge(
                                                     $inlineImages,
@@ -410,7 +402,6 @@
                                                 ),
                                             );
 
-                                            // BERSIHKAN HTML
                                             $cleanHtml = preg_replace('/<img[^>]+>/i', '', $htmlContent);
                                             $cleanHtml = preg_replace(
                                                 '/<a[^>]*href=["\'][^"\']*\.(jpg|jpeg|png|gif|webp|svg|bmp)["\'][^>]*>.*?<\/a>/is',
@@ -421,7 +412,6 @@
                                             $cleanHtml = preg_replace('/<div[^>]*>\s*<\/div>/i', '', $cleanHtml);
                                             $cleanHtml = trim($cleanHtml);
 
-                                            // PDF FILES
                                             $pdfFiles = [];
                                             foreach ($doc['pdf_files'] ?? [] as $pf) {
                                                 if (is_array($pf)) {
@@ -439,7 +429,6 @@
                                                 }
                                             }
 
-                                            // OTHER FILES
                                             $otherFiles = [];
                                             foreach ($doc['other_files'] ?? [] as $lf) {
                                                 if (is_array($lf)) {
@@ -482,7 +471,6 @@
                                                         style="font-size:11px; color:#9ca3af; text-align:right;">{{ \Carbon\Carbon::parse($doc['timestamp'] ?? now())->translatedFormat('d F Y, H:i') }}</span>
                                                 </div>
 
-                                                {{-- HTML CONTENT --}}
                                                 @if (!empty($cleanHtml))
                                                     <div class="tp-body"
                                                         style="font-size:14px; color:#374151; line-height:1.65; margin:0.75rem 0;">
@@ -490,7 +478,6 @@
                                                     </div>
                                                 @endif
 
-                                                {{-- THUMBNAIL GRID - SEMUA GAMBAR TAMPIL DALAM GRID --}}
                                                 @if (!empty($allThumbnails))
                                                     <div class="tp-thumb-grid"
                                                         style="display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 100px)); gap:8px; margin-top:12px;">
@@ -506,7 +493,6 @@
                                                     </div>
                                                 @endif
 
-                                                {{-- PDF FILES --}}
                                                 @if (!empty($pdfFiles))
                                                     <div class="tp-files"
                                                         style="display:flex; flex-direction:column; gap:6px; margin-top:0.75rem;">
@@ -531,7 +517,6 @@
                                                     </div>
                                                 @endif
 
-                                                {{-- OTHER FILES --}}
                                                 @if (!empty($otherFiles))
                                                     <div class="tp-files"
                                                         style="display:flex; flex-direction:column; gap:6px; margin-top:0.75rem;">
@@ -603,10 +588,178 @@
         </div>
     </div>
 
+    @if ($showEmailModal)
+        <div x-data="{ open: true, sending: false }" x-show="open"
+            x-on:keydown.escape.window="open = false; $wire.closeEmailModal()"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: flex;">
+
+            <!-- Backdrop -->
+            <div x-show="open" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-150"
+                x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                class="fixed inset-0 bg-gray-900/60 dark:bg-gray-950/75" wire:click="closeEmailModal"></div>
+
+            <!-- Modal -->
+            <div x-show="open" x-transition:enter="ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="relative w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden">
+
+                <!-- OVERLAY LOADING DI DALAM MODAL -->
+                <div x-show="sending" x-cloak
+                    class="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
+                    style="display: none;">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 flex flex-col items-center gap-3 min-w-[200px] border border-gray-200 dark:border-gray-700">
+                        <svg class="w-10 h-10 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Mengirim email...</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Mohon tunggu</p>
+                    </div>
+                </div>
+
+                <!-- Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Kirim Laporan PDF</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Isi detail email di bawah ini</p>
+                        </div>
+                    </div>
+                    <button wire:click="closeEmailModal"
+                        class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-5 space-y-4">
+                    <!-- Ringkasan Laporan -->
+                    @php $summary = $reportData['summary'] ?? []; @endphp
+                    <div class="grid grid-cols-2 gap-3 p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Kode Tiket</span>
+                            <p class="font-medium text-gray-800 dark:text-gray-200">
+                                {{ $summary['ticket_code'] ?? '-' }} - {{ $summary['proposal_for'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Periode</span>
+                            <p class="text-gray-800 dark:text-gray-200">{{ $summary['date_range'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Nama Klien</span>
+                            <p class="text-gray-800 dark:text-gray-200">{{ $summary['client_name'] ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Grid 2 Kolom -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-gray-400 dark:text-gray-300">
+                                Kepada <span class="text-red-500">*</span>
+                            </label>
+                            <input type="email" wire:model="emailTo" placeholder="email@klien.com"
+                                class="w-full h-9 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-gray-400 dark:text-gray-300">
+                                CC <span class="text-gray-400">(opsional)</span>
+                            </label>
+                            <input type="text" wire:model="emailCc" placeholder="cc@domain.com, cc2@domain.com"
+                                class="w-full h-9 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Pisahkan dengan koma (,)</p>
+                        </div>
+
+                        <div class="md:col-span-2 space-y-1">
+                            <label class="text-xs font-medium text-gray-400 dark:text-gray-300">
+                                Subjek <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" wire:model="emailSubject"
+                                class="w-full h-9 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+
+                        <div class="md:col-span-2 space-y-1">
+                            <label class="text-xs font-medium text-gray-400 dark:text-gray-300">
+                                Isi Email <span class="text-red-500">*</span>
+                            </label>
+                            <textarea wire:model="emailBody" rows="4"
+                                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Info Lampiran -->
+                    <div class="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                        <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span class="text-xs text-blue-600 dark:text-blue-300">File PDF laporan akan dilampirkan secara
+                            otomatis</span>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <button wire:click="downloadPdf" :disabled="sending"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download PDF
+                    </button>
+                    <button wire:click="sendEmail" x-on:click="sending = true" :disabled="sending"
+                        class="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Kirim Email
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </x-filament-panels::page>
 
 @push('styles')
     <style>
+        /* Animasi spinner */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin {
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* x-cloak untuk menyembunyikan elemen sebelum Alpine.js siap */
+        [x-cloak] {
+            display: none !important;
+        }
+
         /* DARK MODE */
         .dark .tp-header {
             border-bottom-color: #27272a !important;
@@ -755,9 +908,11 @@
             lb.style.display = 'none';
             document.body.style.overflow = '';
         }
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') tpCloseLb();
         });
+
         document.addEventListener('livewire:init', function() {
             Livewire.on('open-download-url', function(data) {
                 var url = data.url || (data[0]?.url);
