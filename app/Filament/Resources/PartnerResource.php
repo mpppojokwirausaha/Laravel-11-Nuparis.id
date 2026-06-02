@@ -126,7 +126,6 @@ class PartnerResource extends Resource
                                     ->directory('img_partners')
                                     ->required()
                                     ->downloadable()
-                                    ->image()
                                     ->imageEditor()
                                     ->imageEditorAspectRatios([
                                         '16:9',
@@ -350,6 +349,15 @@ class PartnerResource extends Resource
                 TextColumn::make('partner_email')
                     ->label('EMAIL')
                     ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('partner_email')
+                    ->label('EMAIL')
+                    ->searchable()
+                    ->url(fn($record) => $record->partner_email ? "mailto:{$record->partner_email}" : null)
+                    ->openUrlInNewTab()
+                    ->icon('heroicon-m-envelope')
+                    ->iconColor('info')
                     ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('partner_type')

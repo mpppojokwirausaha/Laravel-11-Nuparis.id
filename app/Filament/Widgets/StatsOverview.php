@@ -23,41 +23,77 @@ class StatsOverview extends BaseWidget
         $ReviewStat = Review::getStat();
 
         return [
-            Stat::make('Activities this month', $ActivityStat['currentCount'] . ' Activities')
+            Stat::make('Aktivitas bulan ini', $ActivityStat['currentCount'] . ' Aktivitas')
                 ->description($ActivityStat['description'])
                 ->descriptionIcon($ActivityStat['icon'])
                 ->chart($ActivityStat['chart'])
-                ->color($ActivityStat['color']),
+                ->color($ActivityStat['color'])
+                ->url(route('filament.management.activities.resources.activities.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
 
-            Stat::make('Articles this month', $ArticleStat['currentCount'] . ' Articles')
+            Stat::make('Artikel bulan ini', $ArticleStat['currentCount'] . ' Artikel')
                 ->description($ArticleStat['description'])
                 ->descriptionIcon($ArticleStat['icon'])
                 ->chart($ArticleStat['chart'])
-                ->color($ArticleStat['color']),
+                ->color($ArticleStat['color'])
+                ->url(route('filament.management.articles.resources.articles.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
 
-            Stat::make('Events this month', $EventStat['currentCount'] . ' Events')
+            Stat::make('Event bulan ini', $EventStat['currentCount'] . ' Event')
                 ->description($EventStat['description'])
                 ->descriptionIcon($EventStat['icon'])
                 ->chart($EventStat['chart'])
-                ->color($EventStat['color']),
+                ->color($EventStat['color'])
+                ->url(route('filament.management.events.resources.events.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
 
-            Stat::make('Partners this month', $PartnerStat['currentCount'] . ' Partners')
+            Stat::make('Mitra bulan ini', $PartnerStat['currentCount'] . ' Mitra')
                 ->description($PartnerStat['description'])
                 ->descriptionIcon($PartnerStat['icon'])
                 ->chart($PartnerStat['chart'])
-                ->color($PartnerStat['color']),
+                ->color($PartnerStat['color'])
+                ->url(route('filament.management.resources.partners.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
 
-            Stat::make('News this month', $NewsStat['currentCount'] . ' News')
+            Stat::make('Berita bulan ini', $NewsStat['currentCount'] . ' Berita')
                 ->description($NewsStat['description'])
                 ->descriptionIcon($NewsStat['icon'])
                 ->chart($NewsStat['chart'])
-                ->color($NewsStat['color']),
+                ->color($NewsStat['color'])
+                ->url(route('filament.management.resources.news.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
 
-            Stat::make('Reviews this month', $ReviewStat['currentCount'] . ' Reviews')
+            Stat::make('Ulasan bulan ini', $ReviewStat['currentCount'] . ' Ulasan')
                 ->description($ReviewStat['description'])
                 ->descriptionIcon($ReviewStat['icon'])
                 ->chart($ReviewStat['chart'])
-                ->color($ReviewStat['color']),
+                ->color($ReviewStat['color'])
+                ->url(route('filament.management.resources.reviews.index'))
+                ->openUrlInNewTab(false)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:shadow-lg transition-all duration-300',
+                    'wire:navigate' => true,
+                ]),
         ];
     }
 }
