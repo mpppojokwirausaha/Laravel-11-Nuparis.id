@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'smartforms' => [
+        'api_key' => env('SMARTFORMS_API_KEY'),
+        'api_url' => env('SMARTFORMS_API_URL'),
+        'callback_url' => env('SMARTFORMS_CALLBACK_URL'),
+    ],
+
 ];

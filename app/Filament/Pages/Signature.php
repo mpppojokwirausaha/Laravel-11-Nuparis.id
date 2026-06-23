@@ -4,6 +4,11 @@ namespace App\Filament\Pages;
 
 use App\Models\DocumentToss;
 use App\Models\Ticket;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\RoundBlockSizeMode;
+use Endroid\QrCode\Writer\PngWriter;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -21,9 +26,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Imagick;
-use Symfony\Component\Process\Process;
 
 class Signature extends Page implements HasForms
 {
@@ -42,6 +44,8 @@ class Signature extends Page implements HasForms
     public array   $debugInfo       = [];
     public ?DocumentToss $currentDocument = null;
 
+    private string $gsPath = 'gs';
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('page_Signature');
@@ -56,6 +60,53 @@ class Signature extends Page implements HasForms
         $this->addDebugInfo('Page mounted', [
             'tickets_count' => count($this->getTicketOptions()),
         ]);
+
+        // Cek Ghostscript
+        $this->checkGhostscript();
+    }
+
+    /**
+     * Cek ketersediaan Ghostscript dan dapatkan path-nya
+     */
+    private function checkGhostscript(): void
+    {
+        // Cek di path yang sudah diketahui (Linux)
+        $possiblePaths = [
+            '/usr/bin/gs',
+            '/bin/gs',
+            '/usr/local/bin/gs',
+            '/usr/local/opt/ghostscript/bin/gs',
+        ];
+
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $this->gsPath = $path;
+                Log::info('[Signature] Ghostscript found at', ['path' => $this->gsPath]);
+                return;
+            }
+        }
+
+        // Coba dengan 'which gs'
+        $output = [];
+        $code = 0;
+        exec('which gs 2>&1', $output, $code);
+        if ($code === 0 && !empty($output[0]) && file_exists(trim($output[0]))) {
+            $this->gsPath = trim($output[0]);
+            Log::info('[Signature] Ghostscript found in PATH', ['path' => $this->gsPath]);
+            return;
+        }
+
+        // Fallback ke 'gs' (biar dicari di PATH)
+        $this->gsPath = 'gs';
+        Log::warning('[Signature] Ghostscript using default PATH', ['path' => $this->gsPath]);
+
+        // Test apakah gs bisa dijalankan
+        exec('gs --version 2>&1', $versionOutput, $versionCode);
+        if ($versionCode === 0) {
+            Log::info('[Signature] Ghostscript version', ['version' => implode('', $versionOutput)]);
+        } else {
+            Log::error('[Signature] Ghostscript NOT available on this server');
+        }
     }
 
     // ── Form ───────────────────────────────────────────────────────────────────
@@ -272,6 +323,23 @@ class Signature extends Page implements HasForms
         }
     }
 
+    // ── Generate QR Code dengan endroid/qr-code ────────────────────────────────
+    private function generateQrCode(string $content, string $path): void
+    {
+        $qrCode = Builder::create()
+            ->writer(new PngWriter())
+            ->writerOptions([])
+            ->data($content)
+            ->encoding(new Encoding('UTF-8'))
+            ->errorCorrectionLevel(ErrorCorrectionLevel::High)
+            ->size(300)
+            ->margin(10)
+            ->roundBlockSizeMode(RoundBlockSizeMode::Margin)
+            ->build();
+
+        Storage::disk('public')->put($path, $qrCode->getString());
+    }
+
     // ── Generate Preview ───────────────────────────────────────────────────────
     public function generatePreview(): void
     {
@@ -293,7 +361,8 @@ class Signature extends Page implements HasForms
 
             Storage::disk('public')->makeDirectory('qrcodes');
             $qrContent = url('toss/' . $slug);
-            Storage::disk('public')->put($qrPath, QrCode::format('png')->size(300)->generate($qrContent));
+
+            $this->generateQrCode($qrContent, $qrPath);
 
             $this->pdfUrl = Storage::disk('public')->url($this->selectedFile);
             $this->qrUrl  = Storage::disk('public')->url($qrPath);
@@ -314,7 +383,443 @@ class Signature extends Page implements HasForms
         $this->dispatch('preview-cleared');
     }
 
-    // ── Save QR Position — menggunakan gs (Ghostscript) ────────────────────────
+    // ===========================================================================
+    // ======================== CORE FUNCTIONS ===================================
+    // ===========================================================================
+
+    /**
+     * Render PDF ke PNG menggunakan Ghostscript
+     */
+    private function renderPdfToPng(string $pdfPath, string $pngPath, int $page): void
+    {
+        // Hapus file lama jika ada
+        if (file_exists($pngPath)) {
+            @unlink($pngPath);
+        }
+
+        // Pastikan direktori tujuan ada
+        $dir = dirname($pngPath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        // Escape untuk shell
+        $escapedPdf = escapeshellarg($pdfPath);
+        $escapedPng = escapeshellarg($pngPath);
+
+        // Build command - gunakan $this->gsPath yang sudah di-set
+        $command = sprintf(
+            '%s -dQUIET -dBATCH -dNOPAUSE -dNOPROMPT '
+                . '-sDEVICE=png16m -r150 '
+                . '-dFirstPage=%d -dLastPage=%d '
+                . '-sOutputFile=%s %s 2>&1',
+            $this->gsPath,
+            $page,
+            $page,
+            $escapedPng,
+            $escapedPdf
+        );
+
+        Log::info('[Signature] gs render PNG', ['cmd' => $command, 'gsPath' => $this->gsPath]);
+
+        // Gunakan exec langsung
+        $output = [];
+        $returnCode = 0;
+        exec($command, $output, $returnCode);
+
+        Log::info('[Signature] gs render result', [
+            'returnCode' => $returnCode,
+            'output' => implode("\n", $output),
+            'fileExists' => file_exists($pngPath),
+            'fileSize' => file_exists($pngPath) ? filesize($pngPath) : 0
+        ]);
+
+        // Jika return code 127 (command not found), coba dengan 'gs' saja
+        if ($returnCode === 127 && $this->gsPath !== 'gs') {
+            Log::info('[Signature] Retry with fallback gs command');
+            $fallbackCommand = sprintf(
+                'gs -dQUIET -dBATCH -dNOPAUSE -dNOPROMPT '
+                    . '-sDEVICE=png16m -r150 '
+                    . '-dFirstPage=%d -dLastPage=%d '
+                    . '-sOutputFile=%s %s 2>&1',
+                $page,
+                $page,
+                $escapedPng,
+                $escapedPdf
+            );
+
+            exec($fallbackCommand, $output, $returnCode);
+
+            Log::info('[Signature] gs render result (fallback)', [
+                'returnCode' => $returnCode,
+                'output' => implode("\n", $output),
+            ]);
+        }
+
+        // Tunggu file selesai ditulis
+        $maxAttempts = 10;
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            clearstatcache(true, $pngPath);
+            if (file_exists($pngPath) && filesize($pngPath) > 0) {
+                break;
+            }
+            usleep(200000);
+        }
+
+        if (!file_exists($pngPath) || filesize($pngPath) === 0) {
+            throw new \Exception("File PNG hasil render kosong: {$pngPath}. Return code: {$returnCode}");
+        }
+
+        // Validasi PNG
+        $img = @imagecreatefrompng($pngPath);
+        if (!$img) {
+            throw new \Exception("File PNG tidak valid: {$pngPath}");
+        }
+        imagedestroy($img);
+
+        Log::info('[Signature] PNG render success', [
+            'size' => filesize($pngPath),
+            'path' => $pngPath
+        ]);
+    }
+
+    /**
+     * Composite QR Code ke PNG menggunakan GD
+     */
+    private function compositeQrToPng(string $pageImgPath, string $qrPath, string $outputPath, float $ratioX, float $ratioY): void
+    {
+        // Load gambar utama
+        $img = imagecreatefrompng($pageImgPath);
+        if (!$img) {
+            throw new \Exception('Gagal load PNG hasil render: ' . $pageImgPath);
+        }
+
+        // Load QR Code
+        $qr = imagecreatefrompng($qrPath);
+        if (!$qr) {
+            imagedestroy($img);
+            throw new \Exception('Gagal load QR Code: ' . $qrPath);
+        }
+
+        $imgW = imagesx($img);
+        $imgH = imagesy($img);
+        $qrW = imagesx($qr);
+        $qrH = imagesy($qr);
+
+        // Resize QR ke ukuran tetap (150x150)
+        $targetSize = 150;
+        $newQr = imagecreatetruecolor($targetSize, $targetSize);
+
+        // Preserve transparency
+        imagealphablending($newQr, false);
+        imagesavealpha($newQr, true);
+        $transparent = imagecolorallocatealpha($newQr, 0, 0, 0, 127);
+        imagefill($newQr, 0, 0, $transparent);
+
+        // Resample QR
+        imagecopyresampled($newQr, $qr, 0, 0, 0, 0, $targetSize, $targetSize, $qrW, $qrH);
+
+        // Hitung posisi
+        $xPx = (int)($ratioX * $imgW);
+        $yPx = (int)($ratioY * $imgH);
+        $xPx = max(0, min($xPx, $imgW - $targetSize));
+        $yPx = max(0, min($yPx, $imgH - $targetSize));
+
+        Log::info('[Signature] Composite QR dengan GD', [
+            'imgW' => $imgW,
+            'imgH' => $imgH,
+            'xPx' => $xPx,
+            'yPx' => $yPx,
+        ]);
+
+        // Tempel QR
+        imagecopy($img, $newQr, $xPx, $yPx, 0, 0, $targetSize, $targetSize);
+        imagepng($img, $outputPath);
+
+        // Bersihkan memory
+        imagedestroy($img);
+        imagedestroy($qr);
+        imagedestroy($newQr);
+
+        // Validasi hasil
+        if (!file_exists($outputPath) || filesize($outputPath) === 0) {
+            throw new \Exception("File PNG hasil composite tidak valid: {$outputPath}");
+        }
+
+        Log::info('[Signature] Composite success', ['size' => filesize($outputPath)]);
+    }
+
+    /**
+     * Convert PNG ke PDF dengan multiple fallback methods
+     */
+    private function convertPngToPdfWithFallback(string $pngPath, string $pdfPath): bool
+    {
+        // Method 1: Ghostscript dengan berbagai parameter
+        if ($this->convertWithGhostscriptVariants($pngPath, $pdfPath)) {
+            Log::info('[Signature] Konversi sukses dengan Ghostscript');
+            return true;
+        }
+
+        // Method 2: ImageMagick CLI (convert command)
+        if ($this->convertWithImageMagickCli($pngPath, $pdfPath)) {
+            Log::info('[Signature] Konversi sukses dengan ImageMagick CLI');
+            return true;
+        }
+
+        // Method 3: FPDF (pure PHP)
+        if ($this->convertWithFpdf($pngPath, $pdfPath)) {
+            Log::info('[Signature] Konversi sukses dengan FPDF');
+            return true;
+        }
+
+        Log::error('[Signature] Semua metode konversi PNG ke PDF gagal');
+        return false;
+    }
+
+    /**
+     * Method 1: Ghostscript dengan multiple variants
+     */
+    private function convertWithGhostscriptVariants(string $pngPath, string $pdfPath): bool
+    {
+        if (file_exists($pdfPath)) {
+            @unlink($pdfPath);
+        }
+
+        $variants = [
+            // Variant 1: Standard
+            sprintf(
+                '%s -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=%s %s 2>&1',
+                $this->gsPath,
+                escapeshellarg($pdfPath),
+                escapeshellarg($pngPath)
+            ),
+            // Variant 2: Dengan flatten transparency
+            sprintf(
+                '%s -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dHaveTransparency=false -sOutputFile=%s %s 2>&1',
+                $this->gsPath,
+                escapeshellarg($pdfPath),
+                escapeshellarg($pngPath)
+            ),
+            // Variant 3: Dengan ColorConversionStrategy
+            sprintf(
+                '%s -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dColorConversionStrategy=/sRGB -dProcessColorModel=/DeviceRGB -sOutputFile=%s %s 2>&1',
+                $this->gsPath,
+                escapeshellarg($pdfPath),
+                escapeshellarg($pngPath)
+            ),
+        ];
+
+        foreach ($variants as $index => $command) {
+            Log::info("[Signature] Ghostscript variant " . ($index + 1), ['cmd' => $command]);
+
+            $output = [];
+            $returnCode = 0;
+            exec($command, $output, $returnCode);
+
+            if ($returnCode === 0 && file_exists($pdfPath) && filesize($pdfPath) > 0) {
+                Log::info("[Signature] Ghostscript variant " . ($index + 1) . " success");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Method 2: Convert dengan ImageMagick CLI
+     */
+    private function convertWithImageMagickCli(string $pngPath, string $pdfPath): bool
+    {
+        // Cek apakah convert command tersedia
+        $output = [];
+        $code = 0;
+        exec('convert --version 2>&1', $output, $code);
+
+        if ($code !== 0) {
+            Log::info('[Signature] ImageMagick convert command not available');
+            return false;
+        }
+
+        if (file_exists($pdfPath)) {
+            @unlink($pdfPath);
+        }
+
+        $variants = [
+            "convert %s %s 2>&1",
+            "convert -density 150 -quality 100 %s %s 2>&1",
+            "convert -flatten %s %s 2>&1",
+            "convert -background white -alpha remove -alpha off %s %s 2>&1",
+        ];
+
+        foreach ($variants as $index => $variant) {
+            $command = sprintf($variant, escapeshellarg($pngPath), escapeshellarg($pdfPath));
+            Log::info("[Signature] ImageMagick variant " . ($index + 1), ['cmd' => $command]);
+
+            $output = [];
+            $code = 0;
+            exec($command, $output, $code);
+
+            if ($code === 0 && file_exists($pdfPath) && filesize($pdfPath) > 0) {
+                Log::info("[Signature] ImageMagick variant " . ($index + 1) . " success");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Method 3: Convert dengan FPDF (pure PHP)
+     */
+    private function convertWithFpdf(string $pngPath, string $pdfPath): bool
+    {
+        // Cek apakah FPDF tersedia
+        if (!class_exists('FPDF')) {
+            $fpdfPath = base_path('vendor/setasign/fpdf/fpdf.php');
+            if (file_exists($fpdfPath)) {
+                require_once $fpdfPath;
+            } else {
+                Log::warning('[Signature] FPDF not installed. Install with: composer require setasign/fpdf');
+                return false;
+            }
+        }
+
+        if (file_exists($pdfPath)) {
+            @unlink($pdfPath);
+        }
+
+        try {
+            $pdf = new \FPDF();
+
+            // Dapatkan dimensi gambar
+            list($width, $height) = getimagesize($pngPath);
+
+            // Konversi pixel ke mm (asumsi 150 DPI)
+            $widthMm = ($width / 150) * 25.4;
+            $heightMm = ($height / 150) * 25.4;
+
+            // Tentukan orientasi
+            $orientation = $widthMm > $heightMm ? 'L' : 'P';
+
+            // Add page dengan ukuran custom
+            $pdf->AddPage($orientation, [$widthMm, $heightMm]);
+
+            // Tambahkan gambar
+            $pdf->Image($pngPath, 0, 0, $widthMm, $heightMm);
+
+            // Simpan ke file
+            $pdf->Output('F', $pdfPath);
+
+            if (file_exists($pdfPath) && filesize($pdfPath) > 0) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            Log::error('[Signature] FPDF conversion exception', ['error' => $e->getMessage()]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract halaman PDF
+     */
+    private function extractPdfPages(string $sourcePdf, string $outputPdf, int $startPage, int $endPage): void
+    {
+        $command = sprintf(
+            '%s -dQUIET -dSAFER -dBATCH -dNOPAUSE '
+                . '-sDEVICE=pdfwrite -dFirstPage=%d -dLastPage=%d '
+                . '-sOutputFile=%s %s 2>&1',
+            $this->gsPath,
+            $startPage,
+            $endPage,
+            escapeshellarg($outputPdf),
+            escapeshellarg($sourcePdf)
+        );
+
+        $output = [];
+        $returnCode = 0;
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            Log::warning('[Signature] Extract pages failed', ['cmd' => $command, 'output' => $output]);
+        }
+    }
+
+    /**
+     * Merge multiple PDF parts menjadi satu PDF
+     */
+    private function mergePdfParts(array $parts, string $outputPath): void
+    {
+        if (empty($parts)) {
+            throw new \Exception('Tidak ada bagian PDF untuk di-merge');
+        }
+
+        $partsList = implode(' ', array_map('escapeshellarg', $parts));
+
+        $command = sprintf(
+            '%s -dQUIET -dSAFER -dBATCH -dNOPAUSE '
+                . '-sDEVICE=pdfwrite -sOutputFile=%s %s 2>&1',
+            $this->gsPath,
+            escapeshellarg($outputPath),
+            $partsList
+        );
+
+        Log::info('[Signature] gs merge', ['cmd' => $command]);
+
+        $output = [];
+        $returnCode = 0;
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            throw new \Exception('Ghostscript merge gagal: ' . implode("\n", $output));
+        }
+    }
+
+    /**
+     * Get total halaman PDF
+     */
+    private function getPdfPageCount(string $pdfAbsPath): int
+    {
+        try {
+            // Cara 1: gs
+            $command = sprintf(
+                '%s -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNODISPLAY -c "(%s) (r) file runpdfbegin pdfpagecount = quit" 2>&1',
+                $this->gsPath,
+                addslashes($pdfAbsPath)
+            );
+
+            $output = [];
+            $code = 0;
+            exec($command, $output, $code);
+            $out = trim(implode("\n", $output));
+
+            if (is_numeric($out) && (int) $out > 0) {
+                return (int) $out;
+            }
+
+            // Cara 2: pdfinfo (poppler-utils)
+            $output = [];
+            $code = 0;
+            exec('pdfinfo ' . escapeshellarg($pdfAbsPath) . ' 2>&1', $output, $code);
+            $outputStr = implode("\n", $output);
+
+            if (preg_match('/Pages:\s*(\d+)/', $outputStr, $matches)) {
+                return (int) $matches[1];
+            }
+        } catch (\Exception $e) {
+            Log::warning('[Signature] getPdfPageCount failed', ['error' => $e->getMessage()]);
+        }
+
+        return 1;
+    }
+
+    // ===========================================================================
+    // ======================== SAVE POSITION ====================================
+    // ===========================================================================
+
+    /**
+     * Save QR Position — Main Function
+     */
     #[On('save-qr-position')]
     public function savePosition(
         float $x,
@@ -329,51 +834,44 @@ class Signature extends Page implements HasForms
     ): void {
         try {
             // ── Resolve path ───────────────────────────────────────────────────
-            $disk      = Storage::disk('public');
-            $diskRoot  = $disk->path('');  // absolut root storage/app/public
-
+            $disk = Storage::disk('public');
             $ticket = Ticket::where('uuid', $this->ticketId)->first();
             if (! $ticket) throw new \Exception('Ticket tidak ditemukan');
 
             $slug = $this->buildSlug($ticket);
 
-            // Path relatif (untuk Storage & DB)
+            // Path relatif
             $tossRelDir   = 'Tosses';
             $qrRelPath    = "qrcodes/{$slug}.png";
             $finalRelPath = "{$tossRelDir}/{$slug}_final.pdf";
 
-            // Path absolut (untuk Imagick, gs, file_exists)
+            // Path absolut
             $pdfAbs     = $disk->path($this->selectedFile);
             $qrAbs      = $disk->path($qrRelPath);
             $tossAbsDir = $disk->path($tossRelDir);
             $finalAbs   = $disk->path($finalRelPath);
 
-            // File temp absolut
+            // File temp
             $pageImgAbs   = "{$tossAbsDir}/{$slug}_page{$page}.png";
             $mergedPngAbs = "{$tossAbsDir}/{$slug}_merged{$page}.png";
             $mergedPdfAbs = "{$tossAbsDir}/{$slug}_merged{$page}.pdf";
             $beforePdfAbs = "{$tossAbsDir}/{$slug}_before.pdf";
             $afterPdfAbs  = "{$tossAbsDir}/{$slug}_after.pdf";
 
-            Log::info('[Signature] savePosition START', [
+            Log::info('[Signature] savePosition START (GD + endroid version)', [
                 'slug'        => $slug,
                 'page'        => $page,
                 'ratioX'      => $ratioX,
                 'ratioY'      => $ratioY,
-                'diskRoot'    => $diskRoot,
                 'tossAbsDir'  => $tossAbsDir,
-                'finalAbs'    => $finalAbs,
                 'pdfExists'   => file_exists($pdfAbs),
                 'qrExists'    => file_exists($qrAbs),
+                'gsPath'      => $this->gsPath,
             ]);
 
             // ── Pastikan direktori Tosses ada ──────────────────────────────────
             if (! is_dir($tossAbsDir)) {
                 mkdir($tossAbsDir, 0755, true);
-            }
-            // Pastikan Storage juga mengenali direktori ini
-            if (! $disk->exists($tossRelDir)) {
-                $disk->makeDirectory($tossRelDir);
             }
 
             // ── Validasi file input ────────────────────────────────────────────
@@ -381,106 +879,34 @@ class Signature extends Page implements HasForms
                 throw new \Exception("File PDF tidak ditemukan: {$pdfAbs}");
             }
             if (! file_exists($qrAbs)) {
-                // Regenerate QR jika hilang
                 $disk->makeDirectory('qrcodes');
-                $disk->put($qrRelPath, QrCode::format('png')->size(300)->generate(url('toss/' . $slug)));
-                Log::info('[Signature] QR regenerated', ['path' => $qrAbs]);
+                $qrContent = url('toss/' . $slug);
+                $this->generateQrCode($qrContent, $qrRelPath);
+                Log::info('[Signature] QR regenerated with endroid', ['path' => $qrAbs]);
             }
 
-            // ── Step 1: Render halaman PDF → PNG menggunakan gs ───────────────
-            // gs render halaman ke PNG, 150dpi, tanpa butuh GUI
-            $gsRenderCmd = sprintf(
-                'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNOPROMPT '
-                    . '-sDEVICE=png16m -r150 '
-                    . '-dFirstPage=%d -dLastPage=%d '
-                    . '-sOutputFile=%s %s',
-                $page,
-                $page,
-                escapeshellarg($pageImgAbs),
-                escapeshellarg($pdfAbs)
-            );
+            // ── Step 1: Render halaman PDF → PNG ────────────────────────────────
+            $this->renderPdfToPng($pdfAbs, $pageImgAbs, $page);
 
-            Log::info('[Signature] gs render PNG', ['cmd' => $gsRenderCmd]);
-            $procRender = Process::fromShellCommandline($gsRenderCmd);
-            $procRender->run();
+            // ── Step 2: Composite QR ke PNG ─────────────────────────────────────
+            $this->compositeQrToPng($pageImgAbs, $qrAbs, $mergedPngAbs, $ratioX, $ratioY);
 
-            Log::info('[Signature] gs render result', [
-                'ok'      => $procRender->isSuccessful(),
-                'stdout'  => $procRender->getOutput(),
-                'stderr'  => $procRender->getErrorOutput(),
-                'imgExists' => file_exists($pageImgAbs),
-                'imgSize'   => file_exists($pageImgAbs) ? filesize($pageImgAbs) : 0,
-            ]);
+            // ── Step 3: Convert PNG → PDF ───────────────────────────────────────
+            $converted = $this->convertPngToPdfWithFallback($mergedPngAbs, $mergedPdfAbs);
 
-            if (! $procRender->isSuccessful() || ! file_exists($pageImgAbs)) {
-                throw new \Exception('gs gagal render halaman: ' . $procRender->getErrorOutput());
+            if (!$converted) {
+                throw new \Exception('Semua metode konversi PNG ke PDF gagal');
             }
 
-            // ── Step 2: Composite QR ke PNG menggunakan Imagick ───────────────
-            $img = new Imagick($pageImgAbs);
-            $qr  = new Imagick($qrAbs);
-
-            $imgW     = $img->getImageWidth();
-            $imgH     = $img->getImageHeight();
-            $qrSizePx = 150; // ukuran QR fixed di file output
-
-            $qr->resizeImage($qrSizePx, $qrSizePx, Imagick::FILTER_LANCZOS, 1);
-
-            // Posisi dari rasio (0..1) terhadap dimensi PNG
-            $xPx = (int) ($ratioX * $imgW);
-            $yPx = (int) ($ratioY * $imgH);
-            $xPx = max(0, min($xPx, $imgW - $qrSizePx));
-            $yPx = max(0, min($yPx, $imgH - $qrSizePx));
-
-            Log::info('[Signature] Composite QR', [
-                'imgW' => $imgW,
-                'imgH' => $imgH,
-                'xPx'  => $xPx,
-                'yPx'  => $yPx,
-            ]);
-
-            $img->compositeImage($qr, Imagick::COMPOSITE_OVER, $xPx, $yPx);
-            $img->writeImage($mergedPngAbs);
-
-            // Convert PNG → single-page PDF
-            $img->setImageFormat('pdf');
-            $img->writeImage($mergedPdfAbs);
-
-            $img->clear();
-            $img->destroy();
-            $qr->clear();
-            $qr->destroy();
-
-            Log::info('[Signature] Merged PDF written', [
-                'path'   => $mergedPdfAbs,
-                'exists' => file_exists($mergedPdfAbs),
-                'size'   => file_exists($mergedPdfAbs) ? filesize($mergedPdfAbs) : 0,
-            ]);
-
-            // ── Step 3: Extract halaman sebelum & sesudah menggunakan gs ──────
+            // ── Step 4: Extract halaman sebelum & sesudah ───────────────────────
             $totalPages = $this->getPdfPageCount($pdfAbs);
-            $parts      = [];
+            $parts = [];
 
             Log::info('[Signature] PDF total pages', ['total' => $totalPages, 'page' => $page]);
 
-            // Halaman sebelum halaman target
+            // Halaman sebelum
             if ($page > 1) {
-                $gsBeforeCmd = sprintf(
-                    'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE '
-                        . '-sDEVICE=pdfwrite -dFirstPage=1 -dLastPage=%d '
-                        . '-sOutputFile=%s %s',
-                    $page - 1,
-                    escapeshellarg($beforePdfAbs),
-                    escapeshellarg($pdfAbs)
-                );
-                $procBefore = Process::fromShellCommandline($gsBeforeCmd);
-                $procBefore->run();
-                Log::info('[Signature] gs extract before', [
-                    'ok'     => $procBefore->isSuccessful(),
-                    'stderr' => $procBefore->getErrorOutput(),
-                    'exists' => file_exists($beforePdfAbs),
-                    'size'   => file_exists($beforePdfAbs) ? filesize($beforePdfAbs) : 0,
-                ]);
+                $this->extractPdfPages($pdfAbs, $beforePdfAbs, 1, $page - 1);
                 if (file_exists($beforePdfAbs) && filesize($beforePdfAbs) > 0) {
                     $parts[] = $beforePdfAbs;
                 }
@@ -489,72 +915,29 @@ class Signature extends Page implements HasForms
             // Halaman yang sudah ditempeli QR
             $parts[] = $mergedPdfAbs;
 
-            // Halaman sesudah halaman target
+            // Halaman sesudah
             if ($page < $totalPages) {
-                $gsAfterCmd = sprintf(
-                    'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE '
-                        . '-sDEVICE=pdfwrite -dFirstPage=%d '
-                        . '-sOutputFile=%s %s',
-                    $page + 1,
-                    escapeshellarg($afterPdfAbs),
-                    escapeshellarg($pdfAbs)
-                );
-                $procAfter = Process::fromShellCommandline($gsAfterCmd);
-                $procAfter->run();
-                Log::info('[Signature] gs extract after', [
-                    'ok'     => $procAfter->isSuccessful(),
-                    'stderr' => $procAfter->getErrorOutput(),
-                    'exists' => file_exists($afterPdfAbs),
-                    'size'   => file_exists($afterPdfAbs) ? filesize($afterPdfAbs) : 0,
-                ]);
+                $this->extractPdfPages($pdfAbs, $afterPdfAbs, $page + 1, $totalPages);
                 if (file_exists($afterPdfAbs) && filesize($afterPdfAbs) > 0) {
                     $parts[] = $afterPdfAbs;
                 }
             }
 
-            // ── Step 4: Merge semua bagian → final PDF ─────────────────────────
-            $partsList = implode(' ', array_map('escapeshellarg', $parts));
-            $gsMergeCmd = sprintf(
-                'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE '
-                    . '-sDEVICE=pdfwrite -sOutputFile=%s %s',
-                escapeshellarg($finalAbs),
-                $partsList
-            );
+            // ── Step 5: Merge semua bagian → final PDF ─────────────────────────
+            $this->mergePdfParts($parts, $finalAbs);
 
-            Log::info('[Signature] gs merge', [
-                'cmd'   => $gsMergeCmd,
-                'parts' => $parts,
-            ]);
-
-            $procMerge = Process::fromShellCommandline($gsMergeCmd);
-            $procMerge->run();
-
-            Log::info('[Signature] gs merge result', [
-                'ok'          => $procMerge->isSuccessful(),
-                'stderr'      => $procMerge->getErrorOutput(),
-                'finalExists' => file_exists($finalAbs),
-                'finalSize'   => file_exists($finalAbs) ? filesize($finalAbs) : 0,
-                // Cek juga via Storage::disk
-                'storageExists' => $disk->exists($finalRelPath),
-                'storagePath'   => $disk->path($finalRelPath),
-                'storageUrl'    => $disk->url($finalRelPath),
-            ]);
-
-            if (! $procMerge->isSuccessful()) {
-                throw new \Exception('gs merge gagal: ' . $procMerge->getErrorOutput());
-            }
             if (! file_exists($finalAbs) || filesize($finalAbs) === 0) {
                 throw new \Exception("File final tidak ada atau kosong: {$finalAbs}");
             }
 
-            // ── Step 5: Cleanup temp files ─────────────────────────────────────
+            // ── Step 6: Cleanup temp files ─────────────────────────────────────
             foreach ([$pageImgAbs, $mergedPngAbs, $mergedPdfAbs, $beforePdfAbs, $afterPdfAbs] as $tmp) {
                 if ($tmp && file_exists($tmp)) {
-                    unlink($tmp);
+                    @unlink($tmp);
                 }
             }
 
-            // ── Step 6: Simpan ke database ─────────────────────────────────────
+            // ── Step 7: Simpan ke database ─────────────────────────────────────
             DocumentToss::updateOrCreate(
                 [
                     'ticket_code'   => $ticket->ticket_code,
@@ -581,11 +964,9 @@ class Signature extends Page implements HasForms
                 ]
             );
 
-            Log::info('[Signature] DONE', [
+            Log::info('[Signature] DONE (GD + endroid version)', [
                 'finalRelPath' => $finalRelPath,
-                'finalAbs'     => $finalAbs,
                 'finalSize'    => filesize($finalAbs),
-                'storageUrl'   => $disk->url($finalRelPath),
             ]);
 
             Notification::make()
@@ -594,7 +975,7 @@ class Signature extends Page implements HasForms
                 ->success()
                 ->send();
         } catch (\Exception $e) {
-            Log::error('[Signature] savePosition FAILED', [
+            Log::error('[Signature] savePosition FAILED (GD + endroid version)', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -613,36 +994,6 @@ class Signature extends Page implements HasForms
         $progressIndex = $this->extractProgressIndex($fileName);
         $cleanFileName = $this->sanitizeFileName($fileName);
         return "{$ticket->ticket_code}_progress{$progressIndex}_{$cleanFileName}";
-    }
-
-    // ── Get total halaman PDF ──────────────────────────────────────────────────
-    private function getPdfPageCount(string $pdfAbsPath): int
-    {
-        try {
-            // Cara 1: gs
-            $proc = Process::fromShellCommandline(
-                'gs -dQUIET -dSAFER -dBATCH -dNOPAUSE -dNODISPLAY '
-                    . '-c "(' . addslashes($pdfAbsPath) . ') (r) file runpdfbegin pdfpagecount = quit"'
-            );
-            $proc->run();
-            $out = trim($proc->getOutput());
-            if (is_numeric($out) && (int) $out > 0) {
-                return (int) $out;
-            }
-
-            // Cara 2: pdfinfo (bagian dari poppler-utils)
-            $proc2 = Process::fromShellCommandline(
-                'pdfinfo ' . escapeshellarg($pdfAbsPath) . ' | grep "^Pages:" | awk \'{print $2}\''
-            );
-            $proc2->run();
-            $out2 = trim($proc2->getOutput());
-            if (is_numeric($out2) && (int) $out2 > 0) {
-                return (int) $out2;
-            }
-        } catch (\Exception $e) {
-            Log::warning('[Signature] getPdfPageCount failed', ['error' => $e->getMessage()]);
-        }
-        return 99; // fallback: asumsikan banyak halaman supaya after-range tetap diambil
     }
 
     // ── Debug ──────────────────────────────────────────────────────────────────
@@ -682,7 +1033,7 @@ class Signature extends Page implements HasForms
 
     private function extractProgressIndex(string $fileName): int
     {
-        if (preg_match('/progress-(\d+)/', $fileName, $matches)) {
+        if (preg_match('/progress-?(\d+)/', $fileName, $matches)) {
             return (int) $matches[1];
         }
         return 1;

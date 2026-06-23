@@ -340,7 +340,7 @@
 
                 <!-- QR Code -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 animate-slide-up">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">Digital
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-3 p-4 border-b border-gray-100">Digital
                         Verification</h3>
 
                     <div class="text-center mb-6">
@@ -562,13 +562,13 @@
                                 <span
                                     class="font-medium text-gray-900">{{ $file_format ?? strtoupper(pathinfo($url_document ?? '', PATHINFO_EXTENSION)) ?: 'Unknown' }}</span>
                             </div>
-                            <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                            {{-- <div class="flex justify-between items-center py-3 border-b border-gray-100">
                                 <span class="text-gray-600">Expiry Status</span>
                                 <span
                                     class="font-medium {{ $documentData['expired'] ?? false ? 'text-red-600' : 'text-green-600' }}">
                                     {{ $documentData['expired'] ?? false ? 'Expired' : 'Active' }}
                                 </span>
-                            </div>
+                            </div> --}}
                             @if (isset($documentData['expiry_date']))
                                 <div class="flex justify-between items-center py-3">
                                     <span class="text-gray-600">Expiry Date</span>

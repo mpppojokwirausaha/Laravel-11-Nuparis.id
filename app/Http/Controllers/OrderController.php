@@ -11,6 +11,7 @@ use App\Notifications\EventRegistrationSuccessNotification;
 use App\Notifications\LetterOrderSuccessNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Midtrans\Config;
@@ -83,19 +84,35 @@ class OrderController extends Controller
 
             switch ($request->type) {
                 case 'event':
-                    return $product->event_price > 0
+                    $isPaid = $product->event_price > 0;
+
+                    return $isPaid
                         ? $this->createPaidEventOrder($product, $request)
                         : $this->registerFreeEvent($product, $request);
 
                 case 'letter':
-                    return $product->letter_price > 0
+                    $isPaid = $product->letter_price > 0;
+
+                    return $isPaid
                         ? $this->createPaidLetterOrder($product, $request)
                         : $this->orderFreeLetter($product, $request);
             }
         } catch (ValidationException $e) {
+            Log::warning('⚠️ [CREATE TRANSACTION] Validation failed', [
+                'errors' => $e->errors(),
+                'input' => $request->all(),
+                'ip' => $request->ip(),
+            ]);
+
             return response()->json(['errors' => $e->errors()], 422);
         } catch (Exception $e) {
-            Log::error('Transaction creation failed', ['error' => $e->getMessage()]);
+            Log::error('❌ [CREATE TRANSACTION] Failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'input' => $request->all(),
+                'ip' => $request->ip(),
+            ]);
+
             return response()->json(['error' => 'Transaction creation failed'], 500);
         }
     }
@@ -159,6 +176,10 @@ class OrderController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('❌ [FREE EVENT] Registration failed', [
+                'error' => $e->getMessage(),
+                'event_uuid' => $event->uuid,
+            ]);
             throw $e;
         }
     }
@@ -196,6 +217,10 @@ class OrderController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('❌ [FREE LETTER] Order failed', [
+                'error' => $e->getMessage(),
+                'letter_uuid' => $letter->uuid,
+            ]);
             throw $e;
         }
     }
@@ -208,16 +233,14 @@ class OrderController extends Controller
         $participant = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
-            'phone' => 'required|number|max:13',
+            'phone' => 'required|string|max:13',
             'company' => 'nullable|string',
             'source' => 'nullable|string',
         ]);
+
         $participant['phone'] = $this->normalizePhoneNumber($participant['phone']);
-
         $this->checkEventQuota($event);
-
         $orderId = Order::generateEventOrderId();
-
         $snapToken = Snap::getSnapToken([
             'transaction_details' => [
                 'order_id' => $orderId,
@@ -256,7 +279,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Paid Letter Order with Midtrans
+     * Paid Letter Order with MidtransW
      */
     private function createPaidLetterOrder(Letter $letter, Request $request)
     {
@@ -302,14 +325,31 @@ class OrderController extends Controller
     }
 
     /**
-     * Midtrans Webhook Handler
+     * Midtrans Webhook HandlerQ
      */
     public function handleNotification(Request $request)
     {
         try {
             $notification = new Notification();
-            $order = Order::where('order_id', $notification->order_id)->first();
+            $orderId = $notification->order_id;
+
+            // CEK: Apakah ini order dari SmartForms?
+            if (str_contains($orderId, 'SMARTFORMS.ID-FORMS-ORD-')) {
+                Log::info('🔄 [WEBHOOK] Detected SmartForms order, forwarding to SaaS', [
+                    'order_id' => $orderId
+                ]);
+
+                return $this->forwardToSmartForms($request->all());
+            }
+
+            // CEK: Apakah ini order dari Nuparis (Event/Letter)?
+            $order = Order::where('order_id', $orderId)->first();
+
             if (!$order) {
+                Log::warning('❌ [WEBHOOK] Order not found in Nuparis database', [
+                    'order_id' => $orderId,
+                    'search_in' => 'orders_table',
+                ]);
                 return response()->json(['message' => 'Order not found'], 404);
             }
 
@@ -334,13 +374,88 @@ class OrderController extends Controller
             return response()->json(['message' => 'Webhook processed']);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Webhook failed', ['error' => $e->getMessage()]);
+            Log::error('❌ [WEBHOOK] Webhook failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'order_id' => $request->order_id ?? 'unknown',
+            ]);
             return response()->json(['message' => 'Webhook failed'], 500);
+        }
+    }
+
+    /**
+     * Forward ke SmartForms (SaaS)
+     */
+    private function forwardToSmartForms(array $payload)
+    {
+
+        try {
+            $saasUrl = config('services.smartforms.callback_url');
+            $apiKey = config('services.smartforms.api_key');
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'X-API-Key' => $apiKey,
+            ])
+                ->timeout(10)
+                ->post($saasUrl, $payload);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'message' => 'Forwarded to SmartForms',
+                    'saas_response' => $response->json()
+                ], 200);
+            }
+
+            // Simpan untuk retry nanti
+            $this->saveFailedForward($payload, $response->body());
+
+            return response()->json([
+                'message' => 'Callback received, but forward to SaaS failed',
+                'saas_error' => $response->body()
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('❌ [FORWARD] Forward to SmartForms exception', [
+                'order_id' => $payload['order_id'] ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $this->saveFailedForward($payload, $e->getMessage());
+
+            return response()->json([
+                'message' => 'Callback received, but forward to SaaS failed'
+            ], 200);
+        }
+    }
+
+    /**
+     * Simpan failed forward ke database untuk retry
+     */
+    private function saveFailedForward(array $payload, string $error)
+    {
+        try {
+            DB::table('failed_callbacks')->insert([
+                'order_id' => $payload['order_id'] ?? null,
+                'payload' => json_encode($payload),
+                'error' => $error,
+                'attempts' => 0,
+                'status' => 'pending',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ [FORWARD] Failed to save failed callback', [
+                'error' => $e->getMessage(),
+                'payload' => $payload
+            ]);
         }
     }
 
     private function afterPaymentSuccess(Order $order): void
     {
+
         if ($order->order_reference_type === self::TYPE_LETTER) {
             $this->sendEmail($order, new LetterOrderSuccessNotification($order));
             return;
@@ -386,10 +501,16 @@ class OrderController extends Controller
         try {
             $notifiable->notify($notification);
         } catch (\Exception $e) {
-            Log::warning('Email sending failed', ['error' => $e->getMessage()]);
+            Log::warning('⚠️ [EMAIL] Email sending failed', [
+                'error' => $e->getMessage(),
+                'class' => get_class($notification),
+            ]);
         }
     }
 
+    /**
+     * Register free event (public endpoint)
+     */
     public function registerFree(Request $request)
     {
         try {
@@ -402,6 +523,9 @@ class OrderController extends Controller
                 'source' => 'nullable|string|max:255',
             ]);
         } catch (ValidationException $e) {
+            Log::warning('⚠️ [REGISTER FREE] Validation failed', [
+                'errors' => $e->errors(),
+            ]);
             return response()->json(['errors' => $e->errors()], 422);
         }
 
