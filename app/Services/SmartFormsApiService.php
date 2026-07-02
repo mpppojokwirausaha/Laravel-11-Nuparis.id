@@ -202,7 +202,7 @@ class SmartFormsApiService
         try {
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
-            ])->get($this->baseUrl . '/discounts/' . $code);
+            ])->get($this->baseUrl . '/discounts/code/' . $code);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -271,6 +271,120 @@ class SmartFormsApiService
             return false;
         } catch (\Exception $e) {
             Log::error('SmartForms API Exception (deleteDiscount): ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /* =========================================================
+     | USERS
+     |=========================================================*/
+
+    public function getUsers(array $filters = [], int $page = 1, int $limit = 15): array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->get($this->baseUrl . '/users', array_merge([
+                'page'  => $page,
+                'limit' => $limit,
+            ], $filters));
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                return [
+                    'data'         => $data['data'] ?? [],
+                    'total'        => $data['total'] ?? count($data['data'] ?? []),
+                    'current_page' => $data['current_page'] ?? 1,
+                    'last_page'    => $data['last_page'] ?? 1,
+                ];
+            }
+
+            Log::error('SmartForms API Error (users): ' . $response->body());
+            return $this->emptyResult();
+        } catch (\Exception $e) {
+            Log::error('SmartForms API Exception (users): ' . $e->getMessage());
+            return $this->emptyResult();
+        }
+    }
+
+    public function getUser(string $id): ?array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->get($this->baseUrl . '/users/' . $id);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data'] ?? null;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('SmartForms API Exception (user): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function createUser(array $payload): ?array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($this->baseUrl . '/users', $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data'] ?? $data;
+            }
+
+            Log::error('SmartForms API Error (createUser): ' . $response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('SmartForms API Exception (createUser): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function updateUser(string $id, array $payload): ?array
+    {
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->put($this->baseUrl . '/users/' . $id, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data'] ?? $data;
+            }
+
+            Log::error('SmartForms API Error (updateUser): ' . $response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('SmartForms API Exception (updateUser): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Soft delete user. Endpoint ini tidak memerlukan Authorization header.
+     */
+    public function deleteUser(string $id): bool
+    {
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->delete($this->baseUrl . '/users/' . $id);
+
+            if ($response->successful()) {
+                return true;
+            }
+
+            Log::error('SmartForms API Error (deleteUser): ' . $response->body());
+            return false;
+        } catch (\Exception $e) {
+            Log::error('SmartForms API Exception (deleteUser): ' . $e->getMessage());
             return false;
         }
     }
