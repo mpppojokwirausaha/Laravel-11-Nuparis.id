@@ -67,6 +67,12 @@
                         <span>{{ $infos->address }}</span>
                     </li>
                     <li class="flex items-center gap-3">
+                        <i class="fas fa-phone text-primary"></i>
+                        <a href="tel:622139711876">
+                            <span>(021)39711876</span>
+                        </a>
+                    </li>
+                    <li class="flex items-center gap-3">
                         <i class="fas fa-envelope text-primary"></i>
                         <a href="mailto:{{ $infos->email }}">
                             <span>{{ $infos->email }}</span>

@@ -66,31 +66,24 @@ class EventController extends Controller
 
     public function eventDetail($slug)
     {
-        // Load event dengan count participants menggunakan withCount
         $event = Event::withCount('participants')->where('event_slug', $slug)->first();
 
         if (!$event) {
             abort(404, 'Event tidak ditemukan');
         }
 
-        if ($event->event_description) { // ganti nama kolom sesuai dengan kolom deskripsi event Anda
+        if ($event->event_description) {
             $event->event_description = $this->cleanTrixContent($event->event_description);
         }
 
-        // Data dari withCount akan tersedia di $event->participants_count
         $registeredCount = $event->participants_count ?? 0;
-
-        // Hitung sisa kuota
         $remainingQuota = $event->event_quota ? max($event->event_quota - $registeredCount, 0) : null;
 
-        // Cek apakah pendaftaran aktif (event_is_active = true)
         $isRegistrationActive = (bool) $event->event_is_active;
-
-        // Cek apakah kuota masih tersedia
         $isQuotaAvailable = $remainingQuota === null || $remainingQuota > 0;
+        $isEventEnded = now()->gt($event->event_date_end); // <-- tambahan
 
-        // Tombol pendaftaran aktif jika event aktif DAN kuota tersedia
-        $canRegister = $isRegistrationActive && $isQuotaAvailable;
+        $canRegister = $isRegistrationActive && $isQuotaAvailable && !$isEventEnded;
 
         return view('front-end.event-detail', [
             'title' => 'Event | ' . config('app.name'),
@@ -101,6 +94,7 @@ class EventController extends Controller
             'remainingQuota' => $remainingQuota,
             'canRegister' => $canRegister,
             'isRegistrationActive' => $isRegistrationActive,
+            'isEventEnded' => $isEventEnded,
         ]);
     }
 

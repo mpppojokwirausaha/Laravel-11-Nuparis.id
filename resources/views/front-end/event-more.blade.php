@@ -819,7 +819,7 @@
 
                 // Determine status
                 const now = new Date();
-                const start = new Date(event.);
+                const start = new Date(event.event_date_start);
                 const end = new Date(event.event_date_end);
                 let statusClass = '';
                 let statusText = '';
@@ -875,84 +875,87 @@
                 }
 
                 var card = $('\
-                            <article class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-row h-full lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">\
-                                <div class="relative w-1/3 min-w-[140px] h-auto overflow-hidden">\
-                                    <img src="{{ asset('storage/') }}/' + event.event_image + '" alt="' + event
+                                            <article class="cursor-pointer bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-row h-full lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">\
+                                                <div class="relative w-1/3 min-w-[140px] h-auto overflow-hidden">\
+                                                    <img src="{{ asset('storage/') }}/' + event.event_image + '" alt="' +
+                    event
                     .event_title + '" \
-                                        class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"\
-                                        onerror="this.src=\'https://via.placeholder.com/400x300?text=Event+Image\'">\
-                                    <div class="absolute top-2 left-2 z-10 opacity-50">\
-                                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">\
-                                            <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo" class="w-6 h-6">\
-                                        </div>\
-                                    </div>\
-                                    <div class="absolute bottom-2 left-2 z-10 ' + statusClass + ' text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">\
-                                        ' + statusText + '\
-                                    </div>\
-                                </div>\
-                                <div class="p-5 w-2/3 flex flex-col h-full">\
-                                    <div class="flex-grow">\
-                                        <span class="text-xs font-bold text-primary uppercase tracking-wider mb-1">\
-                                            ' + categoryLabel + '\
-                                        </span>\
-                                        <h3 class="font-bold text-gray-800 text-lg mb-1 lg:group-hover:text-primary transition">\
-                                            ' + event.event_title + '\
-                                        </h3>\
-                                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2">\
-                                            <i class="far fa-calendar-check"></i>\
-                                            <span>' + formattedDate + '</span>\
-                                        </div>\
-                                        <div class="mb-2">\
-                                            <span class="inline-block ' + (isFree ? 'bg-green-100 text-green-800' :
+                                                        class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"\
+                                                        onerror="this.src=\'https://via.placeholder.com/400x300?text=Event+Image\'">\
+                                                    <div class="absolute top-2 left-2 z-10 opacity-50">\
+                                                        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">\
+                                                            <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo" class="w-6 h-6">\
+                                                        </div>\
+                                                    </div>\
+                                                    <div class="absolute bottom-2 left-2 z-10 ' + statusClass + ' text-white text-xs font-semibold px-2 py-1 rounded shadow-sm">\
+                                                        ' + statusText + '\
+                                                    </div>\
+                                                </div>\
+                                                <div class="p-5 w-2/3 flex flex-col h-full">\
+                                                    <div class="flex-grow">\
+                                                        <span class="text-xs font-bold text-primary uppercase tracking-wider mb-1">\
+                                                            ' + categoryLabel + '\
+                                                        </span>\
+                                                        <h3 class="font-bold text-gray-800 text-lg mb-1 lg:group-hover:text-primary transition">\
+                                                            ' + event.event_title + '\
+                                                        </h3>\
+                                                        <div class="flex items-center gap-2 text-gray-500 text-xs mb-2">\
+                                                            <i class="far fa-calendar-check"></i>\
+                                                            <span>' + formattedDate + '</span>\
+                                                        </div>\
+                                                        <div class="mb-2">\
+                                                            <span class="inline-block ' + (isFree ?
+                        'bg-green-100 text-green-800' :
                         'bg-blue-100 text-blue-800') + ' text-xs font-bold px-2 py-1 rounded">\
-                                                ' + priceText + '\
-                                            </span>\
-                                        </div>\
-                                        <div class="mb-3">\
-                                            <div class="flex justify-between items-center mb-1">\
-                                                <span class="text-xs font-medium text-gray-700">Kuota Terisi:</span>\
-                                                <span class="text-xs font-bold ' + (quotaPercentage >= 90 ?
+                                                                ' + priceText + '\
+                                                            </span>\
+                                                        </div>\
+                                                        <div class="mb-3">\
+                                                            <div class="flex justify-between items-center mb-1">\
+                                                                <span class="text-xs font-medium text-gray-700">Kuota Terisi:</span>\
+                                                                <span class="text-xs font-bold ' + (quotaPercentage >= 90 ?
                         'text-red-600' :
                         quotaPercentage >= 70 ? 'text-yellow-600' : 'text-green-600') + '">\
-                                                    ' + quotaPercentage + '%\
-                                                </span>\
-                                            </div>\
-                                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">\
-                                                <div class="' + progressBarColor + ' h-2 rounded-full" style="width: ' +
+                                                                    ' + quotaPercentage + '%\
+                                                                </span>\
+                                                            </div>\
+                                                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2">\
+                                                                <div class="' + progressBarColor +
+                    ' h-2 rounded-full" style="width: ' +
                     quotaPercentage + '%"></div>\
-                                            </div>\
-                                            <div class="flex justify-between items-center">\
-                                                <div class="text-xs text-gray-600">\
-                                                    <i class="fas fa-users mr-1"></i>\
-                                                    ' + registered + '/' + quota + ' peserta\
-                                                </div>\
-                                                <div class="' + quotaClass + ' text-[10px] font-bold px-2 py-1 rounded border">\
-                                                    ' + quotaText + '\
-                                                </div>\
-                                            </div>\
-                                        </div>\
-                                        <p class="text-gray-500 text-sm line-clamp-2">\
-                                            ' + shortDescription + '\
-                                        </p>\
-                                    </div>\
-                                    <div class="flex gap-3 mt-4">\
-                                        <a href="/event/' + event.event_slug + '"\
-                                            class="flex-1 flex items-center justify-center bg-red-500 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700">\
-                                            Lihat Detail\
-                                        </a>\
-                                        ' + (canRegister ?
+                                                            </div>\
+                                                            <div class="flex justify-between items-center">\
+                                                                <div class="text-xs text-gray-600">\
+                                                                    <i class="fas fa-users mr-1"></i>\
+                                                                    ' + registered + '/' + quota + ' peserta\
+                                                                </div>\
+                                                                <div class="' + quotaClass + ' text-[10px] font-bold px-2 py-1 rounded border">\
+                                                                    ' + quotaText + '\
+                                                                </div>\
+                                                            </div>\
+                                                        </div>\
+                                                        <p class="text-gray-500 text-sm line-clamp-2">\
+                                                            ' + shortDescription + '\
+                                                        </p>\
+                                                    </div>\
+                                                    <div class="flex gap-3 mt-4">\
+                                                        <a href="/event/' + event.event_slug + '"\
+                                                            class="flex-1 flex items-center justify-center bg-red-500 text-white font-semibold py-3 px-4 rounded-lg text-center transition duration-200 lg:hover:bg-red-700">\
+                                                            Lihat Detail\
+                                                        </a>\
+                                                        ' + (canRegister ?
                         '<a href="#" class="flex-[0_0_25%] flex items-center justify-center bg-white border-2 border-primary text-primary font-semibold py-3 rounded-lg transition duration-200 lg:hover:bg-primary lg:hover:text-white">\
-                                                <i class="fas fa-shopping-cart text-sm"></i>\
-                                            </a>' :
+                                                                <i class="fas fa-shopping-cart text-sm"></i>\
+                                                            </a>' :
                         '<button disabled\
-                                                class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">\
-                                                <i class="fas fa-shopping-cart text-sm"></i>\
-                                            </button>'
+                                                                class="flex-[0_0_25%] flex items-center justify-center bg-gray-300 text-gray-500 font-semibold py-3 rounded-lg cursor-not-allowed">\
+                                                                <i class="fas fa-shopping-cart text-sm"></i>\
+                                                            </button>'
                     ) + '\
-                                    </div>\
-                                </div>\
-                            </article>\
-                        ');
+                                                    </div>\
+                                                </div>\
+                                            </article>\
+                                        ');
 
                 // Add click event for whole card
                 card.on('click', function(e) {

@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use \App\Models\Activity;
 use \App\Models\Article;
-use App\Models\DocumentToss;
 use \App\Models\News;
 use \App\Models\Partner;
 use \App\Models\Review;
+use App\Models\DocumentToss;
 use App\Models\Event;
 use App\Models\Hero;
 use App\Models\Info;
@@ -17,6 +17,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Fluent;
 
 class LandingpageController extends Controller
 {
@@ -43,6 +44,27 @@ class LandingpageController extends Controller
             return $event;
         });
 
+        $offices = collect(config('app.offices_location.list'))
+            ->filter(fn($office) => !empty($office['office_name']))
+            ->values()
+            ->all();
+        $regionOrder = config('app.offices_location.region_order');
+        $groupedOffices = collect($offices)
+            ->groupBy('office_region')
+            ->sortBy(function ($group, $region) use ($regionOrder) {
+                $pos = array_search($region, $regionOrder);
+                return $pos === false ? 999 : $pos;
+            });
+        $firstOffice = $offices[0] ?? null;
+
+        $office_location = new Fluent([
+            'offices' => $offices,
+            'grouped' => $groupedOffices,
+            'first_embed' => $firstOffice['office_embed_src'] ?? null,
+            'first_external' => $firstOffice['office_external_url'] ?? null,
+            'total' => count($offices),
+        ]);
+
         return view('front-end.landingpage', [
             'title' => env('APP_NAME') . ' | Support Your Company Goal',
             'events' => $events,
@@ -50,7 +72,8 @@ class LandingpageController extends Controller
             'partnerLayers' => (new Partner())->getPartner(),
             'articles' => (new Article())->getArticle(),
             'news' => (new News())->getNews(),
-            'infos' => ((new Info))->getInfo(),
+            'infos' => (new Info())->getInfo(),
+            'offices' => $office_location,
             'reviews' => (new Review())->getReview(),
             'members' => (new User())->getMembers(),
             'consultants' => (new User())->getconsultants(),

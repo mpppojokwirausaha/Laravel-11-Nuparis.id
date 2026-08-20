@@ -26,6 +26,13 @@ class InfoSeeder extends Seeder
             'meta_desc' => 'lorem ipsum dolor sit amet',
             'meta_keywords' => 'lorem ipsum dolor sit amet',
             'meta_image' => env('META_IMAGE', 'meta/01JVVK1RJBHPS0CJ9D28W57AHG.png'),
+            'offices_location' => [
+                'location' => '',
+                'address' => '',
+                'latitude' => '',
+                'longtide' => '',
+                'no_telephone' => '',
+            ]
         ]);
     }
 }

@@ -24,11 +24,12 @@ return new class extends Migration
             $table->text('meta_desc');
             $table->string('meta_keywords');
             $table->string('meta_image');
+            $table->json('offices_location');
             $table->timestamps();
         });
     }
 
-    /**
+    /**s
      * Reverse the migrations.
      */
     public function down(): void

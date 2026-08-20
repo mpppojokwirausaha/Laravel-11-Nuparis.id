@@ -64,7 +64,6 @@
             background: rgba(255, 255, 255, 0.4);
         }
 
-        /* Progress bar di dalam dot aktif */
         .hero-pagination .swiper-pagination-bullet-active::after {
             content: '';
             position: absolute;
@@ -174,11 +173,9 @@
                         Browser Anda tidak mendukung tag video.
                     </video>
 
-                    {{-- Overlay --}}
                     <div class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none">
                     </div>
 
-                    {{-- Fullscreen Button --}}
                     <button id="fullscreenBtn"
                         class="absolute bottom-5 right-5 bg-black/60 hover:bg-black/80 text-white px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105 z-10">
                         <svg id="expandIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -207,21 +204,17 @@
                             @endforeach
                         </div>
 
-                        {{-- Pagination dots --}}
                         <div class="swiper-pagination hero-pagination"></div>
 
-                        {{-- Navigation arrows --}}
                         <div class="swiper-button-prev !text-white !w-10 !h-10 after:!text-sm"></div>
                         <div class="swiper-button-next !text-white !w-10 !h-10 after:!text-sm"></div>
                     </div>
 
-                    {{-- Overlay --}}
                     <div
                         class="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none z-10">
                     </div>
                 </div>
 
-                {{-- Swiper JS --}}
                 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
                 <script>
                     const heroSwiper = new Swiper('.hero-swiper', {
@@ -327,7 +320,7 @@
                                 <div
                                     class="absolute top-2 left-12 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-slate-700 z-10 pl-3">
                                     <i class="far fa-calendar-alt mr-1"></i>
-                                    {{ $item->created_at->translatedFormat('d M Y') }}
+                                    {{ $item->activity_date ? \Carbon\Carbon::parse($item->activity_date)->translatedFormat('d M Y') : $item->created_at->translatedFormat('d M Y') }}
                                 </div>
 
                                 <div class="relative w-1/3 overflow-hidden rounded-l-xl min-h-[140px]">
@@ -485,7 +478,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-fr">
-                    @foreach ($activities->take(8) as $item)
+                    @foreach ($activities->sortByDesc('created_at')->take(8) as $item)
                         <a href="{{ route('activity-detail', $item->activity_slug) }}" class="block h-full">
                             <article
                                 class="group bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-full animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl cursor-pointer">
@@ -512,8 +505,6 @@
 
                                 <div class="p-4 flex flex-col flex-1">
                                     <div class="flex flex-col flex-1">
-                                        {{-- <span
-                                            class="text-xs font-bold text-orange-600 uppercase tracking-wider">Kunjungan</span> --}}
                                         <h3
                                             class="font-bold text-slate-800 mt-2 mb-2 text-sm line-clamp-2 lg:group-hover:text-primary transition">
                                             {{ $item->activity_title }}
@@ -687,6 +678,7 @@
                 </div>
             </section>
 
+            <!-- Property Section -->
             <section>
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
@@ -699,21 +691,16 @@
                     @endif
                 </div>
 
-                <!-- Property Container -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    <!-- Property 1 -->
-
                     @foreach ($properties->take(4) as $item)
                         <div
                             class="bg-white rounded-xl overflow-hidden shadow-lg cursor-pointer animate-fade-in-up lg:hover:-translate-y-1 transition-all duration-300 lg:hover:shadow-xl group">
-                            <!-- Image with overlay -->
                             <div class="relative h-56 overflow-hidden">
                                 <img src="{{ asset('storage/' . $item->property_image[0]) }}"
                                     alt="{{ $item->property_title }}"
                                     class="w-full h-full object-cover lg:group-hover:scale-105 transition-transform duration-500"
                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1568605114967-8130f3a36994?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
 
-                                <!-- Logo Overlay -->
                                 <div class="absolute top-3 left-3 z-10 opacity-50">
                                     <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                                         <img src="{{ asset('storage/' . $infos->meta_image) }}" alt="NUPARIS Logo"
@@ -721,7 +708,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Price Tag -->
                                 <div
                                     class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg shadow-sm">
                                     <div class="text-sm font-bold text-red-600"
@@ -729,9 +715,7 @@
                                 </div>
                             </div>
 
-                            <!-- Content -->
                             <div class="p-5">
-                                <!-- Title -->
                                 <h3
                                     class="text-lg font-bold text-slate-800 mb-2 lg:group-hover:text-red-600 transition-colors">
                                     {{ $item->property_name }}
@@ -740,16 +724,13 @@
                                     {{ strip_tags($item->property_description) }}
                                 </p>
 
-                                <!-- Property Details -->
                                 <div class="grid grid-cols-2 gap-2 mb-4">
-                                    <!-- Luas Tanah -->
                                     <div class="text-center bg-slate-50 py-2 rounded-lg border border-slate-100">
                                         <div class="text-red-600 text-sm font-bold">{{ $item->property_land_area }}
                                         </div>
                                         <div class="text-slate-500 text-[10px]">Luas Tanah</div>
                                     </div>
 
-                                    <!-- Luas Bangunan -->
                                     <div class="text-center bg-slate-50 py-2 rounded-lg border border-slate-100">
                                         <div class="text-red-600 text-sm font-bold">
                                             {{ $item->property_building_area }}</div>
@@ -757,7 +738,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Address -->
                                 <div class="flex items-start gap-3 mb-5 p-3 bg-slate-50 rounded-lg">
                                     <i class="fas fa-map-marker-alt text-red-600 mt-1"></i>
                                     <div>
@@ -767,15 +747,12 @@
                                     </div>
                                 </div>
 
-                                <!-- CTA Buttons -->
                                 <div class="flex gap-3">
-                                    <!-- Tombol Lihat Detail -->
                                     <a href="{{ route('property-detail', $item->property_slug) }}"
                                         class="w-[85%] bg-red-600 lg:hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 text-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
                                         Lihat Detail
                                     </a>
 
-                                    <!-- Tombol WhatsApp -->
                                     <a href="https://wa.me/{{ str_replace(' ', '', $item->property_no_whatsapp ?: env('NO_WHATSAPP')) }}?text=Halo, saya tertarik dengan properti &quot;{{ urlencode($item->property_name) }}&quot; di NUPARIS.ID.%0A%0ALink detail: {{ url()->current() }}%0A%0AMohon info lebih lanjut. Terima kasih."
                                         target="_blank"
                                         class="w-[15%] bg-white border-2 border-red-600 text-red-600 lg:hover:bg-red-600 lg:hover:text-white font-semibold py-3 rounded-lg transition-colors duration-200 flex items-center justify-center lg:hover:-translate-y-0.5 lg:hover:shadow-md">
@@ -899,27 +876,147 @@
                             website</p>
                     </div>
                 </div>
+            </section>
 
-                <div class="mt-12 text-center">
-                    <div class="bg-gradient-to-r from-primary to-red-500 rounded-2xl p-8 text-white">
-                        <h3 class="text-xl lg:text-3xl font-bold mb-4">Informasi Seputar nuparis</h3>
-                        <p class="mb-6 max-w-2xl mx-auto">Bergabunglah dengan jaringan mitra kami untuk
-                            bersama-sama membangun layanan publik yang lebih baik.</p>
-                        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                            <button id="openProposalModal"
-                                class="bg-white text-primary font-bold px-6 py-3 rounded-lg hover:bg-slate-100 hover:shadow-md transition-all duration-300 cursor-pointer">
-                                <i class="fas fa-envelope mr-2"></i>
-                                <span class="text-md font-bold lg:text-md">Ajukan Proposal Kerja Sama</span>
-                            </button>
-                            <a href="{{ asset('storage/' . $infos->partner_guide) }}"
-                                class="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 hover:shadow-md transition-all duration-300">
-                                <i class="fas fa-download mr-2"></i>
-                                <span class="text-md font-bold lg:text-md">Download Panduan Mitra</span>
-                            </a>
+            <section>
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
+                        <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Lokasi Kantor</h2>
+                    </div>
+                </div>
+
+                <div class="hidden lg:grid grid-cols-5 gap-6">
+                    <div class="lg:col-span-2 lg:max-h-[560px] lg:overflow-y-auto lg:pr-1">
+                        @foreach ($offices->grouped as $region => $regionOffices)
+                            <div class="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm px-1 py-2 mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-primary">
+                                    {{ $region }}
+                                </span>
+                                <span class="text-[10px] text-slate-400 ml-1">
+                                    ({{ $regionOffices->count() }} kantor)
+                                </span>
+                            </div>
+
+                            <div class="flex flex-col gap-3 mb-4">
+                                @foreach ($regionOffices as $item)
+                                    <button type="button"
+                                        class="office-list-item {{ $loop->parent->first && $loop->first ? 'border-primary bg-primary/5 shadow-md' : '' }} w-full text-left bg-white rounded-xl border border-slate-100 shadow-sm p-3 sm:p-4 flex items-center justify-between transition-all duration-300 hover:shadow-md hover:border-primary/30 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none active:outline-none active:shadow-sm group"
+                                        data-map-src="{{ $item['office_embed_src'] }}"
+                                        data-map-external="{{ $item['office_external_url'] }}">
+
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-bold text-slate-800 text-sm mb-1">
+                                                {{ $item['office_name'] }}
+                                            </h3>
+                                            <p class="text-slate-500 text-xs mb-2">
+                                                <i
+                                                    class="fas fa-map-marker-alt text-primary mr-1"></i>{{ $item['office_address'] }}
+                                            </p>
+                                            @if (!empty($item['office_phone']))
+                                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                                    <a href="tel:{{ $item['office_phone'] }}"
+                                                        onclick="event.stopPropagation()"
+                                                        class="text-slate-500 text-xs hover:text-primary transition">
+                                                        <i
+                                                            class="fas fa-phone-alt mr-1"></i>{{ $item['office_phone'] }}
+                                                    </a>
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <a href="{{ $item['office_external_url'] }}" target="_blank"
+                                            onclick="event.stopPropagation()"
+                                            class="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-200 flex items-center justify-center ml-3">
+                                            <i
+                                                class="fas fa-chevron-right text-sm group-hover:translate-x-0.5 transition-transform duration-200"></i>
+                                        </a>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="lg:col-span-3">
+                        <div class="lg:sticky lg:top-24">
+                            <div id="sharedOfficeMapWrap"
+                                class="relative rounded-xl shadow-sm border border-slate-100 h-[560px] bg-slate-100">
+                                <iframe id="sharedOfficeMap" src="{{ $offices->first_embed }}"
+                                    class="w-full h-full border-0 pointer-events-auto" loading="lazy"
+                                    referrerpolicy="no-referrer-when-downgrade" allowfullscreen
+                                    title="Peta Lokasi Kantor">
+                                </iframe>
+                                <a href="{{ $offices->first_external }}" id="sharedOfficeMapExternal"
+                                    target="_blank"
+                                    class="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm text-primary text-xs font-bold px-3 py-2 rounded-lg shadow-sm hover:bg-white transition z-10">
+                                    <i class="fas fa-up-right-from-square mr-1"></i>Buka di Google Maps
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <div class="lg:hidden swiper pb-9" id="lokasiMobileSwiper">
+                    <div class="swiper-wrapper">
+                        @foreach ($offices->offices as $index => $item)
+                            <div class="swiper-slide">
+                                <div
+                                    class="relative rounded-2xl overflow-hidden shadow-[0_12px_32px_rgba(0,0,0,0.12)] h-[260px] after:content-[''] after:absolute after:inset-0 after:bg-gradient-to-t after:from-slate-900/40 after:to-transparent after:pointer-events-none">
+                                    <iframe src="{{ $item['office_embed_src'] }}"
+                                        class="w-full h-full border-0 pointer-events-none md:pointer-events-auto"
+                                        loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen
+                                        title="{{ $item['office_name'] }}">
+                                    </iframe>
+
+                                    <span
+                                        class="absolute top-3 right-3 z-10 bg-slate-900/65 text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                                        {{ $index + 1 }}/{{ $offices->total }}
+                                    </span>
+
+                                    <span
+                                        class="md:hidden absolute top-3 left-3 z-10 bg-slate-900/65 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                                        <i class="fas fa-lock mr-1"></i>Peta terkunci di HP
+                                    </span>
+
+                                    <span
+                                        class="absolute left-3 bottom-3 z-10 bg-white/95 text-slate-900 text-xs font-semibold px-3 py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-lg max-w-[calc(100%-24px)]">
+                                        <i class="fas fa-map-marker-alt text-primary"></i>
+                                        <span class="truncate">{{ $item['office_name'] }}@if (!empty($item['office_region']))
+                                                — {{ $item['office_region'] }}
+                                            @endif
+                                        </span>
+                                    </span>
+
+                                    <a href="{{ $item['office_external_url'] }}" target="_blank"
+                                        class="absolute bottom-3 right-3 z-10 bg-white/95 text-red-600 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-lg">
+                                        <i class="fas fa-up-right-from-square mr-1"></i>Buka
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="swiper-pagination mt-2 relative"></div>
+                </div>
             </section>
+
+            <div class="mt-12 text-center">
+                <div class="bg-gradient-to-r from-primary to-red-500 rounded-2xl p-8 text-white">
+                    <h3 class="text-xl lg:text-3xl font-bold mb-4">Informasi Seputar nuparis</h3>
+                    <p class="mb-6 max-w-2xl mx-auto">Bergabunglah dengan jaringan mitra kami untuk
+                        bersama-sama membangun layanan publik yang lebih baik.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button id="openProposalModal"
+                            class="bg-white text-primary font-bold px-6 py-3 rounded-lg hover:bg-slate-100 hover:shadow-md transition-all duration-300 cursor-pointer">
+                            <i class="fas fa-envelope mr-2"></i>
+                            <span class="text-md font-bold lg:text-md">Ajukan Proposal Kerja Sama</span>
+                        </button>
+                        <a href="{{ asset('storage/' . $infos->partner_guide) }}"
+                            class="bg-transparent border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-white/10 hover:shadow-md transition-all duration-300">
+                            <i class="fas fa-download mr-2"></i>
+                            <span class="text-md font-bold lg:text-md">Download Panduan Mitra</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Footer -->
@@ -928,16 +1025,12 @@
 
     <!-- MODAL POPUP PROPOSAL -->
     <div id="proposalModal" class="fixed inset-0 z-[100] hidden overflow-y-auto">
-        <!-- Backdrop -->
         <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"></div>
 
-        <!-- Modal Container -->
         <div class="flex min-h-full items-center justify-center p-4 text-center">
-            <!-- Modal Content -->
             <div
                 class="relative w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all">
 
-                <!-- Header - Gmail Style -->
                 <div class="border-b border-gray-200 bg-white px-6 py-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
@@ -959,9 +1052,7 @@
                     </div>
                 </div>
 
-                <!-- Form Container -->
                 <form id="proposalForm" class="bg-white">
-                    <!-- Subject/Title Field -->
                     <div class="border-b border-gray-200 px-6 py-4">
                         <div class="flex items-center space-x-3">
                             <span class="text-sm font-medium text-gray-700">Judul:</span>
@@ -971,7 +1062,6 @@
                         </div>
                     </div>
 
-                    <!-- Sender Info -->
                     <div class="grid grid-cols-1 gap-6 border-b border-gray-200 p-6 md:grid-cols-2">
                         <div>
                             <label for="email" class="mb-2 block text-sm font-medium text-gray-700">
@@ -991,7 +1081,6 @@
                         </div>
                     </div>
 
-                    <!-- Message Body -->
                     <div class="p-6">
                         <label for="body" class="mb-3 block text-sm font-medium text-gray-700">
                             Isi Proposal
@@ -1003,7 +1092,6 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
                         <div class="text-sm text-gray-500">
                             <i class="fas fa-info-circle mr-2"></i>
@@ -1022,7 +1110,6 @@
                     </div>
                 </form>
 
-                <!-- Loading State -->
                 <div id="loadingState" class="hidden bg-white p-12">
                     <div class="flex flex-col items-center justify-center space-y-4">
                         <div class="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent">
@@ -1034,7 +1121,6 @@
                     </div>
                 </div>
 
-                <!-- Success State -->
                 <div id="successState" class="hidden bg-white p-12">
                     <div class="flex flex-col items-center justify-center space-y-6">
                         <div class="flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
@@ -1066,7 +1152,6 @@
                     </div>
                 </div>
 
-                <!-- Error State -->
                 <div id="errorState" class="hidden bg-white p-12">
                     <div class="flex flex-col items-center justify-center space-y-6">
                         <div class="flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
@@ -1104,10 +1189,9 @@
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
     <script src="{{ asset('assets/front-end/js/script.js') }}"></script>
 
-    <!-- Modal JavaScript Tanpa Buka Email Client -->
+    <!-- Modal JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Elements
             const modal = document.getElementById('proposalModal');
             const form = document.getElementById('proposalForm');
             const loadingState = document.getElementById('loadingState');
@@ -1117,17 +1201,14 @@
             const referenceNumber = document.getElementById('referenceNumber');
             const submissionTime = document.getElementById('submissionTime');
 
-            // Store form data for retry
             let currentFormData = null;
 
-            // Generate reference number
             function generateReferenceNumber() {
                 const timestamp = Date.now();
                 const random = Math.floor(Math.random() * 1000);
                 return `NUP-${timestamp}-${random.toString().padStart(3, '0')}`;
             }
 
-            // Format time
             function formatTime(date) {
                 return date.toLocaleString('id-ID', {
                     weekday: 'long',
@@ -1140,62 +1221,51 @@
                 });
             }
 
-            // Open modal
             document.getElementById('openProposalModal').addEventListener('click', function(e) {
                 e.preventDefault();
                 modal.classList.remove('hidden');
                 document.body.classList.add('overflow-hidden');
-                // Reset form when opening
                 resetForm();
             });
 
-            // Close modal functions
             const closeModal = () => {
                 modal.classList.add('hidden');
                 document.body.classList.remove('overflow-hidden');
                 resetForm();
             };
 
-            // Close modal on ESC key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
                     closeModal();
                 }
             });
 
-            // Close buttons
             document.getElementById('closeModal').addEventListener('click', closeModal);
             document.getElementById('cancelBtn').addEventListener('click', closeModal);
             document.getElementById('closeSuccess').addEventListener('click', closeModal);
             document.getElementById('closeError').addEventListener('click', closeModal);
 
-            // Print receipt
             document.getElementById('printReceipt').addEventListener('click', function() {
                 if (currentFormData) {
                     printReceipt(currentFormData);
                 }
             });
 
-            // Retry button
             document.getElementById('retryButton').addEventListener('click', function() {
                 if (currentFormData) {
                     submitProposal(currentFormData);
                 }
             });
 
-            // Close modal on backdrop click
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) closeModal();
             });
 
-            // Form submission
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                // Validation
                 if (!validateForm()) return;
 
-                // Get form data
                 const formData = {
                     judul: document.getElementById('judul').value.trim(),
                     email: document.getElementById('email').value.trim(),
@@ -1209,41 +1279,31 @@
                     reference: generateReferenceNumber()
                 };
 
-                // Store for retry
                 currentFormData = formData;
 
-                // Submit proposal
                 submitProposal(formData);
             });
 
-            // Submit proposal to server
             async function submitProposal(formData) {
-                // Show loading
                 form.classList.add('hidden');
                 loadingState.classList.remove('hidden');
                 successState.classList.add('hidden');
                 errorState.classList.add('hidden');
 
                 try {
-                    // Simulate API call with timeout
                     await simulateAPICall();
 
-                    // Save to database via your Laravel backend
                     const response = await saveToDatabase(formData);
 
                     if (response.success) {
-                        // Show success state
                         loadingState.classList.add('hidden');
                         successState.classList.remove('hidden');
 
-                        // Set reference number and time
                         referenceNumber.textContent = formData.reference;
                         submissionTime.textContent = formatTime(new Date());
 
-                        // Save to local storage
                         storeInLocalStorage(formData);
 
-                        // Send confirmation (optional)
                         sendConfirmationEmail(formData);
 
                         console.log('✅ Proposal submitted successfully:', formData);
@@ -1253,14 +1313,12 @@
                 } catch (error) {
                     console.error('❌ Error submitting proposal:', error);
 
-                    // Show error state
                     loadingState.classList.add('hidden');
                     errorState.classList.remove('hidden');
                     errorMessage.textContent = error.message || 'Gagal mengirim proposal. Silakan coba lagi.';
                 }
             }
 
-            // Simulate API call
             function simulateAPICall() {
                 return new Promise((resolve) => {
                     setTimeout(() => {
@@ -1269,10 +1327,8 @@
                 });
             }
 
-            // Save to database (Laravel backend)
             async function saveToDatabase(formData) {
                 try {
-                    // Replace with your actual Laravel endpoint
                     const response = await fetch('/api/proposals', {
                         method: 'POST',
                         headers: {
@@ -1293,7 +1349,6 @@
                     const data = await response.json();
                     return data;
                 } catch (error) {
-                    // Fallback: Save to localStorage only
                     console.log('⚠️ Using localStorage fallback');
                     return {
                         success: true,
@@ -1302,9 +1357,7 @@
                 }
             }
 
-            // Send confirmation email (optional - backend)
             function sendConfirmationEmail(formData) {
-                // This would be handled by your Laravel backend
                 fetch('/api/send-proposal-confirmation', {
                     method: 'POST',
                     headers: {
@@ -1319,7 +1372,6 @@
                 }).catch(err => console.log('⚠️ Email confirmation skipped:', err));
             }
 
-            // Store in localStorage
             function storeInLocalStorage(data) {
                 try {
                     const proposals = JSON.parse(localStorage.getItem('nuparis_proposals') || '[]');
@@ -1337,7 +1389,6 @@
                 }
             }
 
-            // Print receipt
             function printReceipt(data) {
                 const receiptWindow = window.open('', '_blank');
                 const receiptHTML = `
@@ -1379,19 +1430,16 @@
                 receiptWindow.print();
             }
 
-            // Form validation
             function validateForm() {
                 const email = document.getElementById('email').value.trim();
                 const phone = document.getElementById('no_hp').value.trim();
                 const judul = document.getElementById('judul').value.trim();
                 const body = document.getElementById('body').value.trim();
 
-                // Clear previous errors
                 clearErrors();
 
                 let isValid = true;
 
-                // Email validation
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!email) {
                     showError('email', 'Email wajib diisi');
@@ -1401,7 +1449,6 @@
                     isValid = false;
                 }
 
-                // Phone validation
                 const phoneRegex = /^[0-9+\-\s()]{10,15}$/;
                 const cleanPhone = phone.replace(/\s/g, '');
                 if (!phone) {
@@ -1412,7 +1459,6 @@
                     isValid = false;
                 }
 
-                // Title validation
                 if (!judul) {
                     showError('judul', 'Judul proposal wajib diisi');
                     isValid = false;
@@ -1421,7 +1467,6 @@
                     isValid = false;
                 }
 
-                // Body validation
                 if (!body) {
                     showError('body', 'Isi proposal wajib diisi');
                     isValid = false;
@@ -1431,7 +1476,6 @@
                 }
 
                 if (!isValid) {
-                    // Scroll to first error
                     const firstError = document.querySelector('.border-red-500');
                     if (firstError) {
                         firstError.scrollIntoView({
@@ -1444,21 +1488,17 @@
                 return isValid;
             }
 
-            // Show error for specific field
             function showError(fieldId, message) {
                 const field = document.getElementById(fieldId);
                 const container = field.closest('div');
 
-                // Add error styling
                 field.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-200');
                 container.classList.add('text-red-600');
 
-                // Create error message
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'mt-1 text-sm text-red-600';
                 errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i>${message}`;
 
-                // Insert after field
                 if (fieldId === 'body') {
                     field.parentNode.parentNode.appendChild(errorDiv);
                 } else {
@@ -1466,14 +1506,11 @@
                 }
             }
 
-            // Clear all errors
             function clearErrors() {
-                // Remove error styling
                 document.querySelectorAll('input, textarea').forEach(el => {
                     el.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-200');
                 });
 
-                // Remove error messages
                 document.querySelectorAll('.text-red-600').forEach(el => {
                     if (el.classList.contains('mt-1')) {
                         el.remove();
@@ -1481,7 +1518,6 @@
                 });
             }
 
-            // Reset form
             function resetForm() {
                 form.reset();
                 form.classList.remove('hidden');
@@ -1513,6 +1549,52 @@
                 const price = parseInt(el.dataset.price, 10);
                 el.innerText = formatShortRupiah(price);
             });
+        });
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== Desktop: klik item kontak -> update peta bersama =====
+            const sharedMap = document.getElementById('sharedOfficeMap');
+            const sharedMapExternal = document.getElementById('sharedOfficeMapExternal');
+
+            document.querySelectorAll('.office-list-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.office-list-item.active').forEach(li => {
+                        li.classList.remove('active', 'border-primary', 'bg-primary/5',
+                            'shadow-md');
+                    });
+                    this.classList.add('active', 'border-primary', 'bg-primary/5', 'shadow-md');
+
+                    if (sharedMap) {
+                        sharedMap.src = this.dataset.mapSrc;
+                    }
+                    if (sharedMapExternal) {
+                        sharedMapExternal.href = this.dataset.mapExternal;
+                    }
+                });
+            });
+
+            // ===== Mobile: init slider lokasi kantor =====
+            if (document.getElementById('lokasiMobileSwiper')) {
+                new Swiper('#lokasiMobileSwiper', {
+                    slidesPerView: 1.08,
+                    spaceBetween: 14,
+                    centeredSlides: false,
+                    pagination: {
+                        el: '#lokasiMobileSwiper .swiper-pagination',
+                        clickable: true,
+                        renderBullet: function(index, className) {
+                            return '<span class="' + className +
+                                ' inline-block w-2 h-2 rounded-full bg-slate-400/50 transition-all duration-300 [&.swiper-pagination-bullet-active]:w-5 [&.swiper-pagination-bullet-active]:!bg-primary [&.swiper-pagination-bullet-active]:!opacity-100"></span>';
+                        }
+                    },
+                    breakpoints: {
+                        480: {
+                            slidesPerView: 1.2
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>

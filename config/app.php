@@ -123,5 +123,38 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'secret_maintenance' => env('SECRET_MAINTENANCE')
+    'secret_maintenance' => env('SECRET_MAINTENANCE'),
+
+    'offices_location' => [
+        'region_order' => array_map('trim', explode(',', env('OFFICE_REGION_ORDER', 'DKI Jakarta,Jawa Barat'))),
+        'list' => [
+            [
+                'office_type' => env('OFFICE_1_TYPE', 'pusat'),
+                'office_region' => env('OFFICE_1_REGION'),
+                'office_name' => env('OFFICE_1_NAME'),
+                'office_address' => env('OFFICE_1_ADDRESS'),
+                'office_phone' => env('OFFICE_1_PHONE'),
+                'office_embed_src' => env('OFFICE_1_MAP_EMBED'),
+                'office_external_url' => env('OFFICE_1_MAP_URL'),
+            ],
+            [
+                'office_type' => env('OFFICE_2_TYPE', 'representatif'),
+                'office_region' => env('OFFICE_2_REGION'),
+                'office_name' => env('OFFICE_2_NAME'),
+                'office_address' => env('OFFICE_2_ADDRESS'),
+                'office_phone' => env('OFFICE_2_PHONE'),
+                'office_embed_src' => env('OFFICE_2_MAP_EMBED'),
+                'office_external_url' => env('OFFICE_2_MAP_URL'),
+            ],
+            [
+                'office_type' => env('OFFICE_3_TYPE', 'representatif'),
+                'office_region' => env('OFFICE_3_REGION'),
+                'office_name' => env('OFFICE_3_NAME'),
+                'office_address' => env('OFFICE_3_ADDRESS'),
+                'office_phone' => env('OFFICE_3_PHONE'),
+                'office_embed_src' => env('OFFICE_3_MAP_EMBED'),
+                'office_external_url' => env('OFFICE_3_MAP_URL'),
+            ],
+        ],
+    ],
 ];

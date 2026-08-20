@@ -13,7 +13,11 @@ class Info extends Model
     public $incrementing =  false;
     protected $table = 'infos';
     protected $primaryKey = 'uuid';
-    protected $casts = ['id' => 'string'];
+    protected $casts =
+    [
+        'id' => 'string',
+        'offices_location' => 'array',
+    ];
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -34,6 +38,7 @@ class Info extends Model
         'partner_guide',
         'privacy_policy',
         'terms_conditions',
+        'offices_location'
     ];
 
     protected static function booted()
