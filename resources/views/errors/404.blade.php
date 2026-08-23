@@ -29,7 +29,7 @@
         <!-- Tombol -->
         <div class="flex gap-3 mt-6">
             @if (auth()->check())
-                <a href="{{ route('products.index') }}"
+                <a href="{{ route('filament.management.pages.dashboard') }}"
                     class="px-6 sm:px-8 py-2.5 sm:py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark transition duration-300 shadow-md text-center text-sm sm:text-base"
                     style="background-color: #DC2626;">
                     <i class="fas fa-tachometer-alt mr-2"></i> Dashboard

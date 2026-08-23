@@ -19,6 +19,7 @@ Route::controller(LandingpageController::class)->group(function () {
     Route::get('/news/data', 'newsData')->name('news-data');
     Route::get('/review', 'review')->name('review-more');
     Route::get('/toss/{slug}', 'toss')->name('toss');
+    Route::get('/certificate/{slug}', 'certificate')->name('certificate');
 });
 
 Route::controller(ArticleController::class)->group(function () {

@@ -18,9 +18,6 @@ use Endroid\QrCode\Writer\PngWriter;
 
 class CertificateGeneratorService
 {
-    /**
-     * Batas jumlah baris yang diproses dari file CSV/Excel yang diupload.
-     */
     public const MAX_ROWS = 5;
 
     /**
@@ -33,10 +30,6 @@ class CertificateGeneratorService
             : $this->buildCsvRows($template, $manualRow, $csvPath);
 
         $folder = 'certificate/generates/generate_' . now()->format('Ymd_His');
-
-        // Dibuat DULUAN (bukan di akhir seperti sebelumnya), karena tiap
-        // CertificateItem yang dibuat di dalam loop butuh certificate_generate_id
-        // yang valid sejak awal. Total & file_path di-update lagi setelah loop.
         $generate = CertificateGenerate::create([
             'certificate_template_id' => $template->uuid,
             'mode' => $mode,
@@ -58,12 +51,6 @@ class CertificateGeneratorService
             }
         }
 
-        // BARU: gak di-zip lagi kalau hasilnya lebih dari 1 file. Tiap
-        // sertifikat individual (CertificateItem) udah punya file_path
-        // sendiri-sendiri — biar semuanya bisa didownload satuan lewat
-        // riwayat, bukan digabung jadi 1 file zip. 'file_path' di
-        // CertificateGenerate (level batch) cuma keisi kalau memang cuma
-        // ada 1 sertifikat yang dihasilkan (mis. mode manual).
         $filePath = count($files) === 1 ? $files[0] : null;
 
         $generate->update([
@@ -83,13 +70,7 @@ class CertificateGeneratorService
     protected function normalizeRow(array $row): array
     {
         return [
-            // Field DINAMIS yang tercetak di sertifikat (field_key => value),
-            // sesuai field custom yang dibuat admin per template lewat
-            // "Kelola Field". Datang dari input Filament bernama "data.{field_key}".
             'data' => $row['data'] ?? [],
-
-            // Field TETAP, sama untuk semua template — gak dicetak di PDF,
-            // cuma buat halaman verifikasi publik.
             'valid_from' => $row['valid_from'] ?? null,
             'valid_until' => $row['valid_until'] ?? null,
             'deskripsi' => $row['deskripsi'] ?? null,
@@ -97,11 +78,6 @@ class CertificateGeneratorService
         ];
     }
 
-    /**
-     * Label buat identifikasi baris di pesan error/nama file — diambil dari
-     * nilai field dinamis pertama yang keisi, karena gak ada lagi field
-     * "nama" yang dijamin selalu ada.
-     */
     protected function rowLabel(array $row, int $index): string
     {
         foreach (($row['data'] ?? []) as $value) {
@@ -113,13 +89,6 @@ class CertificateGeneratorService
         return 'Baris ' . ($index + 1);
     }
 
-    /**
-     * Baca baris HEADER (baris pertama) dari file CSV/Excel — dipakai untuk
-     * nampilin pilihan kolom di UI "Pencocokan Kolom", sebelum file
-     * benar-benar diproses jadi sertifikat.
-     *
-     * @return array<int, string>
-     */
     public function readHeaders(string $path): array
     {
         $rows = $this->readRawRows($path);
@@ -148,15 +117,6 @@ class CertificateGeneratorService
         return $rows;
     }
 
-    /**
-     * Terapin mapping kolom (dari UI "Pencocokan Kolom") ke tiap baris data
-     * file, hasilkan array baris dengan bentuk yang SAMA seperti
-     * normalizeRow() (mode manual) — 'data', 'deskripsi', 'catatan',
-     * 'valid_from', 'valid_until' — supaya generateOnePdf() gak perlu tau
-     * bedanya baris ini dari manual atau dari file.
-     *
-     * @return array<int, array<string, mixed>>
-     */
     protected function buildCsvRows(CertificateTemplate $template, array $formData, string $path): array
     {
         $rawRows = $this->readRawRows($path);
@@ -172,22 +132,11 @@ class CertificateGeneratorService
         $mappingMode = $formData['mapping_mode'] ?? [];
         $fixedValues = $formData['fixed_values'] ?? [];
 
-        // Field custom (bukan qrcode, bukan yang diarsipkan) yang dicetak di
-        // sertifikat. PENTING: urutan (orderBy created_at) HARUS SAMA PERSIS
-        // dengan urutan yang dipakai CertificateGenerate::buildPrintedFieldMappingSchema()
-        // di Filament Page — karena mapping field cetak sekarang dikirim
-        // sebagai "mapping.{index_angka}" (mapping.0, mapping.1, dst), BUKAN
-        // "mapping.{field_key}" lagi. Ini buat hindarin Livewire Entangle
-        // Error yang muncul kalau nama field berubah-ubah tiap template beda
-        // (field_key kan beda-beda tiap template, index angka lebih stabil).
         $printedFields = $template->fields
             ->filter(fn($f) => ! $f->is_archived && $f->field_key !== CertificateTemplate::RESERVED_QRCODE_KEY)
             ->sortBy('created_at')
             ->values();
 
-        // Dipakai KHUSUS untuk valid_from/valid_until — toggle "sama untuk
-        // semua" vs "per baris (dari kolom file)" masih berlaku buat 2 field
-        // tanggal ini (placeholder gak cocok buat tanggal).
         $resolveDateField = function (string $key, array $assocRow) use ($mappingMode, $mapping, $fixedValues) {
             $useColumn = ($mappingMode[$key] ?? 'fixed') === 'column';
 
@@ -199,8 +148,6 @@ class CertificateGeneratorService
             return $fixedValues[$key] ?? null;
         };
 
-        // Template teks Deskripsi & Catatan (BUKAN mapping kolom) — boleh
-        // berisi placeholder {field_key} yang diganti per baris di bawah.
         $deskripsiTemplate = (string) ($fixedValues['deskripsi'] ?? '');
         $catatanTemplate = (string) ($fixedValues['catatan'] ?? '');
 
@@ -222,9 +169,6 @@ class CertificateGeneratorService
                 $data[$field->field_key] = $col !== null ? (string) ($assocRow[$col] ?? '') : '';
             }
 
-            // Ganti tiap {field_key} di template Deskripsi/Catatan dengan
-            // nilai field itu DI BARIS INI — jadi otomatis beda tiap baris
-            // kalau admin nyisipin variabel, atau tetap sama kalau enggak.
             $replacements = [];
             foreach ($data as $key => $value) {
                 $replacements['{' . $key . '}'] = $value;
@@ -246,17 +190,10 @@ class CertificateGeneratorService
         return $rows;
     }
 
-    /**
-     * Import halaman pertama PDF template pakai FPDI, lalu gambar teks & QR code
-     * langsung di atasnya sesuai posisi yang sudah ditandai. Tidak ada rasterisasi
-     * (tidak butuh Imagick/Ghostscript) — hasilnya tetap PDF vector asli.
-     */
     protected function generateOnePdf(CertificateTemplate $template, CertificateGenerate $generate, array $row, string $folder, int $index): string
     {
         $templatePath = Storage::disk('public')->path($template->background_image);
 
-        // Slug publik untuk URL verifikasi, dibuat SEBELUM PDF dirender karena
-        // QR code yang berisi link verifikasi ini harus ikut digambar di dalam PDF.
         $slug = (string) Str::ulid();
 
         $pdf = new Fpdi('P', 'pt');
@@ -271,24 +208,16 @@ class CertificateGeneratorService
         $fieldsSnapshot = [];
 
         foreach ($template->fields as $field) {
-            // Field yang sudah diarsipkan (pernah dipakai, lalu "dihapus" admin)
-            // gak ikut digambar / dicatat lagi di generate baru.
             if ($field->is_archived) {
                 continue;
             }
 
-            // posisi disimpan dalam % (0-100), konversi ke koordinat pt sesuai ukuran halaman asli
             $x = ($field->x / 100) * $size['width'];
             $y = ($field->y / 100) * $size['height'];
 
             if ($field->field_key === CertificateTemplate::RESERVED_QRCODE_KEY) {
                 $verifyUrl = route('certificate', $slug);
 
-                // Digenerate dengan resolusi lebih tinggi dari ukuran tampil di PDF
-                // (pt) supaya tetap tajam saat di-scan / dicetak, bukan cuma di layar.
-                // Pakai endroid/qr-code (basis GD) — sama seperti yang dipakai fitur
-                // toss (lihat Signature.php) — supaya TIDAK butuh ekstensi Imagick,
-                // beda dengan simplesoftwareio/simple-qrcode yang butuh Imagick.
                 $qrSize = (int) $field->font_size;
 
                 $qrCode = Builder::create()
@@ -302,8 +231,6 @@ class CertificateGeneratorService
                     ->roundBlockSizeMode(RoundBlockSizeMode::Margin)
                     ->build();
 
-                // Disimpan permanen (sebelumnya cuma tempfile lalu di-unlink) supaya
-                // bisa ditampilkan lagi di halaman verifikasi publik.
                 $qrRelativePath = "certificate/qrcodes/{$slug}.png";
                 Storage::disk('public')->makeDirectory('certificate/qrcodes');
                 Storage::disk('public')->put($qrRelativePath, $qrCode->getString());
@@ -315,16 +242,10 @@ class CertificateGeneratorService
                 continue;
             }
 
-            // Field CUSTOM dinamis — field_key-nya bisa apa aja sesuai yang
-            // dibuat admin lewat "Kelola Field", nilainya diambil dari
-            // $row['data'][field_key] yang dikirim form Generate Sertifikat.
             $value = (string) ($row['data'][$field->field_key] ?? '');
 
             [$r, $g, $b] = $this->hexToRgb($field->font_color);
 
-            // font_family, font_bold, dan font_underline yang diatur admin di
-            // panel "Atur Posisi" sekarang beneran dipakai (dulu selalu
-            // Helvetica polos apa pun setting-nya).
             $fontFamily = in_array($field->font_family, ['Helvetica', 'Times', 'Courier'], true)
                 ? $field->font_family
                 : 'Helvetica';
@@ -336,11 +257,6 @@ class CertificateGeneratorService
 
             $textWidth = $pdf->GetStringWidth($value);
 
-            // text_align (kiri/tengah/kanan) sekarang beneran dipakai (dulu
-            // selalu rata tengah apa pun setting-nya). $x diperlakukan sebagai
-            // titik jangkar sesuai perataan, sinkron sama transform di preview
-            // (mark-fields-modal.blade.php): rata kiri => $x ujung kiri teks,
-            // rata kanan => $x ujung kanan teks, rata tengah => $x tengah teks.
             $textAlign = in_array($field->text_align, ['left', 'center', 'right'], true)
                 ? $field->text_align
                 : 'center';
@@ -351,19 +267,11 @@ class CertificateGeneratorService
                 default => $x - ($textWidth / 2),
             };
 
-            // Text() menaruh baseline PERSIS di koordinat yang kita hitung
-            // sendiri (beda dengan Cell() yang vertical-align internalnya
-            // gak benar-benar center terhadap $y) — 0.35 * font_size adalah
-            // pendekatan umum jarak baseline-ke-tengah-huruf, supaya visualnya
-            // sepadan dengan center vertikal (flexbox) di preview.
             $baselineY = $y + ($field->font_size * 0.35);
             $pdf->Text($textX, $baselineY, $value);
 
             $field->increment('usage_count');
 
-            // Snapshot label + value pada saat generate ini — supaya kalau
-            // nanti field di-rename/diarsipkan, sertifikat yang sudah terbit
-            // tetap nampilin data apa adanya waktu dibuat dulu.
             $fieldsSnapshot[] = [
                 'key' => $field->field_key,
                 'label' => $field->label,
@@ -372,9 +280,6 @@ class CertificateGeneratorService
         }
 
         $identifier = $this->rowLabel($row, $index);
-        // FIX: tambah suffix slug supaya nama file gak collide kalau ada 2 baris
-        // dengan identifier yang sama persis dalam satu batch CSV (sebelumnya cuma
-        // Str::slug($name).'.pdf', file kedua bakal menimpa file pertama).
         $filename = $folder . '/' . Str::slug($identifier) . '-' . $slug . '.pdf';
 
         Storage::disk('public')->makeDirectory($folder);

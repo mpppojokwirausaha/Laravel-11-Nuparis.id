@@ -7,6 +7,7 @@ use \App\Models\Article;
 use \App\Models\News;
 use \App\Models\Partner;
 use \App\Models\Review;
+use App\Models\CertificateItem;
 use App\Models\DocumentToss;
 use App\Models\Event;
 use App\Models\Hero;
@@ -182,6 +183,61 @@ class LandingpageController extends Controller
             'size_document' => Storage::size($urlDocument),
             'size_mime_type' => Storage::mimeType($urlDocument),
             'qr_code' => $toss->qr_path,
+            'statusDoc' => $statusDoc,
+            'infos' => ((new Info)->getInfo()),
+            'agencies_footer' => (new Partner())->getAgencies(),
+        ]);
+    }
+
+    public function certificate($slug)
+    {
+        $item = CertificateItem::where('slug', $slug)->first();
+
+        if (! $item) {
+            abort(404);
+        }
+
+        $start = $item->valid_from;
+        $end = $item->valid_until;
+
+        $expired = '-';
+        $statusDoc = 'Valid';
+
+        if ($start && $end) {
+            $startCarbon = Carbon::parse($start);
+            $endCarbon = Carbon::parse($end);
+
+            $expired = $startCarbon->month === $endCarbon->month && $startCarbon->year === $endCarbon->year
+                ? $startCarbon->format('j') . ' - ' . $endCarbon->format('j F Y')
+                : $startCarbon->format('j M Y') . ' - ' . $endCarbon->format('j M Y');
+
+            $statusDoc = now()->gt($endCarbon) ? 'Tidak Berlaku' : 'Berlaku';
+        } elseif ($start && ! $end) {
+            $expired = 'Mulai ' . Carbon::parse($start)->format('j F Y');
+        } elseif (! $start && $end) {
+            $endCarbon = Carbon::parse($end);
+            $expired = 'Berakhir ' . $endCarbon->format('j F Y');
+            $statusDoc = now()->gt($endCarbon) ? 'Tidak Berlaku' : 'Berlaku';
+        }
+
+        return view('front-end.certificate', [
+            'title' => 'Sertifikat | ' . config('app.name'),
+            'certificateData' => collect([
+                'id' => $item->slug,
+                'deskripsi' => $item->deskripsi,
+                'catatan' => $item->catatan,
+                'expired' => $expired,
+                'dynamic_fields' => $item->fields,
+                'nama' => $item->nama,
+                'keterangan' => $item->keterangan,
+                'tempat' => $item->tempat,
+                'tanggal' => $item->tanggal,
+                'tahun' => $item->tahun,
+            ]),
+            'url_document' => $item->file_path,
+            'size_document' => $item->file_path ? Storage::disk('public')->size($item->file_path) : null,
+            'size_mime_type' => $item->file_path ? Storage::disk('public')->mimeType($item->file_path) : null,
+            'qr_code' => $item->qr_path,
             'statusDoc' => $statusDoc,
             'infos' => ((new Info)->getInfo()),
             'agencies_footer' => (new Partner())->getAgencies(),
