@@ -681,9 +681,11 @@
             <!-- Property Section -->
             <section>
                 <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
-                        <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Property</h2>
-                    </div>
+                    @if ($properties->count() > 0)
+                        <div class="flex items-center gap-3 border-l-4 border-primary pl-3">
+                            <h2 class="text-xl lg:text-2xl font-bold text-slate-800">Property</h2>
+                        </div>
+                    @endif
                     @if ($properties->count() > 4)
                         <a href="{{ route('property-more') }}"
                             class="text-primary font-medium text-sm hover:underline lg:hover:translate-x-1 transition-transform duration-200">Lihat

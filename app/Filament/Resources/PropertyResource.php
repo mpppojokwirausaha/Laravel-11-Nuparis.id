@@ -85,6 +85,7 @@ class PropertyResource extends Resource
                     ->acceptedFileTypes(['image/*', 'video/*'])
                     ->disk('public')
                     ->directory('img_properties')
+                    ->optimize('webp')
                     ->required()
                     ->multiple()
                     ->maxFiles(10)

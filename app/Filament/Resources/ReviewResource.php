@@ -72,6 +72,7 @@ class ReviewResource extends Resource
                             ->image()
                             ->disk('public')->directory('img_review')
                             ->required()
+                            ->optimize('webp')
                             ->downloadable()
                             ->image()
                             ->imageEditor()

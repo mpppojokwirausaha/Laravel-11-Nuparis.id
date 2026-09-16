@@ -98,6 +98,7 @@ class ActivityResource extends Resource
                                     ->image()
                                     ->disk('public')->directory('img_activities')
                                     ->required()
+                                    ->optimize('webp')
                                     ->downloadable()
                                     ->image()
                                     ->imageEditor()

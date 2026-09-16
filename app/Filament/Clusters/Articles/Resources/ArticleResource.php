@@ -92,6 +92,7 @@ class ArticleResource extends Resource
                                 ->image()
                                 ->disk('public')->directory('img_articles')
                                 ->required()
+                                ->optimize('webp')
                                 ->downloadable()
                                 ->image()
                                 ->imageEditor()

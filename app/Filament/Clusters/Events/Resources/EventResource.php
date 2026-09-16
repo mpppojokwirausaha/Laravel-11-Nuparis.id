@@ -176,6 +176,7 @@ class EventResource extends Resource
                                     ->disk('public')
                                     ->directory('img_events')
                                     ->required()
+                                    ->optimize('webp')
                                     ->downloadable()
                                     ->imageEditor()
                                     ->imageEditorAspectRatios([

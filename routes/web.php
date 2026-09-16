@@ -5,13 +5,15 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\HalalController;
 use App\Http\Controllers\LandingpageController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
-
 
 Route::controller(LandingpageController::class)->group(function () {
     Route::get('/', 'index')->name('landingpage');
@@ -48,6 +50,8 @@ Route::controller(PropertyController::class)->group(function () {
     Route::get('/property/{property_slug}', 'propertyDetail')->name('property-detail');
 });
 
+Route::resource('halal', HalalController::class);
+
 Route::post('/event/midtrans/create-transaction', [OrderController::class, 'createMidtransTransaction'])->name('event.midtrans.create-transaction');
 Route::post('/event/register/free', [OrderController::class, 'registerFree'])->name('event.register.free');
 
@@ -79,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/report/download', [ReportController::class, 'download'])
         ->name('report.download');
 });
+
+Route::get('/robots.txt', RobotsController::class)->name('robots');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // additional
 Route::get('clear', function () {

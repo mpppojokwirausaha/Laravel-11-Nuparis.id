@@ -123,6 +123,7 @@ class PartnerResource extends Resource
                                 FileUpload::make('partner_image')
                                     ->image()
                                     ->disk('public')
+                                    ->optimize('webp')
                                     ->directory('img_partners')
                                     ->required()
                                     ->downloadable()

@@ -67,6 +67,7 @@ class NewsResource extends Resource
                             ->disk('public')
                             ->directory('img_news')
                             ->required()
+                            ->optimize('webp')
                             ->downloadable()
                             ->imageEditor()
                             ->imageEditorAspectRatios([
