@@ -66,14 +66,42 @@ class LandingpageController extends Controller
             'total' => count($offices),
         ]);
 
+        $infos = (new Info())->getInfo();
+
+        // ==== SEO ====
+        $seoImage = !empty($infos->meta_image) ? Storage::disk('public')->url($infos->meta_image) : null;
+
+        $jsonld = [
+            [
+                '@context' => 'https://schema.org',
+                '@type' => 'Organization',
+                'name' => config('app.name'),
+                'url' => url('/'),
+                'logo' => $seoImage,
+            ],
+            [
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                'name' => config('app.name'),
+                'url' => url('/'),
+            ],
+        ];
+
+        $feedUrls = [
+            ['url' => route('feeds.article'), 'title' => 'Artikel Terbaru'],
+            ['url' => route('feeds.activity'), 'title' => 'Portofolio Kegiatan'],
+            ['url' => route('feeds.event'), 'title' => 'Event Terbaru'],
+            ['url' => route('feeds.property'), 'title' => 'Listing Properti'],
+        ];
+
         return view('front-end.landingpage', [
-            'title' => env('APP_NAME') . ' | Support Your Company Goal',
+            'title' => $infos->meta_title,
             'events' => $events,
             'activities' => (new Activity())->getActivity(),
             'partnerLayers' => (new Partner())->getPartner(),
             'articles' => (new Article())->getArticle(),
             'news' => (new News())->getNews(),
-            'infos' => (new Info())->getInfo(),
+            'infos' => $infos,
             'offices' => $office_location,
             'reviews' => (new Review())->getReview(),
             'members' => (new User())->getMembers(),
@@ -81,6 +109,15 @@ class LandingpageController extends Controller
             'heroes' => (new Hero())->getAssets(),
             'properties' => (new Property())->getProperties(),
             'agencies_footer' => (new Partner())->getAgencies(),
+
+            // ==== SEO ====
+            'seo_title' => $infos->meta_title,
+            'seo_description' => $infos->meta_description,
+            'seo_image' => $seoImage,
+            'seo_type' => 'website',
+            'canonical_url' => url('/'),
+            'jsonld' => $jsonld,
+            'feed_urls' => $feedUrls,
         ]);
     }
 

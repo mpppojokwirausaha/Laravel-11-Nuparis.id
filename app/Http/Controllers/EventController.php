@@ -6,7 +6,9 @@ use App\Models\Event;
 use App\Models\Info;
 use App\Models\Order;
 use App\Models\Partner;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -66,7 +68,10 @@ class EventController extends Controller
 
     public function eventDetail($slug)
     {
-        $event = Event::withCount('participants')->where('event_slug', $slug)->first();
+        $event = Event::with('eventCategory')
+            ->withCount('participants')
+            ->where('event_slug', $slug)
+            ->first();
 
         if (!$event) {
             abort(404, 'Event tidak ditemukan');
@@ -81,12 +86,94 @@ class EventController extends Controller
 
         $isRegistrationActive = (bool) $event->event_is_active;
         $isQuotaAvailable = $remainingQuota === null || $remainingQuota > 0;
-        $isEventEnded = now()->gt($event->event_date_end); // <-- tambahan
+        $isEventEnded = $event->event_date_end ? now()->gt($event->event_date_end) : false;
 
         $canRegister = $isRegistrationActive && $isQuotaAvailable && !$isEventEnded;
 
+        // ==== SEO ====
+        $seoDescription = Str::limit(strip_tags($event->event_description), 160);
+        $seoImage = $event->event_image ? Storage::disk('public')->url($event->event_image) : null;
+        $fullTitle = $event->event_title . ' | ' . config('app.name');
+        $canonicalUrl = route('event-detail', $event->event_slug);
+
+        // event_price adalah varchar, bisa berisi "Gratis", "Rp 50.000", dll — bersihkan jadi angka
+        $numericPrice = preg_replace('/[^0-9]/', '', (string) $event->event_price);
+        $isFreePrice = $numericPrice === '' || (int) $numericPrice === 0
+            || stripos($event->event_price, 'gratis') !== false
+            || stripos($event->event_price, 'free') !== false;
+
+        $eventStatus = 'https://schema.org/EventScheduled';
+
+        // Tentukan mode kehadiran berdasarkan kombinasi link online & lokasi fisik
+        $hasOnlineLink = !empty($event->event_link);
+        $hasPhysicalLocation = !empty($event->event_location);
+
+        if ($hasOnlineLink && $hasPhysicalLocation) {
+            $attendanceMode = 'https://schema.org/MixedEventAttendanceMode';
+        } elseif ($hasOnlineLink) {
+            $attendanceMode = 'https://schema.org/OnlineEventAttendanceMode';
+        } else {
+            $attendanceMode = 'https://schema.org/OfflineEventAttendanceMode';
+        }
+
+        $jsonld = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Event',
+            'name' => $event->event_title,
+            'description' => $seoDescription,
+            'startDate' => $event->event_date_start?->toIso8601String(),
+            'eventStatus' => $eventStatus,
+            'eventAttendanceMode' => $attendanceMode,
+            'organizer' => [
+                '@type' => 'Organization',
+                'name' => config('app.name'),
+                'url' => url('/'),
+            ],
+        ];
+
+        if ($hasPhysicalLocation) {
+            $jsonld['location'] = [
+                '@type' => 'Place',
+                'name' => $event->event_location,
+                'address' => $event->event_location,
+            ];
+        }
+
+        if ($hasOnlineLink) {
+            $virtualLocation = [
+                '@type' => 'VirtualLocation',
+                'url' => $event->event_link,
+            ];
+
+            $jsonld['location'] = $hasPhysicalLocation
+                ? [$jsonld['location'], $virtualLocation]
+                : $virtualLocation;
+        }
+
+        // FIX: hapus 'return' — sebelumnya bikin function berhenti di sini
+        if ($event->event_date_end) {
+            $jsonld['endDate'] = $event->event_date_end->toIso8601String();
+        }
+
+        if ($seoImage) {
+            $jsonld['image'] = [$seoImage];
+        }
+
+        if ($isFreePrice || $numericPrice !== '') {
+            $jsonld['offers'] = [
+                '@type' => 'Offer',
+                'price' => $isFreePrice ? 0 : (int) $numericPrice,
+                'priceCurrency' => 'IDR',
+                'availability' => $isQuotaAvailable
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/SoldOut',
+                'url' => $canonicalUrl,
+                'priceValidUntil' => ($event->event_date_end ?? $event->event_date_start)?->toDateString(),
+            ];
+        }
+
         return view('front-end.event-detail', [
-            'title' => 'Event | ' . config('app.name'),
+            'title' => $fullTitle,
             'infos' => (new Info)->getInfo(),
             'agencies_footer' => (new Partner())->getAgencies(),
             'event' => $event,
@@ -95,14 +182,22 @@ class EventController extends Controller
             'canRegister' => $canRegister,
             'isRegistrationActive' => $isRegistrationActive,
             'isEventEnded' => $isEventEnded,
+
+            // ==== SEO ====
+            'seo_title' => $fullTitle,
+            'seo_description' => $seoDescription,
+            'seo_image' => $seoImage,
+            'seo_type' => 'website',
+            'canonical_url' => $canonicalUrl,
+            'jsonld' => $jsonld,
+            'feed_url' => route('feeds.event'),
+            'feed_title' => 'Event Terbaru - ' . config('app.name'),
         ]);
     }
 
     private function cleanTrixContent($content)
     {
-        if (empty($content)) {
-            return $content;
-        }
+        if (empty($content)) return $content;
 
         // Pattern 1: Hapus <figure> dan <a> wrapper, sisakan <img> saja
         $pattern1 = '/<figure[^>]*data-trix-attachment[^>]*>.*?<a[^>]*>(<img[^>]*>).*?<\/a>.*?<\/figure>/is';

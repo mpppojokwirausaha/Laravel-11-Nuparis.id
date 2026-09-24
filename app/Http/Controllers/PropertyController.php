@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Info;
 use App\Models\Partner;
 use App\Models\Property;
+use Illuminate\Support\Str;
 
 class PropertyController extends Controller
 {
@@ -95,6 +96,10 @@ class PropertyController extends Controller
     {
         $property = (new Property())->getPropertyDetail($property_slug);
 
+        if (!$property) {
+            abort(404);
+        }
+
         // Decode gambar
         $propertyImages = $this->processImages($property->property_image);
 
@@ -110,6 +115,53 @@ class PropertyController extends Controller
             ->limit(3)
             ->get();
 
+        // ==== SEO ====
+        // Model Property tidak punya kolom excerpt terpisah, jadi ambil dari property_description
+        $seoDescription = Str::limit(strip_tags($property->property_description), 160);
+
+        $seoImage = $propertyImages[0] ?? null;
+
+        $jsonld = [
+            '@context' => 'https://schema.org',
+            '@type' => 'RealEstateListing',
+            'name' => $property->property_name,
+            'description' => $seoDescription,
+            'url' => route('property-detail', $property->property_slug),
+            'image' => $propertyImages,
+            'datePosted' => $property->created_at->toIso8601String(),
+            'address' => [
+                '@type' => 'PostalAddress',
+                'streetAddress' => $property->property_address,
+                'addressCountry' => 'ID',
+            ],
+            'offers' => [
+                '@type' => 'Offer',
+                'price' => $property->property_price,
+                'priceCurrency' => 'IDR',
+                'availability' => $property->property_status === 'Active'
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
+            ],
+        ];
+
+        // Koordinat hanya ditambahkan kalau memang tersedia
+        if ($property->property_latitude && $property->property_longitude) {
+            $jsonld['geo'] = [
+                '@type' => 'GeoCoordinates',
+                'latitude' => $property->property_latitude,
+                'longitude' => $property->property_longitude,
+            ];
+        }
+
+        // Luas bangunan/tanah kalau ada nilainya
+        if ($property->property_building_area) {
+            $jsonld['floorSize'] = [
+                '@type' => 'QuantitativeValue',
+                'value' => $property->property_building_area,
+                'unitCode' => 'MTK', // meter persegi
+            ];
+        }
+
         return view('front-end.property-detail', [
             'title' => $property->property_name . ' | ' . config('app.name'),
             'infos' => (new Info)->getInfo(),
@@ -119,6 +171,16 @@ class PropertyController extends Controller
             'propertyImages' => $propertyImages,
             'relatedProperties' => $relatedProperties,
             'agencies_footer' => (new Partner())->getAgencies(),
+
+            // ==== SEO ====
+            'seo_title' => $property->property_name . ' | ' . config('app.name'),
+            'seo_description' => $seoDescription,
+            'seo_image' => $seoImage,
+            'seo_type' => 'website',
+            'canonical_url' => route('property-detail', $property->property_slug),
+            'jsonld' => $jsonld,
+            'feed_url' => route('feeds.property'),
+            'feed_title' => 'Listing Properti - ' . config('app.name'),
         ]);
     }
 

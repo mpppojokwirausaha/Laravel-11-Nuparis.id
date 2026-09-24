@@ -7,6 +7,8 @@ use App\Models\Info;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ActivityController extends Controller
 {
@@ -51,23 +53,86 @@ class ActivityController extends Controller
      */
     public function activityDetail($activity_slug)
     {
-        $activity = Activity::where('activity_slug', $activity_slug)->first();
+        $activity = Activity::with('activityCategory')
+            ->where('activity_slug', $activity_slug)
+            ->first();
 
         if (!$activity) {
             abort(404);
         }
 
-        // View counter dengan IP-based caching
         $this->incrementViewCount($activity);
 
-        // Bersihkan konten aktivitas
         $activity->cleaned_content = $this->cleanActivityContent($activity->activity_description);
 
+        // ==== SEO ====
+        $seoDescription = Str::limit(strip_tags($activity->cleaned_content), 160);
+        $seoImage = $activity->activity_image ? Storage::disk('public')->url($activity->activity_image) : null;
+        $fullTitle = $activity->activity_title . ' | ' . config('app.name');
+        $canonicalUrl = route('activity-detail', $activity->activity_slug);
+
+        $jsonld = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Article',
+            'headline' => $activity->activity_title,
+            'description' => $seoDescription,
+            'datePublished' => $activity->created_at->toIso8601String(),
+            'dateModified' => $activity->updated_at->toIso8601String(),
+            'author' => [
+                '@type' => 'Organization',
+                'name' => config('app.name'),
+            ],
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => config('app.name'),
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => asset('images/logo.png'),
+                ],
+            ],
+            'mainEntityOfPage' => [
+                '@type' => 'WebPage',
+                '@id' => $canonicalUrl,
+            ],
+        ];
+
+        if ($seoImage) {
+            $jsonld['image'] = [$seoImage];
+        }
+
+        if (!empty($activity->activity_location)) {
+            $jsonld['contentLocation'] = [
+                '@type' => 'Place',
+                'name' => $activity->activity_location,
+                'address' => $activity->activity_location,
+            ];
+        }
+
+        // Kapan kegiatan ini benar-benar terjadi (beda dari kapan artikelnya dipublikasi)
+        if (!empty($activity->activity_date)) {
+            $jsonld['temporalCoverage'] = $activity->activity_date instanceof \Carbon\Carbon
+                ? $activity->activity_date->toDateString()
+                : (string) $activity->activity_date;
+        }
+
         return view('front-end.activity-detail', [
-            'title' => $activity->activity_title . ' | ' . config('app.name'),
+            'title' => $fullTitle,
             'infos' => (new Info())->getInfo(),
             'activity' => $activity,
             'agencies_footer' => (new Partner())->getAgencies(),
+
+            // ==== SEO ====
+            'seo_title' => $fullTitle,
+            'seo_description' => $seoDescription,
+            'seo_image' => $seoImage,
+            'seo_type' => 'article',
+            'canonical_url' => $canonicalUrl,
+            'published_time' => $activity->created_at,
+            'modified_time' => $activity->updated_at,
+            'seo_section' => $activity->activityCategory->activity_category_name ?? 'Portofolio',
+            'jsonld' => $jsonld,
+            'feed_url' => route('feeds.activity'),
+            'feed_title' => 'Portofolio Kegiatan - ' . config('app.name'),
         ]);
     }
 

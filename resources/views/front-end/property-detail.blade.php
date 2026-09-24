@@ -2,60 +2,11 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{{ $property->title }} - NUPARIS.ID</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $infos->meta_image) }}">
-
-    <!-- CDN Libraries -->
+    @include('front-end.layouts.components.seo-meta')
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Meta Tags -->
-    <meta name="title" content="{{ $property->title }} - NUPARIS.ID">
-    <meta name="description" content="{{ $property->meta_description ?? $property->excerpt }}">
-    <meta name="keywords"
-        content="properti, {{ $property->type }}, {{ $property->location }}, rumah dijual, apartemen, investasi properti">
-    <meta name="author" content="NUPARIS.ID">
-    <meta name="robots" content="index, follow">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:title" content="{{ $property->property_name }} - NUPARIS.ID">
-    <meta property="og:description" content="{{ $property->meta_description ?? $property->excerpt }}">
-    <meta property="og:image"
-        content="{{ $property->thumbnail ? asset('storage/' . $property->thumbnail) : asset('storage/' . $infos->meta_image) }}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="{{ $property->property_name }}">
-    <meta property="og:site_name" content="NUPARIS.ID">
-    <meta property="og:locale" content="id_ID">
-    <meta property="article:published_time" content="{{ $property->created_at->toIso8601String() }}">
-    <meta property="article:modified_time" content="{{ $property->updated_at->toIso8601String() }}">
-    <meta property="article:section" content="Properti">
-
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@nuparis_id">
-    <meta name="twitter:creator" content="@nuparis_id">
-    <meta name="twitter:url" content="{{ url()->current() }}">
-    <meta name="twitter:title" content="{{ $property->property_name }} - NUPARIS.ID">
-    <meta name="twitter:description" content="{{ $property->meta_description ?? $property->excerpt }}">
-    <meta name="twitter:image"
-        content="{{ $property->thumbnail ? asset('storage/' . $property->thumbnail) : asset('storage/' . $infos->meta_image) }}">
-    <meta name="twitter:image:alt" content="{{ $property->property_name }}">
-
-    <!-- LinkedIn -->
-    <meta property="linkedin:card" content="summary_large_image">
-    <meta property="linkedin:url" content="{{ url()->current() }}">
-    <meta property="linkedin:title" content="{{ $property->property_name }} - NUPARIS.ID">
-    <meta property="linkedin:description" content="{{ $property->meta_description ?? $property->excerpt }}">
-    <meta property="linkedin:image"
-        content="{{ $property->thumbnail ? asset('storage/' . $property->thumbnail) : asset('storage/' . $infos->meta_image) }}">
-    <meta property="linkedin:site" content="NUPARIS.ID">
 
     <script src="{{ asset('assets/front-end/js/configtailwind.js') }}"></script>
 

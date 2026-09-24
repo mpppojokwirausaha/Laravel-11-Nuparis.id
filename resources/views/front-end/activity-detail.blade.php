@@ -2,52 +2,10 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{{ $title }}</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $infos->meta_image) }}">
-
-    <!-- Tailwind CSS via CDN -->
+    @include('front-end.layouts.components.seo-meta')
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Meta Tags -->
-    <meta name="title" content="{{ $activity->activity_title }}" />
-    <meta name="description" content="{{ $activity->seoDescription }}" />
-    <meta property="og:type" content="article" />
-    <meta property="og:url" content="{{ url()->current() }}" />
-    <meta property="og:title" content="{{ $activity->activity_title }}" />
-    <meta property="og:description"
-        content="{{ $activity->excerpt ?: strip_tags(Str::limit($activity->content, 160)) }}" />
-    <meta property="og:image"
-        content="{{ $activity->activity_image ? asset('storage/' . $activity->activity_image) : asset('storage/' . $infos->meta_image) }}" />
-    <meta property="og:site_name" content="NUPARIS" />
-    <meta property="article:published_time" content="{{ $activity->created_at->toIso8601String() }}" />
-    <meta property="article:author" content="Tim Redaksi NUPARIS" />
-    <meta property="article:section" content="Aktivitas" />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="{{ url()->current() }}" />
-    <meta property="twitter:title" content="{{ $activity->activity_title }}" />
-    <meta property="twitter:description"
-        content="{{ $activity->excerpt ?: strip_tags(Str::limit($activity->content, 160)) }}" />
-    <meta property="twitter:image"
-        content="{{ $activity->activity_image ? asset('storage/' . $activity->activity_image) : asset('storage/' . $infos->meta_image) }}" />
-    <meta property="twitter:site" content="@nuparis_id" />
-    <meta property="twitter:creator" content="@nuparis_id" />
-    <meta property="linkedin:card" content="summary_large_image" />
-    <meta property="linkedin:url" content="{{ url()->current() }}" />
-    <meta property="linkedin:title" content="{{ $activity->activity_title }}" />
-    <meta property="linkedin:description"
-        content="{{ $activity->excerpt ?: strip_tags(Str::limit($activity->content, 160)) }}" />
-    <meta property="linkedin:image"
-        content="{{ $activity->activity_image ? asset('storage/' . $activity->activity_image) : asset('storage/' . $infos->meta_image) }}" />
-
-    <!-- Tailwind Configuration -->
     <script src="{{ asset('assets/front-end/js/configtailwind.js') }}"></script>
 </head>
 

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Spatie\Feed\Feedable;
+use Spatie\Feed\FeedItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class Activity extends Model
+class Activity extends Model implements Feedable
 {
     use HasFactory;
 
@@ -82,10 +84,18 @@ class Activity extends Model
     public static function getStat()
     {
         $today = now()->day;
+        $startOfMonth = now()->startOfMonth();
+
+        $counts = self::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
         $chartData = collect(range(1, $today))
-            ->map(function ($day) {
-                $date = now()->startOfMonth()->addDays($day - 1)->toDateString();
-                return Article::whereDate('created_at', $date)->count();
+            ->map(function ($day) use ($startOfMonth, $counts) {
+                $date = $startOfMonth->copy()->addDays($day - 1)->toDateString();
+                return $counts->get($date, 0);
             })
             ->toArray();
 
@@ -119,6 +129,24 @@ class Activity extends Model
             'color' => $percentChange < 0 ? 'danger' : 'success',
             'chart' => $chartData
         ];
+    }
+
+    // ==== Feed (RSS/Atom) ====
+    public function toFeedItem(): FeedItem
+    {
+        return FeedItem::create()
+            ->id($this->uuid)
+            ->title($this->activity_title)
+            ->summary(Str::limit($this->activity_description, 200))
+            ->updated($this->updated_at)
+            ->link(route('activity-detail', $this->activity_slug))
+            ->authorName('Tim Redaksi ' . config('app.name'))
+            ->image($this->activity_image ? Storage::disk('public')->url($this->activity_image) : null);
+    }
+
+    public static function getFeedItems()
+    {
+        return static::latest('created_at')->limit(50)->get();
     }
 
     // relationship

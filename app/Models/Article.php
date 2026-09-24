@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use \Spatie\Feed\Feedable;
+use Spatie\Feed\FeedItem;
+use App\Traits\HasCleanExcerpt;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class Article extends Model
+class Article extends Model implements Feedable
 {
-    use HasFactory;
+    use HasFactory, HasCleanExcerpt;
 
     public $incrementing = false;
     protected $table = 'articles';
@@ -94,7 +97,7 @@ class Article extends Model
 
     public function getShortDescriptionAttribute()
     {
-        return Str::limit(strip_tags($this->article_description), 85);
+        return static::cleanExcerpt($this->article_description, 85);
     }
 
     // add badge
@@ -119,6 +122,24 @@ class Article extends Model
     public function getArticleDetail($slug)
     {
         return $this->where('article_slug', $slug)->first();
+    }
+
+    // ==== Feed (RSS/Atom) ====
+    public function toFeedItem(): FeedItem
+    {
+        return FeedItem::create()
+            ->id($this->uuid)
+            ->title($this->article_title)
+            ->summary($this->excerpt ?: static::cleanExcerpt($this->article_description, 200))
+            ->updated($this->updated_at)
+            ->link(route('article-detail', $this->article_slug))
+            ->authorName('Tim Redaksi ' . config('app.name'))
+            ->image($this->article_image ? Storage::disk('public')->url($this->article_image) : null);
+    }
+
+    public static function getFeedItems()
+    {
+        return static::latest('created_at')->limit(50)->get();
     }
 
     public static function getStat()

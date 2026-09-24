@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use Spatie\Feed\Feedable;
+use Spatie\Feed\FeedItem;
+use App\Traits\HasCleanExcerpt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class Property extends Model
+class Property extends Model implements Feedable
 {
+    use HasCleanExcerpt;
+
     public $incrementing = false;
     protected $table = 'properties';
     protected $primaryKey = 'uuid';
@@ -155,6 +159,34 @@ class Property extends Model
 
     public function getShortDescriptionAttribute()
     {
-        return Str::limit($this->property_description, 85);
+        return static::cleanExcerpt($this->property_description, 85);
+    }
+
+    // ==== Feed (RSS/Atom) ====
+    public function toFeedItem(): FeedItem
+    {
+        $images = (array) $this->property_image;
+
+        return FeedItem::create()
+            ->id($this->uuid)
+            ->title($this->property_name)
+            ->summary(static::cleanExcerpt($this->property_description, 200))
+            ->updated($this->updated_at)
+            ->link(route('property-detail', $this->property_slug))
+            ->authorName(config('app.name'))
+            ->image(!empty($images[0]) ? Storage::disk('public')->url($images[0]) : null);
+    }
+
+    public static function getFeedItems()
+    {
+        // Sama seperti scope di getProperties(): hanya listing aktif
+        return static::where('property_status', 'Active')
+            ->where(function ($query) {
+                $query->whereDate('property_date_end', '>=', today())
+                    ->orWhereNull('property_date_end');
+            })
+            ->latest('created_at')
+            ->limit(50)
+            ->get();
     }
 }

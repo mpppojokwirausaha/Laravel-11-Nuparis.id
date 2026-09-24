@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasCleanExcerpt;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -9,12 +10,12 @@ use Illuminate\Support\Str;
 
 class Review extends Model
 {
-    use HasFactory;
+    use HasFactory, HasCleanExcerpt;
 
     public $incrementing = false;
     protected $table = 'reviews';
     protected $primaryKey = 'uuid';
-    protected $casts = ['id' => 'string'];
+    protected $casts = ['uuid' => 'string'];
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -26,6 +27,7 @@ class Review extends Model
         'review_content',
         'review_avatar',
     ];
+
     protected static function booted()
     {
         // Sebelum create: generate UUID
@@ -58,28 +60,36 @@ class Review extends Model
         return 'review_slug';
     }
 
-    public function getReview()
+    public static function getReview()
     {
-        return $this->latest()->get();
+        return self::latest()->get();
     }
 
-    public function getReviewMore()
+    public static function getReviewMore()
     {
-        return $this->latest()->paginate(12);
+        return self::latest()->paginate(12);
     }
 
     public function getShortContentAttribute()
     {
-        return Str::limit($this->review_content, 85);
+        return static::cleanExcerpt($this->review_content, 85);
     }
 
     public static function getStat()
     {
         $today = now()->day;
+        $startOfMonth = now()->startOfMonth();
+
+        $counts = self::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
         $chartData = collect(range(1, $today))
-            ->map(function ($day) {
-                $date = now()->startOfMonth()->addDays($day - 1)->toDateString();
-                return self::whereDate('created_at', $date)->count();
+            ->map(function ($day) use ($startOfMonth, $counts) {
+                $date = $startOfMonth->copy()->addDays($day - 1)->toDateString();
+                return $counts->get($date, 0);
             })
             ->toArray();
 

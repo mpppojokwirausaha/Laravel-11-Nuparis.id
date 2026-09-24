@@ -12,7 +12,17 @@ class RobotsController extends Controller
             'User-agent: *',
             'Allow: /',
             'Disallow: /management',
-            '',
+            'Disallow: /dashboard',
+            'Disallow: /edit-profile',
+            'Disallow: /login',
+            'Disallow: /register',
+            'Disallow: /report/download',
+            'Disallow: /clear',
+            'Disallow: /down',
+            'Disallow: /up',
+            'Disallow: /linkstorage',
+            'Disallow: /*/data',
+            'Disallow: /toss',
             'Sitemap: ' . route('sitemap'),
         ];
 

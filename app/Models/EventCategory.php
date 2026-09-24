@@ -38,10 +38,18 @@ class EventCategory extends Model
     public static function getStat()
     {
         $today = now()->day;
+        $startOfMonth = now()->startOfMonth();
+
+        $counts = self::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
         $chartData = collect(range(1, $today))
-            ->map(function ($day) {
-                $date = now()->startOfMonth()->addDays($day - 1)->toDateString();
-                return self::whereDate('created_at', $date)->count();
+            ->map(function ($day) use ($startOfMonth, $counts) {
+                $date = $startOfMonth->copy()->addDays($day - 1)->toDateString();
+                return $counts->get($date, 0);
             })
             ->toArray();
 

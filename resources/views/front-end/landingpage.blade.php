@@ -2,30 +2,13 @@
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title> {{ $title }}</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $infos->meta_image) }}">
+    @include('front-end.layouts.components.seo-meta')
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/front-end/css/style.css') }}" rel="stylesheet" />
     <meta name="title" content="{{ $infos->meta_title }}" />
     <meta name="description" content="{{ $infos->meta_description }}" />
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="{{ $infos->meta_domain }}" />
-    <meta property="og:title" content="{{ $infos->meta_title }}" />
-    <meta property="og:description" content="{{ $infos->meta_description }}" />
-    <meta property="og:image" content="{{ asset('storage/' . $infos->meta_image) }}" />
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="{{ $infos->meta_domain }}" />
-    <meta property="twitter:title" content="{{ $infos->meta_title }}" />
-    <meta property="twitter:description" content="{{ $infos->meta_description }}" />
-    <meta property="twitter:image" content="{{ asset('storage/' . $infos->meta_image) }}" />
 
     <!-- FilePond CSS -->
     <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet">
@@ -198,8 +181,7 @@
                         <div class="swiper-wrapper">
                             @foreach ($heroAssets as $imageUrl)
                                 <div class="swiper-slide">
-                                    <img src="{{ $imageUrl }}" alt="Hero Image"
-                                        class="w-full h-full object-cover">
+                                    <img src="{{ $imageUrl }}" alt="Hero Image" class="w-full h-full object-cover">
                                 </div>
                             @endforeach
                         </div>

@@ -7,6 +7,8 @@ use App\Models\Info;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ArticleController extends Controller
 {
@@ -51,23 +53,64 @@ class ArticleController extends Controller
      */
     public function articleDetail($article_slug)
     {
-        $article = Article::where('article_slug', $article_slug)->first();
+        $article = Article::with('articleCategory')
+            ->where('article_slug', $article_slug)
+            ->first();
 
         if (!$article) {
             abort(404);
         }
 
-        // View counter dengan IP-based caching
         $this->incrementViewCount($article);
+        $article->cleaned_content = $this->cleanArticleContent($article->article_description);
 
-        // Bersihkan konten aktivitas
-        $article->cleaned_content = $this->cleanarticleContent($article->article_description);
+        $seoDescription = $article->excerpt ?: Str::limit(strip_tags($article->cleaned_content), 160);
+        $seoImage = $article->article_image ? Storage::disk('public')->url($article->article_image) : null;
+        $fullTitle = $article->article_title . ' | ' . config('app.name');
+        $canonicalUrl = route('article-detail', $article->article_slug);
 
         return view('front-end.article-detail', [
-            'title' => $article->article_title . ' | ' . config('app.name'),
+            'title' => $fullTitle,
             'infos' => (new Info())->getInfo(),
             'agencies_footer' => (new Partner())->getAgencies(),
             'article' => $article,
+
+            // ==== SEO ====
+            'seo_title' => $fullTitle,
+            'seo_description' => $seoDescription,
+            'seo_image' => $seoImage,
+            'seo_type' => 'article',
+            'canonical_url' => $canonicalUrl,
+            'published_time' => $article->created_at,
+            'modified_time' => $article->updated_at,
+            'seo_section' => $article->articleCategory->article_category_name ?? 'Berita',
+            'feed_url' => route('feeds.article'),
+            'feed_title' => 'Artikel Terbaru - ' . config('app.name'),
+            'jsonld' => array_filter([
+                '@context' => 'https://schema.org',
+                '@type' => 'Article',
+                'headline' => $article->article_title,
+                'description' => $seoDescription,
+                'image' => $seoImage ? [$seoImage] : null,
+                'datePublished' => $article->created_at->toIso8601String(),
+                'dateModified' => $article->updated_at->toIso8601String(),
+                'author' => [
+                    '@type' => 'Organization',
+                    'name' => 'Tim Redaksi ' . config('app.name'),
+                ],
+                'publisher' => [
+                    '@type' => 'Organization',
+                    'name' => config('app.name'),
+                    'logo' => [
+                        '@type' => 'ImageObject',
+                        'url' => asset('images/logo.png'), // sesuaikan path logo asli
+                    ],
+                ],
+                'mainEntityOfPage' => [
+                    '@type' => 'WebPage',
+                    '@id' => $canonicalUrl,
+                ],
+            ]),
         ]);
     }
 

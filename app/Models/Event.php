@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use Spatie\Feed\Feedable;
+use Spatie\Feed\FeedItem;
+use App\Traits\HasCleanExcerpt;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class Event extends Model
+class Event extends Model implements Feedable
 {
-    use HasFactory;
+    use HasFactory, HasCleanExcerpt;
 
     public $incrementing = false;
     protected $table = 'events';
@@ -18,6 +21,8 @@ class Event extends Model
     protected $casts = [
         'uuid' => 'string',
         'event_type' => 'array',
+        'event_date_start' => 'datetime',
+        'event_date_end' => 'datetime',
     ];
     protected $keyType = 'string';
     protected $fillable = [
@@ -91,7 +96,7 @@ class Event extends Model
 
     public function getShortDescriptionAttribute()
     {
-        return Str::limit($this->event_description, 85);
+        return static::cleanExcerpt($this->event_description, 85);
     }
 
     // add badge
@@ -143,13 +148,47 @@ class Event extends Model
         return $this->where('event_slug', $slug)->first();
     }
 
+    // ==== Feed (RSS/Atom) ====
+    public function toFeedItem(): FeedItem
+    {
+        return FeedItem::create()
+            ->id($this->uuid)
+            ->title($this->event_title)
+            ->summary(static::cleanExcerpt($this->event_description, 200))
+            ->updated($this->updated_at)
+            ->link(route('event-detail', $this->event_slug))
+            ->authorName(config('app.name'))
+            ->image($this->event_image ? Storage::disk('public')->url($this->event_image) : null);
+    }
+
+    public static function getFeedItems()
+    {
+        // Hanya event yang aktif & belum lewat, supaya feed tidak penuh event lama
+        return static::where('event_is_active', true)
+            ->where(function ($query) {
+                $query->whereNull('event_date_end')
+                    ->orWhereDate('event_date_end', '>=', today());
+            })
+            ->orderBy('event_date_start')
+            ->limit(50)
+            ->get();
+    }
+
     public static function getStat()
     {
         $today = now()->day;
+        $startOfMonth = now()->startOfMonth();
+
+        $counts = self::whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
         $chartData = collect(range(1, $today))
-            ->map(function ($day) {
-                $date = now()->startOfMonth()->addDays($day - 1)->toDateString();
-                return self::whereDate('created_at', $date)->count();
+            ->map(function ($day) use ($startOfMonth, $counts) {
+                $date = $startOfMonth->copy()->addDays($day - 1)->toDateString();
+                return $counts->get($date, 0);
             })
             ->toArray();
 
