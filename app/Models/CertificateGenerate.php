@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class CertificateGenerate extends Model
@@ -31,11 +30,6 @@ class CertificateGenerate extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(CertificateTemplate::class, 'certificate_template_id', 'uuid');
-    }
-
-    public function items(): HasMany
-    {
-        return $this->hasMany(CertificateItem::class, 'certificate_generate_id', 'uuid');
     }
 
     public function getFileUrlAttribute(): ?string

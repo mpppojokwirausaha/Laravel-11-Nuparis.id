@@ -27,26 +27,16 @@ class CertificateTemplateField extends Model
         'font_underline',
         'text_align',
         'is_placed',
-        'usage_count',
-        'is_archived',
     ];
 
     protected $casts = [
         'is_placed' => 'boolean',
         'font_bold' => 'boolean',
         'font_underline' => 'boolean',
-        'usage_count' => 'integer',
-        'is_archived' => 'boolean',
     ];
 
     public function template(): BelongsTo
     {
         return $this->belongsTo(CertificateTemplate::class, 'certificate_template_id');
-    }
-
-    // Field cuma boleh dihapus permanen kalau belum pernah kepakai generate sama sekali.
-    public function canBeDeleted(): bool
-    {
-        return $this->usage_count === 0;
     }
 }

@@ -154,72 +154,6 @@
         object-fit: contain;
     }
 
-    .cg-manage-del-btn {
-        flex-shrink: 0;
-        border: 0;
-        background: transparent;
-        color: #ef4444;
-        font-size: 11px;
-        cursor: pointer;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    .cg-manage-del-btn:hover {
-        background: rgba(239, 68, 68, 0.15);
-    }
-
-    .cg-manage-add-row {
-        display: flex;
-        gap: 6px;
-    }
-
-    .cg-manage-add-row input[type="text"] {
-        flex: 1 1 0%;
-        min-width: 0;
-        background: #1f2937;
-        border: 1px solid #374151;
-        border-radius: 6px;
-        color: #e5e7eb;
-        font-size: 12px;
-        padding: 6px 8px;
-    }
-
-    .cg-manage-btn {
-        flex-shrink: 0;
-        border: 1px solid #4b5563;
-        border-radius: 6px;
-        background: #1f2937;
-        color: #e5e7eb;
-        font-size: 12px;
-        padding: 6px 10px;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-
-    .cg-manage-btn:hover {
-        background: #374151;
-    }
-
-    .cg-manage-btn-primary {
-        background: #dc2626;
-        border-color: #dc2626;
-        color: #ffffff;
-    }
-
-    .cg-manage-btn-primary:hover {
-        background: #b91c1c;
-    }
-
-    .cg-manage-item-badge {
-        font-size: 9px;
-        color: #9ca3af;
-        border: 1px solid #4b5563;
-        border-radius: 4px;
-        padding: 1px 5px;
-        flex-shrink: 0;
-    }
-
     /* ==== List Field (belum ditempatkan) ==== */
     .cg-list-panel {
         border: 1px solid #374151;
@@ -254,7 +188,6 @@
     .cg-list-item {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 8px;
         padding: 6px 10px;
         border: 1px dashed #4b5563;
@@ -297,7 +230,7 @@
     }
 </style>
 
-<div wire:key="canvas-{{ $record->uuid }}" wire:ignore x-data="{
+<div x-data="{
     templateId: @js($record->uuid),
     fields: @js($fields),
     dragging: null,
@@ -305,40 +238,6 @@
     pdfWidthPt: @js($record->image_width ?? 0),
     pdfHeightPt: @js($record->image_height ?? 0),
     canvasWidthPx: 0,
-
-    // BARU: field baru/dihapus ditempel langsung ke object fields yang udah
-    // ada (bukan reset total), supaya posisi field lain yang lagi di-drag
-    // (belum diklik tombol Simpan Posisi) gak ikut ke-reset.
-    init() {
-        // FIX: SweetAlert2 sebelumnya di-load lewat tag <script src> statis
-        // di Blade — tapi modal ini disuntik ke DOM lewat respons AJAX
-        // Livewire (bukan render halaman biasa), dan browser TIDAK
-        // mengeksekusi tag <script> yang disisipkan lewat cara itu. Makanya
-        // `Swal` gak pernah ke-define dan tombol Hapus kelihatan gak
-        // ngapa-ngapain. Solusinya: load scriptnya via JS (createElement),
-        // ini selalu dieksekusi browser apa pun cara HTML-nya disisipkan.
-        if (typeof window.Swal === 'undefined' && !document.getElementById('cg-swal2-script')) {
-            const swalScript = document.createElement('script');
-            swalScript.id = 'cg-swal2-script';
-            swalScript.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
-            document.head.appendChild(swalScript);
-        }
-
-        window.addEventListener('field-added', (e) => {
-            const detail = e.detail[0] ?? e.detail;
-            if (detail.templateId !== this.templateId) return;
-            this.fields[detail.key] = detail.field;
-        });
-
-        window.addEventListener('field-removed', (e) => {
-            const detail = e.detail[0] ?? e.detail;
-            if (detail.templateId !== this.templateId) return;
-            delete this.fields[detail.key];
-            if (this.dragging === detail.key) {
-                this.dragging = null;
-            }
-        });
-    },
 
     // Diukur setelah gambar sertifikat SELESAI dimuat (@load), lalu disimpan
     // sebagai state reaktif. Ini penting supaya ukuran font di preview tidak
@@ -364,7 +263,6 @@
         this.ghostPos = { x: clientX, y: clientY };
 
         const field = this.fields[this.dragging];
-        if (!field) return;
 
         // kalau field ini SEDANG di kanvas (placed), marker-nya ikut
         // mengambang mengikuti kursor (live update posisi)
@@ -386,8 +284,6 @@
 
         const key = this.dragging;
         const field = this.fields[key];
-        if (!field) { this.dragging = null; return; }
-
         const rect = this.$refs.canvasWrap.getBoundingClientRect();
 
         const insideCanvas = clientX >= rect.left && clientX <= rect.right &&
@@ -452,69 +348,22 @@
         const justify = alignMap[field.text_align] || 'center';
         const textAlign = field.text_align || 'center';
 
-        // FIX: titik (x,y) yang di-drag sekarang jadi TITIK JANGKAR sesuai
-        // perataan — bukan selalu titik tengah kotak seperti sebelumnya.
-        // Rata kiri => (x,y) ujung kiri teks, rata kanan => (x,y) ujung
-        // kanan teks, rata tengah => (x,y) tengah teks (perilaku lama).
-        // Ini HARUS sinkron persis dengan perhitungan $textX di
-        // CertificateGeneratorService, supaya preview & hasil PDF ketemu.
-        const translateXMap = {
-            left: '0%',
-            center: '-50%',
-            right: '-100%',
-        };
-        const translateX = translateXMap[field.text_align] || '-50%';
-
         // FIX: border, padding & border-radius pakai satuan 'em' (bukan 'px')
         // supaya otomatis ikut menyusut/membesar proporsional mengikuti
         // font-size (yang sudah dihitung dinamis dari lebar kanvas). Sebelumnya
         // px tetap, jadi waktu sertifikat mengecil (mis. window diperkecil),
         // border+padding jadi kelihatan tidak proporsional/lebih besar.
-        return `position:absolute; left:${field.x}%; top:${field.y}%; min-width:${widthCh}ch; transform: translate(${translateX}, -50%); cursor:grab; touch-action:none; border:0.08em dashed #dc2626; background-color:rgba(220,38,38,0.15); box-sizing:border-box; padding:0.3em 0.5em; border-radius:0.3em; display:flex; align-items:center; justify-content:${justify}; text-align:${textAlign}; line-height:1.1; font-family:${cssFontFamily}; font-size:${previewFontSize}px; font-weight:${fontWeight}; text-decoration:${textDecoration}; color:${field.font_color || '#dc2626'}; white-space:nowrap; user-select:none; z-index:50;`;
+        return `position:absolute; left:${field.x}%; top:${field.y}%; min-width:${widthCh}ch; transform: translate(-50%, -50%); cursor:grab; touch-action:none; border:0.08em dashed #dc2626; background-color:rgba(220,38,38,0.15); box-sizing:border-box; padding:0.3em 0.5em; border-radius:0.3em; display:flex; align-items:center; justify-content:${justify}; text-align:${textAlign}; line-height:1.1; font-family:${cssFontFamily}; font-size:${previewFontSize}px; font-weight:${fontWeight}; text-decoration:${textDecoration}; color:${field.font_color || '#dc2626'}; white-space:nowrap; user-select:none; z-index:50;`;
     },
 
     hasUnplacedFields() {
         return Object.values(this.fields).some(f => !f.is_placed);
     },
 
-    // Konfirmasi hapus field pakai SweetAlert2 (bukan confirm() bawaan
-    // browser). Field yang belum pernah dipakai generate bakal dihapus
-    // permanen; yang sudah pernah dipakai bakal diarsipkan (disembunyikan)
-    // — keputusan itu ditentukan di server, dialog ini cuma konfirmasi awal.
-    confirmDeleteField(field) {
-        // Fallback jaga-jaga: kalau CDN SweetAlert2 lambat/gagal ke-load,
-        // tetap bisa hapus pakai confirm() bawaan browser daripada tombol
-        // Hapus keliatan gak ngapa-ngapain sama sekali.
-        if (typeof window.Swal === 'undefined') {
-            if (confirm('Yakin mau hapus field &quot;' + field.label + '&quot;?')) {
-                $wire.call('deleteOrArchiveField', field.uuid);
-            }
-            return;
-        }
-
-        Swal.fire({
-            title: 'Hapus field ini?',
-            html: `Field <b>&quot;${field.label}&quot;</b> akan dihapus dari sertifikat. Kalau sudah pernah dipakai generate, field ini akan diarsipkan (disembunyikan), bukan dihapus permanen.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, hapus',
-            cancelButtonText: 'Batal',
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#374151',
-            background: '#1f2937',
-            color: '#e5e7eb',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $wire.call('deleteOrArchiveField', field.uuid);
-            }
-        });
-    },
-
     async save() {
         await $wire.call('saveFields', this.templateId, this.fields);
     }
-}"
-    @pointermove.window="onMove($event.clientX, $event.clientY)"
+}" @pointermove.window="onMove($event.clientX, $event.clientY)"
     @pointerup.window="stopDrag($event.clientX, $event.clientY)"
     @pointercancel.window="stopDrag($event.clientX, $event.clientY)" @contextmenu.window="dragging = null"
     @blur.window="dragging = null">
@@ -527,13 +376,6 @@
         Untuk QR code, "Ukuran" berfungsi sebagai sisi kotak (persegi) dalam point (pt).
         Setelah semua posisi pas, klik <strong>Simpan Posisi</strong> di bagian bawah.
     </p>
-
-    @if (empty($fields))
-        <div style="color:#f59e0b; font-size:14px; margin-bottom:16px;">
-            Belum ada field sama sekali untuk template ini. Tambahkan field dulu lewat panel "List Field" di
-            sebelah kanan.
-        </div>
-    @endif
 
     <div class="cg-outer">
 
@@ -561,13 +403,7 @@
             <div class="cg-settings-col">
                 <template x-for="(field, key) in fields" :key="key + '-settings'">
                     <div class="cg-card" x-show="field.is_placed">
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                            <p class="cg-card-title" x-text="field.label" style="margin:0;"></p>
-                            <button type="button" class="cg-manage-del-btn" style="flex-shrink:0;"
-                                @click="confirmDeleteField(field)">
-                                Hapus
-                            </button>
-                        </div>
+                        <p class="cg-card-title" x-text="field.label"></p>
 
                         <div class="cg-row">
                             <label>X</label>
@@ -632,47 +468,21 @@
                 </template>
             </div>
 
-            {{-- List Field: field yang belum ditaruh di sertifikat, SEKALIGUS
-             tempat kelola field (tambah/hapus) --}}
+            {{-- List Field: field yang belum ditaruh di sertifikat --}}
             <div class="cg-list-panel" x-ref="listPanel">
                 <p class="cg-list-title">List Field (belum ditempatkan)</p>
-                <p class="cg-list-hint">Drag ke sertifikat untuk memakainya. Field yang sudah pernah dipakai
-                    generate gak bisa dihapus permanen — cuma diarsipkan.</p>
+                <p class="cg-list-hint">Drag ke sertifikat untuk memakainya.</p>
 
                 <div class="cg-list-items">
                     <template x-for="(field, key) in fields" :key="key + '-list'">
-                        <div class="cg-list-item" x-show="!field.is_placed">
-                            <span @pointerdown="startDrag(key, $event)" style="cursor:grab; flex:1;"
-                                x-text="field.label"></span>
-                            <span class="cg-manage-item-badge" x-show="field.usage_count > 0"
-                                x-text="field.usage_count + 'x'"
-                                title="Sudah dipakai, gak bisa dihapus permanen"></span>
-                            <button type="button" class="cg-manage-del-btn" @click="confirmDeleteField(field)">
-                                Hapus
-                            </button>
+                        <div class="cg-list-item" x-show="!field.is_placed" @pointerdown="startDrag(key, $event)">
+                            <span x-text="field.label"></span>
                         </div>
                     </template>
 
-                    <p class="cg-list-empty" x-show="Object.keys(fields).length > 0 && !hasUnplacedFields()">
+                    <p class="cg-list-empty" x-show="!hasUnplacedFields()">
                         Semua field sudah ditempatkan di sertifikat.
                     </p>
-                    <p class="cg-list-empty" x-show="Object.keys(fields).length === 0">
-                        Belum ada field sama sekali. Tambahkan lewat form di bawah.
-                    </p>
-                </div>
-
-                {{-- Tambah field baru + tambah QR Code --}}
-                <div class="cg-manage-add-row" x-data="{ newLabel: '' }" style="margin-top:4px;">
-                    <input type="text" x-model="newLabel" placeholder="Nama field baru, mis. Nama Peserta"
-                        @keydown.enter="$wire.call('addCustomField', templateId, newLabel); newLabel = ''">
-                    <button type="button" class="cg-manage-btn"
-                        @click="$wire.call('addCustomField', templateId, newLabel); newLabel = ''">
-                        + Field
-                    </button>
-                    <button type="button" class="cg-manage-btn cg-manage-btn-primary" x-show="!('qrcode' in fields)"
-                        @click="$wire.call('addQrField', templateId)">
-                        + QR Code
-                    </button>
                 </div>
             </div>
         </div>

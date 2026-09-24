@@ -22,10 +22,14 @@ class CertificateTemplate extends Model
         'image_height',
     ];
 
-    // NOTE: AVAILABLE_FIELDS constant DIHAPUS. Field sekarang custom per-template,
-    // dibuat lewat "Kelola Field" (panel di modal "Atur Posisi"). Cuma "qrcode"
-    // yang statusnya reserved/wajib-tersedia, di-seed otomatis di bawah.
-    public const RESERVED_QRCODE_KEY = 'qrcode';
+    public const AVAILABLE_FIELDS = [
+        'nama' => 'Nama',
+        'keterangan' => 'Keterangan',
+        'tempat' => 'Tempat',
+        'tanggal' => 'Tanggal',
+        'tahun' => 'Tahun',
+        'qrcode' => 'QR Code',
+    ];
 
     protected static function booted(): void
     {
@@ -45,25 +49,22 @@ class CertificateTemplate extends Model
             }
         });
 
-        // Tiap template BARU otomatis punya 1 field "qrcode" (reserved) siap
-        // dipakai — field lain (custom) HARUS ditambahkan manual lewat
-        // "Kelola Field", gak ada bawaan lagi selain qrcode.
         static::created(function (CertificateTemplate $template) {
-            $template->fields()->create([
-                'field_key' => self::RESERVED_QRCODE_KEY,
-                'label' => 'QR Code',
-                'x' => 50,
-                'y' => 50,
-                'font_size' => 80,
-                'font_color' => '#000000',
-                'font_family' => 'Helvetica',
-                'font_bold' => false,
-                'font_underline' => false,
-                'text_align' => 'center',
-                'is_placed' => false,
-                'usage_count' => 0,
-                'is_archived' => false,
-            ]);
+            foreach (self::AVAILABLE_FIELDS as $key => $label) {
+                $template->fields()->create([
+                    'field_key' => $key,
+                    'label' => $label,
+                    'x' => 50,
+                    'y' => 50,
+                    'font_size' => $key === 'qrcode' ? 80 : 24,
+                    'font_color' => '#000000',
+                    'font_family' => 'Helvetica',
+                    'font_bold' => false,
+                    'font_underline' => false,
+                    'text_align' => 'center',
+                    'is_placed' => false,
+                ]);
+            }
         });
     }
 
